@@ -1,0 +1,17 @@
+{
+  "name": "FFmpeg Catalyst",
+  "short_name": "Catalyst",
+  "description": "A local-first FFmpeg workstation with optional local AI command planning.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f7f8f3",
+  "theme_color": "#f7f8f3",
+  "icons": [
+    {
+      "src": "/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#f7f8f3" />
+    <meta
+      name="description"
+      content="FFmpeg Catalyst is a local-first media workstation powered by ffmpeg.wasm and optional local Gemma planning."
+    />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="icon" href="/icons/icon.svg" type="image/svg+xml" />
+    <title>FFmpeg Catalyst</title>
+    <script>
+      if (window.location.protocol !== "file:" && "serviceWorker" in navigator) {
+        navigator.serviceWorker.register("/coi-serviceworker.js");
+      }
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

@@ -100,7 +100,11 @@ export function parseCommandLine(input: string): string[] {
   return tokens[0] === "ffmpeg" ? tokens.slice(1) : tokens;
 }
 
-export function normalizeArgs(args: string[], inputName: string, outputName: string): string[] {
+export function normalizeArgs(
+  args: string[],
+  inputName: string,
+  outputName: string,
+): string[] {
   return args.map((arg) =>
     arg
       .replaceAll("$INPUT", inputName)
@@ -111,9 +115,13 @@ export function normalizeArgs(args: string[], inputName: string, outputName: str
 }
 
 export function inferOutputName(fileName: string, args: string[]): string {
-  const explicit = args.find((arg) => arg.includes("$OUTPUT") || arg.includes("{output}"));
+  const explicit = args.find(
+    (arg) => arg.includes("$OUTPUT") || arg.includes("{output}"),
+  );
   if (explicit) {
-    return explicit.replace("$OUTPUT", suggestedOutputName(fileName)).replace("{output}", suggestedOutputName(fileName));
+    return explicit
+      .replace("$OUTPUT", suggestedOutputName(fileName))
+      .replace("{output}", suggestedOutputName(fileName));
   }
 
   for (let index = args.length - 1; index >= 0; index -= 1) {
@@ -126,7 +134,10 @@ export function inferOutputName(fileName: string, args: string[]): string {
   return suggestedOutputName(fileName);
 }
 
-export function suggestedOutputName(fileName: string, extension = "mp4"): string {
+export function suggestedOutputName(
+  fileName: string,
+  extension = "mp4",
+): string {
   const base = fileName.replace(/\.[^.]+$/, "");
   return `${base || "output"}-catalyst.${extension}`;
 }
@@ -157,7 +168,15 @@ export function commandToChips(args: string[]): CommandChip[] {
     }
 
     if (VALUE_FLAGS.has(token) && next) {
-      chips.push(makeChip(index, `${token} ${next}`, labelForFlag(token, next), kindForFlag(token), true));
+      chips.push(
+        makeChip(
+          index,
+          `${token} ${next}`,
+          labelForFlag(token, next),
+          kindForFlag(token),
+          true,
+        ),
+      );
       index += 1;
       continue;
     }
@@ -167,7 +186,15 @@ export function commandToChips(args: string[]): CommandChip[] {
       continue;
     }
 
-    chips.push(makeChip(index, token, token, token.startsWith("-") ? "flag" : "value", true));
+    chips.push(
+      makeChip(
+        index,
+        token,
+        token,
+        token.startsWith("-") ? "flag" : "value",
+        true,
+      ),
+    );
   }
 
   return chips;
@@ -191,8 +218,10 @@ function makeChip(
 
 function kindForFlag(flag: string): CommandChipKind {
   if (flag.includes("c:") || flag.includes("codec")) return "codec";
-  if (flag.includes("filter") || flag === "-vf" || flag === "-af") return "filter";
-  if (flag === "-crf" || flag.startsWith("-b:") || flag === "-preset") return "quality";
+  if (flag.includes("filter") || flag === "-vf" || flag === "-af")
+    return "filter";
+  if (flag === "-crf" || flag.startsWith("-b:") || flag === "-preset")
+    return "quality";
   if (flag === "-ss") return "seek";
   if (flag === "-t" || flag === "-to") return "duration";
   if (flag === "-f") return "format";

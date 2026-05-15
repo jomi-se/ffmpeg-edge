@@ -163,8 +163,13 @@ export function App() {
 
   async function handlePlan(promptOverride?: string) {
     const activePrompt = promptOverride ?? prompt;
-    setBusy(useModel ? "Planning with local model" : "Planning with local docs");
-    setMessages((existing) => [...existing, { role: "user", content: activePrompt }]);
+    setBusy(
+      useModel ? "Planning with local model" : "Planning with local docs",
+    );
+    setMessages((existing) => [
+      ...existing,
+      { role: "user", content: activePrompt },
+    ]);
 
     try {
       const result = await planCommand({
@@ -174,7 +179,9 @@ export function App() {
         useLocalModel: useModel,
         modelId,
         onModelProgress: (report) =>
-          setModelStatus(`${Math.round(report.progress * 100)}% ${report.text}`),
+          setModelStatus(
+            `${Math.round(report.progress * 100)}% ${report.text}`,
+          ),
       });
       setPlan(result);
       setArgs(result.args);
@@ -276,7 +283,8 @@ export function App() {
     const parsed = parseCommandLine(replacement);
     setArgs((current) => {
       const next = [...current];
-      const replacesPair = token.includes(" ") && current[index + 1] !== undefined;
+      const replacesPair =
+        token.includes(" ") && current[index + 1] !== undefined;
       next.splice(index, replacesPair ? 2 : 1, ...parsed);
       return next;
     });
@@ -338,7 +346,12 @@ export function App() {
           <p className="eyebrow">Gemma assists. FFmpeg leads.</p>
           <h1>FFmpeg Catalyst</h1>
         </div>
-        <a className="text-link" href="https://ffmpeg.org/" target="_blank" rel="noreferrer">
+        <a
+          className="text-link"
+          href="https://ffmpeg.org/"
+          target="_blank"
+          rel="noreferrer"
+        >
           Official FFmpeg
         </a>
       </header>
@@ -354,15 +367,33 @@ export function App() {
               <input
                 type="file"
                 accept="audio/*,video/*,image/*"
-                onChange={(event) => handleFile(event.target.files?.[0] ?? null)}
+                onChange={(event) =>
+                  handleFile(event.target.files?.[0] ?? null)
+                }
               />
               <span className={`file-kind ${fileKind}`}>
-                {fileKind === "audio" ? <FileAudio /> : fileKind === "image" ? <FileImage /> : <FileVideo />}
+                {fileKind === "audio" ? (
+                  <FileAudio />
+                ) : fileKind === "image" ? (
+                  <FileImage />
+                ) : (
+                  <FileVideo />
+                )}
               </span>
-              <strong>{file ? file.name : "Choose audio, video, or image"}</strong>
-              <small>{file ? formatBytes(file.size) : "Everything stays on this device"}</small>
+              <strong>
+                {file ? file.name : "Choose audio, video, or image"}
+              </strong>
+              <small>
+                {file
+                  ? formatBytes(file.size)
+                  : "Everything stays on this device"}
+              </small>
             </label>
-            <button className="secondary-button" disabled={!file || !!busy} onClick={handleProbe}>
+            <button
+              className="secondary-button"
+              disabled={!file || !!busy}
+              onClick={handleProbe}
+            >
               <Search size={16} />
               Probe with ffprobe
             </button>
@@ -393,7 +424,11 @@ export function App() {
                 Use local Gemma/WebLLM planning
               </label>
             </div>
-            <button className="secondary-button" disabled={!!busy} onClick={handleLoadModel}>
+            <button
+              className="secondary-button"
+              disabled={!!busy}
+              onClick={handleLoadModel}
+            >
               <Database size={16} />
               Load model
             </button>
@@ -413,7 +448,11 @@ export function App() {
               onChange={(event) => setPrompt(event.target.value)}
             />
             <div className="button-row">
-              <button className="primary-button" disabled={!!busy} onClick={() => handlePlan()}>
+              <button
+                className="primary-button"
+                disabled={!!busy}
+                onClick={() => handlePlan()}
+              >
                 <Wand2 size={17} />
                 Plan command
               </button>
@@ -439,7 +478,9 @@ export function App() {
                   className={`chip ${chip.kind}`}
                   disabled={!chip.editable}
                   onClick={() => editChip(chip.id, chip.token)}
-                  title={chip.editable ? "Edit argument" : "Managed by Catalyst"}
+                  title={
+                    chip.editable ? "Edit argument" : "Managed by Catalyst"
+                  }
                 >
                   <span>{chip.label}</span>
                   <code>{chip.token}</code>
@@ -460,8 +501,16 @@ export function App() {
                 <TerminalSquare size={16} />
                 Sync to chips
               </button>
-              <button className="primary-button" disabled={!canRun} onClick={handleRun}>
-                {busy === "Running FFmpeg" ? <LoaderCircle className="spin" size={17} /> : <Play size={17} />}
+              <button
+                className="primary-button"
+                disabled={!canRun}
+                onClick={handleRun}
+              >
+                {busy === "Running FFmpeg" ? (
+                  <LoaderCircle className="spin" size={17} />
+                ) : (
+                  <Play size={17} />
+                )}
                 Run FFmpeg
               </button>
             </div>
@@ -471,7 +520,11 @@ export function App() {
               </div>
             )}
             {outputUrl && outputName && (
-              <a className="download-callout" href={outputUrl} download={outputName}>
+              <a
+                className="download-callout"
+                href={outputUrl}
+                download={outputName}
+              >
                 <Download size={18} />
                 Download {outputName}
               </a>
@@ -487,7 +540,10 @@ export function App() {
             </div>
             <div className="messages">
               {messages.map((message, index) => (
-                <p key={`${message.role}-${index}`} className={`message ${message.role}`}>
+                <p
+                  key={`${message.role}-${index}`}
+                  className={`message ${message.role}`}
+                >
                   {message.content}
                 </p>
               ))}
@@ -521,7 +577,9 @@ export function App() {
               <h2>Saved Outputs</h2>
             </div>
             <p className="status-text">
-              {hasOPFSSupport() ? "OPFS available" : "OPFS unavailable in this browser"}
+              {hasOPFSSupport()
+                ? "OPFS available"
+                : "OPFS unavailable in this browser"}
             </p>
             <ul className="output-list">
               {savedOutputs.map((output) => (
@@ -530,10 +588,16 @@ export function App() {
                     <strong>{output.name}</strong>
                     <small>{formatBytes(output.size)}</small>
                   </span>
-                  <button onClick={() => downloadSaved(output.name)} title="Download saved output">
+                  <button
+                    onClick={() => downloadSaved(output.name)}
+                    title="Download saved output"
+                  >
                     <Download size={15} />
                   </button>
-                  <button onClick={() => deleteSaved(output.name)} title="Delete saved output">
+                  <button
+                    onClick={() => deleteSaved(output.name)}
+                    title="Delete saved output"
+                  >
                     <Trash2 size={15} />
                   </button>
                 </li>
@@ -546,8 +610,14 @@ export function App() {
               <TerminalSquare size={18} />
               <h2>Logs</h2>
             </div>
-            <pre>{logs.length ? logs.join("\n") : "FFmpeg logs will appear here."}</pre>
-            <button className="secondary-button" disabled={!logs.length || !!busy} onClick={handleSelfCorrect}>
+            <pre>
+              {logs.length ? logs.join("\n") : "FFmpeg logs will appear here."}
+            </pre>
+            <button
+              className="secondary-button"
+              disabled={!logs.length || !!busy}
+              onClick={handleSelfCorrect}
+            >
               <Wand2 size={16} />
               Ask planner to fix
             </button>
@@ -598,7 +668,9 @@ function MetadataView({ metadata }: { metadata: MediaMetadata | null }) {
 }
 
 function DocsPreview({ prompt }: { prompt: string }) {
-  const [docs, setDocs] = useState<Array<{ id: string; title: string; syntax: string; url: string }>>([]);
+  const [docs, setDocs] = useState<
+    Array<{ id: string; title: string; syntax: string; url: string }>
+  >([]);
 
   useEffect(() => {
     let cancelled = false;
@@ -624,7 +696,9 @@ function DocsPreview({ prompt }: { prompt: string }) {
   );
 }
 
-function getFileKind(file: File | null): "audio" | "video" | "image" | "unknown" {
+function getFileKind(
+  file: File | null,
+): "audio" | "video" | "image" | "unknown" {
   if (!file) return "unknown";
   if (file.type.startsWith("audio/")) return "audio";
   if (file.type.startsWith("video/")) return "video";
@@ -635,7 +709,10 @@ function getFileKind(file: File | null): "audio" | "video" | "image" | "unknown"
 function formatBytes(bytes: number): string {
   if (bytes === 0) return "0 B";
   const units = ["B", "KB", "MB", "GB"];
-  const index = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
+  const index = Math.min(
+    Math.floor(Math.log(bytes) / Math.log(1024)),
+    units.length - 1,
+  );
   return `${(bytes / 1024 ** index).toFixed(index === 0 ? 0 : 1)} ${units[index]}`;
 }
 

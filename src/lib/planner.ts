@@ -1,6 +1,10 @@
 import { create, insertMultiple, search, type AnyOrama } from "@orama/orama";
 import type { InitProgressReport, MLCEngine } from "@mlc-ai/web-llm";
-import { argsToCommand, type PlannedCommand, suggestedOutputName } from "./command";
+import {
+  argsToCommand,
+  type PlannedCommand,
+  suggestedOutputName,
+} from "./command";
 import type { MediaMetadata } from "./media";
 import { ffmpegDocChunks, type FfmpegDocChunk } from "./ffmpegDocs";
 
@@ -27,7 +31,10 @@ let docsDbPromise: Promise<DocsDb> | null = null;
 let enginePromise: Promise<MLCEngine> | null = null;
 let loadedModelId: string | null = null;
 
-export async function searchFfmpegDocs(query: string, limit = 4): Promise<FfmpegDocChunk[]> {
+export async function searchFfmpegDocs(
+  query: string,
+  limit = 4,
+): Promise<FfmpegDocChunk[]> {
   const db = await getDocsDb();
   const result = await search(db, {
     term: query,
@@ -113,7 +120,10 @@ async function planWithWebLLM(
   request: PlanRequest,
   docsUsed: FfmpegDocChunk[],
 ): Promise<PlanResult> {
-  const engine = await ensureLocalModel(request.modelId ?? defaultModelId, request.onModelProgress);
+  const engine = await ensureLocalModel(
+    request.modelId ?? defaultModelId,
+    request.onModelProgress,
+  );
   const completion = await engine.chat.completions.create({
     messages: [
       {
@@ -153,7 +163,12 @@ function buildSystemPrompt(
     "Use the provided probe metadata and docs. Do not invent flags.",
     `Probe metadata: ${JSON.stringify(metadata ?? {}, null, 2)}`,
     `Relevant docs: ${JSON.stringify(
-      docsUsed.map(({ title, summary, syntax, url }) => ({ title, summary, syntax, url })),
+      docsUsed.map(({ title, summary, syntax, url }) => ({
+        title,
+        summary,
+        syntax,
+        url,
+      })),
       null,
       2,
     )}`,
@@ -176,18 +191,35 @@ function parseModelPlan(raw: string, file?: File): PlannedCommand {
       Array.isArray(value) || !value.explanation
         ? "Generated from local Gemma planning with FFmpeg documentation context."
         : value.explanation,
-    docs: Array.isArray(value) ? [] : value.docs ?? [],
+    docs: Array.isArray(value) ? [] : (value.docs ?? []),
   };
 }
 
-function fallbackPlan(prompt: string, file: File | undefined, docsUsed: FfmpegDocChunk[]): PlannedCommand {
+function fallbackPlan(
+  prompt: string,
+  file: File | undefined,
+  docsUsed: FfmpegDocChunk[],
+): PlannedCommand {
   const text = prompt.toLowerCase();
   const name = file?.name ?? "input";
   const docs = docsUsed.map((doc) => doc.url);
 
-  if (text.includes("mp3") || text.includes("extract audio") || text.includes("audio only")) {
+  if (
+    text.includes("mp3") ||
+    text.includes("extract audio") ||
+    text.includes("audio only")
+  ) {
     return {
-      args: ["-i", "$INPUT", "-vn", "-c:a", "libmp3lame", "-b:a", "192k", outputFor(name, "mp3")],
+      args: [
+        "-i",
+        "$INPUT",
+        "-vn",
+        "-c:a",
+        "libmp3lame",
+        "-b:a",
+        "192k",
+        outputFor(name, "mp3"),
+      ],
       explanation: "Extracts or converts the audio stream to an MP3 file.",
       docs,
     };
@@ -195,32 +227,72 @@ function fallbackPlan(prompt: string, file: File | undefined, docsUsed: FfmpegDo
 
   if (text.includes("gif")) {
     return {
-      args: ["-i", "$INPUT", "-vf", "fps=12,scale=640:-1:flags=lanczos", outputFor(name, "gif")],
+      args: [
+        "-i",
+        "$INPUT",
+        "-vf",
+        "fps=12,scale=640:-1:flags=lanczos",
+        outputFor(name, "gif"),
+      ],
       explanation: "Creates a compact GIF using a frame-rate and scale filter.",
       docs,
     };
   }
 
-  if (text.includes("thumbnail") || text.includes("poster") || text.includes("frame")) {
+  if (
+    text.includes("thumbnail") ||
+    text.includes("poster") ||
+    text.includes("frame")
+  ) {
     return {
-      args: ["-ss", "00:00:03", "-i", "$INPUT", "-frames:v", "1", outputFor(name, "jpg")],
+      args: [
+        "-ss",
+        "00:00:03",
+        "-i",
+        "$INPUT",
+        "-frames:v",
+        "1",
+        outputFor(name, "jpg"),
+      ],
       explanation: "Extracts a single JPEG frame near the start of the file.",
       docs,
     };
   }
 
-  if (text.includes("webp") || text.includes("image") || text.includes("resize")) {
+  if (
+    text.includes("webp") ||
+    text.includes("image") ||
+    text.includes("resize")
+  ) {
     return {
-      args: ["-i", "$INPUT", "-vf", "scale=1600:-1", outputFor(name, text.includes("avif") ? "avif" : "webp")],
-      explanation: "Converts or resizes an image using FFmpeg's regular filter pipeline.",
+      args: [
+        "-i",
+        "$INPUT",
+        "-vf",
+        "scale=1600:-1",
+        outputFor(name, text.includes("avif") ? "avif" : "webp"),
+      ],
+      explanation:
+        "Converts or resizes an image using FFmpeg's regular filter pipeline.",
       docs,
     };
   }
 
   if (text.includes("trim") || text.includes("cut")) {
     return {
-      args: ["-ss", "00:00:10", "-i", "$INPUT", "-t", "00:00:20", "-c", "copy", outputFor(name, "mp4")],
-      explanation: "Starts with a fast trim template. Adjust the start and duration chips before running.",
+      args: [
+        "-ss",
+        "00:00:10",
+        "-i",
+        "$INPUT",
+        "-t",
+        "00:00:20",
+        "-c",
+        "copy",
+        outputFor(name, "mp4"),
+      ],
+      explanation:
+        "Starts with a fast trim template. Adjust the start and duration chips before running.",
       docs,
     };
   }
@@ -241,7 +313,8 @@ function fallbackPlan(prompt: string, file: File | undefined, docsUsed: FfmpegDo
       "128k",
       outputFor(name, "mp4"),
     ],
-    explanation: "Compresses to a broadly compatible MP4 using H.264 video and AAC audio.",
+    explanation:
+      "Compresses to a broadly compatible MP4 using H.264 video and AAC audio.",
     docs,
   };
 }
@@ -251,7 +324,10 @@ function ensureOutput(args: string[], file?: File): string[] {
     return args;
   }
 
-  const hasOutput = args.some((arg, index) => index > 0 && !arg.startsWith("-") && args[index - 1] !== "-i");
+  const hasOutput = args.some(
+    (arg, index) =>
+      index > 0 && !arg.startsWith("-") && args[index - 1] !== "-i",
+  );
   if (hasOutput) {
     return args;
   }

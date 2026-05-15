@@ -42,7 +42,9 @@ const multiThreadBase = `https://unpkg.com/@ffmpeg/core-mt@${coreVersion}/dist/u
 let ffmpegInstance: FFmpeg | null = null;
 let loading: Promise<FFmpeg> | null = null;
 
-export async function getMediaElementMetadata(file: File): Promise<MediaMetadata> {
+export async function getMediaElementMetadata(
+  file: File,
+): Promise<MediaMetadata> {
   const metadata: MediaMetadata = {
     name: file.name,
     size: file.size,
@@ -63,7 +65,8 @@ export async function getMediaElementMetadata(file: File): Promise<MediaMetadata
       element.preload = "metadata";
       element.src = objectUrl;
       element.onloadedmetadata = () => resolve();
-      element.onerror = () => reject(new Error("Could not read media metadata"));
+      element.onerror = () =>
+        reject(new Error("Could not read media metadata"));
     });
 
     if (Number.isFinite(element.duration)) {
@@ -98,7 +101,8 @@ export async function ensureFfmpeg(
     ffmpeg.on("log", ({ message }) => onLog?.(message));
     ffmpeg.on("progress", ({ progress, time }) => onProgress?.(progress, time));
 
-    const useThreads = typeof SharedArrayBuffer !== "undefined" && crossOriginIsolated;
+    const useThreads =
+      typeof SharedArrayBuffer !== "undefined" && crossOriginIsolated;
     const base = useThreads ? multiThreadBase : singleThreadBase;
 
     await ffmpeg.load({
@@ -148,7 +152,10 @@ export async function probeWithFfmpeg(
   }
 
   const raw = await ffmpeg.readFile(outputName, "utf8");
-  const parsed = JSON.parse(String(raw)) as Pick<MediaMetadata, "streams" | "format">;
+  const parsed = JSON.parse(String(raw)) as Pick<
+    MediaMetadata,
+    "streams" | "format"
+  >;
   await cleanupFiles(ffmpeg, [inputName, outputName]);
 
   return {
@@ -171,14 +178,14 @@ export async function runFfmpegCommand(
   const started = performance.now();
   const inputName = safeInputName(request.file.name);
   const desiredOutput = inferOutputName(request.file.name, request.args);
-  const outputName = desiredOutput === inputName ? suggestedOutputName(inputName) : desiredOutput;
-  const ffmpeg = await ensureFfmpeg(
-    (message) => {
-      logs.push(message);
-      onLog?.(message);
-    },
-    onProgress,
-  );
+  const outputName =
+    desiredOutput === inputName
+      ? suggestedOutputName(inputName)
+      : desiredOutput;
+  const ffmpeg = await ensureFfmpeg((message) => {
+    logs.push(message);
+    onLog?.(message);
+  }, onProgress);
 
   await ffmpeg.writeFile(inputName, await fetchFile(request.file));
   const args = normalizeArgs(request.args, inputName, outputName);
@@ -203,7 +210,10 @@ export async function runFfmpegCommand(
   };
 }
 
-export function commandLineToArgs(commandLine: string, fileName: string): string[] {
+export function commandLineToArgs(
+  commandLine: string,
+  fileName: string,
+): string[] {
   const args = parseCommandLine(commandLine);
   if (args.includes("$INPUT") || args.includes("{input}")) {
     return args;

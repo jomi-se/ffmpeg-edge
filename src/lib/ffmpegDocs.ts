@@ -45,7 +45,8 @@ export const ffmpegDocChunks: FfmpegDocChunk[] = [
     section: "Video filters",
     summary:
       "Use the scale filter to resize while preserving aspect ratio. A dimension of -2 keeps the result divisible by two for codec compatibility.",
-    syntax: "-i $INPUT -vf scale=1280:-2 -c:v libx264 -crf 23 -c:a copy $OUTPUT",
+    syntax:
+      "-i $INPUT -vf scale=1280:-2 -c:v libx264 -crf 23 -c:a copy $OUTPUT",
     url: "https://ffmpeg.org/ffmpeg-filters.html#scale",
     tags: ["scale", "resize", "720p", "1080p", "video"],
   },
@@ -55,7 +56,8 @@ export const ffmpegDocChunks: FfmpegDocChunk[] = [
     section: "Video codecs",
     summary:
       "For H.264, libx264 with CRF 18-28 balances quality and size. Lower CRF means higher quality. Presets trade encoding speed for compression.",
-    syntax: "-i $INPUT -c:v libx264 -preset medium -crf 24 -c:a aac -b:a 128k $OUTPUT",
+    syntax:
+      "-i $INPUT -c:v libx264 -preset medium -crf 24 -c:a aac -b:a 128k $OUTPUT",
     url: "https://ffmpeg.org/ffmpeg-codecs.html#libx264_002c-libx264rgb",
     tags: ["compress", "h264", "x264", "crf", "bitrate", "mp4"],
   },
@@ -105,7 +107,8 @@ export const ffmpegDocChunks: FfmpegDocChunk[] = [
     section: "Overlay filter",
     summary:
       "Use overlay in a filtergraph to place a second image or video stream over the first.",
-    syntax: "-i $INPUT -i watermark.png -filter_complex overlay=W-w-24:H-h-24 $OUTPUT",
+    syntax:
+      "-i $INPUT -i watermark.png -filter_complex overlay=W-w-24:H-h-24 $OUTPUT",
     url: "https://ffmpeg.org/ffmpeg-filters.html#overlay",
     tags: ["watermark", "overlay", "logo", "image", "filtergraph"],
   },

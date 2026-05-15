@@ -56,7 +56,9 @@ export async function removeOutput(name: string): Promise<void> {
 
 async function getOutputDirectory(): Promise<FileSystemDirectoryHandle> {
   if (!navigator.storage.getDirectory) {
-    throw new Error("Origin Private File System is not supported in this browser.");
+    throw new Error(
+      "Origin Private File System is not supported in this browser.",
+    );
   }
 
   const root = await navigator.storage.getDirectory();

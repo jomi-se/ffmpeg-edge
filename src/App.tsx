@@ -421,7 +421,7 @@ export function App() {
                   checked={useModel}
                   onChange={(event) => setUseModel(event.target.checked)}
                 />
-                Use local Gemma/WebLLM planning
+                Use local Gemma 4 E2B/WebLLM planning
               </label>
             </div>
             <button

@@ -7,7 +7,7 @@ FFmpeg Catalyst is a browser-native media workstation that keeps FFmpeg visible 
 - Runs `ffmpeg.wasm` and `ffprobe` in the browser for audio, video, and image files.
 - Uses a COOP/COEP service worker so browsers that support `SharedArrayBuffer` can load the multithreaded FFmpeg core.
 - Retrieves local FFmpeg documentation chunks with Orama before planning a command.
-- Optionally loads a local Gemma-family WebLLM model for command planning. If the model is unavailable, deterministic FFmpeg templates keep the app usable.
+- Optionally loads a local Gemma 4 E2B WebLLM model for command planning. If the model is unavailable, deterministic FFmpeg templates keep the app usable.
 - Shows the planned FFmpeg arguments as editable chips and as a raw command.
 - Captures FFmpeg logs, progress, and exit codes, then feeds failures back into the planner for correction.
 - Saves successful outputs to the Origin Private File System when the browser supports OPFS.
@@ -21,6 +21,8 @@ npm run dev
 ```
 
 The dev server must be opened over `http://localhost` or HTTPS for the browser APIs used by FFmpeg, WebLLM, service workers, and OPFS.
+
+The default planner model id is `gemma-4-E2B-it-q4f16_1-MLC`. It is loaded through a custom WebLLM app config pointed at the `welcoma/gemma-4-E2B-it-q4f16_1-MLC` Hugging Face artifact because this Gemma 4 E2B variant is not part of the installed WebLLM prebuilt model list.
 
 ## Production Build
 

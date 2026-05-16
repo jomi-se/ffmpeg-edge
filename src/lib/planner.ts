@@ -1,5 +1,5 @@
 import { create, insertMultiple, search, type AnyOrama } from "@orama/orama";
-import type { InitProgressReport, MLCEngine } from "@mlc-ai/web-llm";
+import type { AppConfig, InitProgressReport, MLCEngine } from "@mlc-ai/web-llm";
 import {
   argsToCommand,
   type PlannedCommand,
@@ -26,7 +26,19 @@ export interface PlanResult extends PlannedCommand {
 
 type DocsDb = AnyOrama;
 
-const defaultModelId = "gemma3-1b-it-q4f16_1-MLC";
+const gemma4E2BRepo =
+  "https://huggingface.co/welcoma/gemma-4-E2B-it-q4f16_1-MLC";
+const defaultModelId = "gemma-4-E2B-it-q4f16_1-MLC";
+const gemma4E2BAppConfig: AppConfig = {
+  model_list: [
+    {
+      model: gemma4E2BRepo,
+      model_id: defaultModelId,
+      model_lib: `${gemma4E2BRepo}/resolve/main/libs/gemma-4-E2B-it-q4f16_1-MLC-webgpu.wasm`,
+      required_features: ["shader-f16"],
+    },
+  ],
+};
 let docsDbPromise: Promise<DocsDb> | null = null;
 let enginePromise: Promise<MLCEngine> | null = null;
 let loadedModelId: string | null = null;
@@ -87,6 +99,7 @@ export async function ensureLocalModel(
     const { CreateMLCEngine } = await import("@mlc-ai/web-llm");
     return CreateMLCEngine(modelId, {
       initProgressCallback: onProgress,
+      ...(modelId === defaultModelId ? { appConfig: gemma4E2BAppConfig } : {}),
     });
   })();
 

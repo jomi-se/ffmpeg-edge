@@ -5,4 +5,7 @@ dist/
 .env.local
 .agents/
 .codex/
+.playwright-mcp/
 *.tsbuildinfo
+ADVERSARIAL_REVIEW_PROMPT.md
+ADVERSARIAL_REVIEW_OUTPUT.md

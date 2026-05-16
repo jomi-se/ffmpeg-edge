@@ -20,8 +20,16 @@ import {
   Wand2,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { argsToCommand, commandToChips, parseCommandLine } from "./lib/command";
 import {
+  argsToCommand,
+  commandLineToArgs,
+  commandToChips,
+  parseCommandLine,
+  suggestedOutputName,
+  validateCommandArgs,
+} from "./lib/command";
+import {
+  getFfmpegRuntimeStatus,
   getMediaElementMetadata,
   probeWithFfmpeg,
   runFfmpegCommand,
@@ -89,14 +97,30 @@ export function App() {
   const [outputName, setOutputName] = useState<string | null>(null);
   const [savedOutputs, setSavedOutputs] = useState<StoredOutput[]>([]);
   const [isListening, setIsListening] = useState(false);
+  const [modelEvents, setModelEvents] = useState<string[]>([]);
+  const [runtimeStatus, setRuntimeStatus] = useState(getFfmpegRuntimeStatus());
+  const [speechDisclosureAccepted, setSpeechDisclosureAccepted] =
+    useState(false);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
 
   const chips = useMemo(() => commandToChips(args), [args]);
   const fileKind = getFileKind(file);
-  const canRun = !!file && args.length > 0 && !busy;
+  const validation = useMemo(
+    () => (file ? validateCommandArgs(args, file.name) : null),
+    [args, file],
+  );
+  const canRun = !!file && args.length > 0 && !busy && validation?.ok !== false;
 
   useEffect(() => {
     refreshSavedOutputs();
+  }, []);
+
+  useEffect(() => {
+    const interval = window.setInterval(
+      () => setRuntimeStatus(getFfmpegRuntimeStatus()),
+      2000,
+    );
+    return () => window.clearInterval(interval);
   }, []);
 
   useEffect(() => {
@@ -105,6 +129,13 @@ export function App() {
 
   async function refreshSavedOutputs() {
     setSavedOutputs(await listOutputs().catch(() => []));
+  }
+
+  function addModelEvent(message: string) {
+    setModelEvents((existing) => [
+      ...existing.slice(-9),
+      `${new Date().toLocaleTimeString()} ${message}`,
+    ]);
   }
 
   async function handleFile(nextFile: File | null) {
@@ -119,6 +150,7 @@ export function App() {
       return;
     }
 
+    setArgs(defaultArgsForFile(nextFile));
     setBusy("Reading metadata");
     try {
       setMetadata(await getMediaElementMetadata(nextFile));
@@ -143,6 +175,7 @@ export function App() {
       const probed = await probeWithFfmpeg(file, (message) =>
         setLogs((existing) => [...existing.slice(-80), message]),
       );
+      setRuntimeStatus(getFfmpegRuntimeStatus());
       setMetadata(probed);
       setMessages((existing) => [
         ...existing,
@@ -185,11 +218,12 @@ export function App() {
       });
       setPlan(result);
       setArgs(result.args);
+      if (result.warning) addModelEvent(result.warning);
       setMessages((existing) => [
         ...existing,
         {
           role: "assistant",
-          content: `${result.explanation} Source: ${result.source}.`,
+          content: `${result.explanation} Source: ${result.source}.${result.warning ? ` ${result.warning}` : ""}`,
         },
       ]);
     } catch (error) {
@@ -204,14 +238,23 @@ export function App() {
 
   async function handleLoadModel() {
     setBusy("Loading local model");
+    setModelStatus("Starting Gemma 4 E2B load");
+    addModelEvent(
+      "Starting model load. Browser cache may be checked before any download.",
+    );
     try {
-      await ensureLocalModel(modelId, (report) =>
-        setModelStatus(`${Math.round(report.progress * 100)}% ${report.text}`),
-      );
+      await ensureLocalModel(modelId, (report) => {
+        const status = `${Math.round(report.progress * 100)}% ${report.text}`;
+        setModelStatus(status);
+        addModelEvent(status);
+      });
       setUseModel(true);
       setModelStatus("Ready");
+      addModelEvent("Gemma 4 E2B is ready for local planning.");
     } catch (error) {
-      setModelStatus(errorMessage(error));
+      const message = errorMessage(error);
+      setModelStatus(`Load failed: ${message}`);
+      addModelEvent(`Load failed. You can retry without reloading: ${message}`);
     } finally {
       setBusy(null);
     }
@@ -236,12 +279,9 @@ export function App() {
         const url = URL.createObjectURL(result.outputBlob);
         setOutputUrl(url);
         setOutputName(result.outputName);
-        if (hasOPFSSupport()) {
-          await saveOutput(result.outputName, result.outputBlob);
-          await refreshSavedOutputs();
-        }
       }
 
+      setRuntimeStatus(getFfmpegRuntimeStatus());
       setMessages((existing) => [
         ...existing,
         {
@@ -252,6 +292,21 @@ export function App() {
               : `FFmpeg exited with code ${result.exitCode}. The log is ready for self-correction.`,
         },
       ]);
+
+      if (result.outputBlob && hasOPFSSupport()) {
+        try {
+          await saveOutput(result.outputName, result.outputBlob);
+          await refreshSavedOutputs();
+        } catch (error) {
+          setMessages((existing) => [
+            ...existing,
+            {
+              role: "assistant",
+              content: `FFmpeg output is ready to download, but OPFS save failed: ${errorMessage(error)}`,
+            },
+          ]);
+        }
+      }
     } catch (error) {
       setMessages((existing) => [
         ...existing,
@@ -270,7 +325,7 @@ export function App() {
   }
 
   function syncRawCommand() {
-    setArgs(parseCommandLine(rawCommand));
+    setArgs(commandLineToArgs(rawCommand, file?.name));
   }
 
   function editChip(indexToken: string, token: string) {
@@ -291,6 +346,14 @@ export function App() {
   }
 
   function startListening() {
+    if (!speechDisclosureAccepted) {
+      const accepted = window.confirm(
+        "Speech recognition is provided by your browser and may use that browser vendor's remote service. Source media still stays local. Continue?",
+      );
+      if (!accepted) return;
+      setSpeechDisclosureAccepted(true);
+    }
+
     const SpeechRecognitionClass =
       window.SpeechRecognition ?? window.webkitSpeechRecognition;
     if (!SpeechRecognitionClass) {
@@ -429,10 +492,20 @@ export function App() {
               disabled={!!busy}
               onClick={handleLoadModel}
             >
-              <Database size={16} />
+              {busy === "Loading local model" ? (
+                <LoaderCircle className="spin" size={16} />
+              ) : (
+                <Database size={16} />
+              )}
               Load model
             </button>
             <p className="status-text">{modelStatus}</p>
+            <p className="disclosure-text">
+              Model files are fetched from Hugging Face and then cached by the
+              browser. Media files are not uploaded.
+            </p>
+            <RuntimeStatus status={runtimeStatus} />
+            <ModelDebug events={modelEvents} />
           </section>
         </aside>
 
@@ -514,6 +587,13 @@ export function App() {
                 Run FFmpeg
               </button>
             </div>
+            {validation && !validation.ok && (
+              <ul className="validation-list">
+                {validation.errors.map((error) => (
+                  <li key={error}>{error}</li>
+                ))}
+              </ul>
+            )}
             {busy === "Running FFmpeg" && (
               <div className="progress-track">
                 <span style={{ width: `${Math.round(progress * 100)}%` }} />
@@ -696,6 +776,46 @@ function DocsPreview({ prompt }: { prompt: string }) {
   );
 }
 
+function RuntimeStatus({
+  status,
+}: {
+  status: ReturnType<typeof getFfmpegRuntimeStatus>;
+}) {
+  return (
+    <dl className="runtime-grid">
+      <div>
+        <dt>Isolation</dt>
+        <dd>{status.crossOriginIsolated ? "Ready" : "Needs reload"}</dd>
+      </div>
+      <div>
+        <dt>SharedArrayBuffer</dt>
+        <dd>{status.sharedArrayBuffer ? "Available" : "Unavailable"}</dd>
+      </div>
+      <div>
+        <dt>FFmpeg core</dt>
+        <dd>{status.coreMode}</dd>
+      </div>
+    </dl>
+  );
+}
+
+function ModelDebug({ events }: { events: string[] }) {
+  return (
+    <details className="debug-details">
+      <summary>Model debug</summary>
+      <ol>
+        {events.length ? (
+          events.map((event, index) => (
+            <li key={`${event}-${index}`}>{event}</li>
+          ))
+        ) : (
+          <li>No model load events yet.</li>
+        )}
+      </ol>
+    </details>
+  );
+}
+
 function getFileKind(
   file: File | null,
 ): "audio" | "video" | "image" | "unknown" {
@@ -704,6 +824,46 @@ function getFileKind(
   if (file.type.startsWith("video/")) return "video";
   if (file.type.startsWith("image/")) return "image";
   return "unknown";
+}
+
+function defaultArgsForFile(file: File): string[] {
+  if (file.type.startsWith("image/")) {
+    return [
+      "-i",
+      "$INPUT",
+      "-vf",
+      "scale=1600:-1",
+      suggestedOutputName(file.name, "webp"),
+    ];
+  }
+
+  if (file.type.startsWith("audio/")) {
+    return [
+      "-i",
+      "$INPUT",
+      "-c:a",
+      "libmp3lame",
+      "-b:a",
+      "192k",
+      suggestedOutputName(file.name, "mp3"),
+    ];
+  }
+
+  return [
+    "-i",
+    "$INPUT",
+    "-c:v",
+    "libx264",
+    "-preset",
+    "medium",
+    "-crf",
+    "24",
+    "-c:a",
+    "aac",
+    "-b:a",
+    "128k",
+    suggestedOutputName(file.name, "mp4"),
+  ];
 }
 
 function formatBytes(bytes: number): string {

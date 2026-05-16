@@ -2,8 +2,11 @@ import { create, insertMultiple, search, type AnyOrama } from "@orama/orama";
 import type { AppConfig, InitProgressReport, MLCEngine } from "@mlc-ai/web-llm";
 import {
   argsToCommand,
+  ensureCommandOutput,
+  parseCommandLine,
   type PlannedCommand,
   suggestedOutputName,
+  validateCommandArgs,
 } from "./command";
 import type { MediaMetadata } from "./media";
 import { ffmpegDocChunks, type FfmpegDocChunk } from "./ffmpegDocs";
@@ -22,6 +25,7 @@ export interface PlanResult extends PlannedCommand {
   commandLine: string;
   docsUsed: FfmpegDocChunk[];
   rawModelOutput?: string;
+  warning?: string;
 }
 
 type DocsDb = AnyOrama;
@@ -42,6 +46,7 @@ const gemma4E2BAppConfig: AppConfig = {
 let docsDbPromise: Promise<DocsDb> | null = null;
 let enginePromise: Promise<MLCEngine> | null = null;
 let loadedModelId: string | null = null;
+let loadingModelId: string | null = null;
 
 export async function searchFfmpegDocs(
   query: string,
@@ -73,7 +78,14 @@ export async function planCommand(request: PlanRequest): Promise<PlanResult> {
       const fromModel = await planWithWebLLM(request, docsUsed);
       return fromModel;
     } catch (error) {
-      console.warn("[planner] falling back after WebLLM failure", error);
+      const fallback = fallbackPlan(request.prompt, request.file, docsUsed);
+      return {
+        ...fallback,
+        source: "fallback",
+        commandLine: argsToCommand(fallback.args),
+        docsUsed,
+        warning: `Local model failed, so Catalyst used deterministic fallback planning: ${errorMessage(error)}`,
+      };
     }
   }
 
@@ -90,17 +102,32 @@ export async function ensureLocalModel(
   modelId = defaultModelId,
   onProgress?: (report: InitProgressReport) => void,
 ): Promise<MLCEngine> {
-  if (enginePromise && loadedModelId === modelId) {
+  if (
+    enginePromise &&
+    (loadedModelId === modelId || loadingModelId === modelId)
+  ) {
     return enginePromise;
   }
 
-  loadedModelId = modelId;
+  loadingModelId = modelId;
   enginePromise = (async () => {
-    const { CreateMLCEngine } = await import("@mlc-ai/web-llm");
-    return CreateMLCEngine(modelId, {
-      initProgressCallback: onProgress,
-      ...(modelId === defaultModelId ? { appConfig: gemma4E2BAppConfig } : {}),
-    });
+    try {
+      const { CreateMLCEngine } = await import("@mlc-ai/web-llm");
+      const engine = await CreateMLCEngine(modelId, {
+        initProgressCallback: onProgress,
+        ...(modelId === defaultModelId
+          ? { appConfig: gemma4E2BAppConfig }
+          : {}),
+      });
+      loadedModelId = modelId;
+      return engine;
+    } catch (error) {
+      loadedModelId = null;
+      enginePromise = null;
+      throw error;
+    } finally {
+      loadingModelId = null;
+    }
   })();
 
   return enginePromise;
@@ -153,6 +180,15 @@ async function planWithWebLLM(
   });
   const raw = completion.choices[0]?.message.content ?? "";
   const parsed = parseModelPlan(raw, request.file);
+  const validation = request.file
+    ? validateCommandArgs(parsed.args, request.file.name)
+    : { ok: true, errors: [] };
+
+  if (!validation.ok) {
+    throw new Error(
+      `Model returned an invalid FFmpeg command: ${validation.errors.join(" ")}`,
+    );
+  }
 
   return {
     ...parsed,
@@ -197,7 +233,7 @@ function parseModelPlan(raw: string, file?: File): PlannedCommand {
     throw new Error("Model did not return an args array.");
   }
 
-  const ensured = ensureOutput(args, file);
+  const ensured = ensureCommandOutput(args, file);
   return {
     args: ensured,
     explanation:
@@ -216,6 +252,12 @@ function fallbackPlan(
   const text = prompt.toLowerCase();
   const name = file?.name ?? "input";
   const docs = docsUsed.map((doc) => doc.url);
+  const fileType = file?.type ?? "";
+  const correction = correctionPlan(prompt, name, docs);
+
+  if (correction) {
+    return correction;
+  }
 
   if (
     text.includes("mp3") ||
@@ -275,7 +317,8 @@ function fallbackPlan(
   if (
     text.includes("webp") ||
     text.includes("image") ||
-    text.includes("resize")
+    text.includes("resize") ||
+    fileType.startsWith("image/")
   ) {
     return {
       args: [
@@ -283,10 +326,10 @@ function fallbackPlan(
         "$INPUT",
         "-vf",
         "scale=1600:-1",
-        outputFor(name, text.includes("avif") ? "avif" : "webp"),
+        outputFor(name, imageExtensionFor(text, fileType)),
       ],
       explanation:
-        "Converts or resizes an image using FFmpeg's regular filter pipeline.",
+        "Converts or resizes the image using FFmpeg's regular filter pipeline.",
       docs,
     };
   }
@@ -332,24 +375,119 @@ function fallbackPlan(
   };
 }
 
-function ensureOutput(args: string[], file?: File): string[] {
-  if (args.some((arg) => arg.includes("$OUTPUT") || arg.includes("{output}"))) {
-    return args;
-  }
-
-  const hasOutput = args.some(
-    (arg, index) =>
-      index > 0 && !arg.startsWith("-") && args[index - 1] !== "-i",
-  );
-  if (hasOutput) {
-    return args;
-  }
-
-  return [...args, outputFor(file?.name ?? "output", "mp4")];
-}
-
 function outputFor(fileName: string, extension: string): string {
   return suggestedOutputName(fileName, extension);
+}
+
+function correctionPlan(
+  prompt: string,
+  fileName: string,
+  docs: string[],
+): PlannedCommand | null {
+  const text = prompt.toLowerCase();
+  if (!text.includes("ffmpeg command failed") && !text.includes("error log:")) {
+    return null;
+  }
+
+  const current = prompt.match(/current command:\s*(.+?)\nerror log:/is)?.[1];
+  const currentArgs = current
+    ? ensureCommandOutput(parseCommandLine(current), undefined)
+    : null;
+
+  if (text.includes("at least one output file")) {
+    const args = currentArgs ?? ["-i", "$INPUT"];
+    return {
+      args: ensureCommandOutput(args, undefined),
+      explanation:
+        "Adds a writable output file because FFmpeg reported that no output was specified.",
+      docs,
+    };
+  }
+
+  if (text.includes("stream map") && text.includes("matches no streams")) {
+    return {
+      args: [
+        "-i",
+        "$INPUT",
+        "-c:v",
+        "libx264",
+        "-preset",
+        "medium",
+        "-crf",
+        "24",
+        "-an",
+        outputFor(fileName, "mp4"),
+      ],
+      explanation:
+        "Removes audio mapping because FFmpeg reported that the requested stream was missing.",
+      docs,
+    };
+  }
+
+  if (text.includes("unknown encoder") && text.includes("libx264")) {
+    return {
+      args: [
+        "-i",
+        "$INPUT",
+        "-c:v",
+        "mpeg4",
+        "-q:v",
+        "5",
+        "-c:a",
+        "aac",
+        outputFor(fileName, "mp4"),
+      ],
+      explanation:
+        "Switches to a more broadly available video encoder after FFmpeg rejected libx264.",
+      docs,
+    };
+  }
+
+  if (text.includes("no such filter") || text.includes("invalid argument")) {
+    return {
+      args: [
+        "-i",
+        "$INPUT",
+        "-c:v",
+        "libx264",
+        "-preset",
+        "medium",
+        "-crf",
+        "24",
+        "-c:a",
+        "aac",
+        "-b:a",
+        "128k",
+        outputFor(fileName, "mp4"),
+      ],
+      explanation:
+        "Falls back to a conservative transcode after FFmpeg rejected the previous filter or argument.",
+      docs,
+    };
+  }
+
+  if (currentArgs) {
+    return {
+      args: currentArgs,
+      explanation:
+        "Preserves the current command shape and ensures it has an output; no known stderr-specific fallback matched.",
+      docs,
+    };
+  }
+
+  return null;
+}
+
+function imageExtensionFor(prompt: string, fileType: string): string {
+  if (prompt.includes("avif")) return "avif";
+  if (prompt.includes("jpg") || prompt.includes("jpeg")) return "jpg";
+  if (prompt.includes("png")) return "png";
+  if (fileType === "image/png" && prompt.includes("lossless")) return "png";
+  return "webp";
+}
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }
 
 export { defaultModelId };

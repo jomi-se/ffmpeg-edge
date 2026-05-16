@@ -12,6 +12,7 @@ FFmpeg Catalyst is a browser-native media workstation that keeps FFmpeg visible 
 - Captures FFmpeg logs, progress, and exit codes, then feeds failures back into the planner for correction.
 - Saves successful outputs to the Origin Private File System when the browser supports OPFS.
 - Processes files locally. The app does not upload source media to a server.
+- Downloads runtime assets from public CDNs: FFmpeg core files from unpkg and the optional Gemma 4 E2B WebLLM model from Hugging Face. Those assets are cached by the browser/service worker where possible.
 
 ## Development
 
@@ -23,6 +24,8 @@ npm run dev
 The dev server must be opened over `http://localhost` or HTTPS for the browser APIs used by FFmpeg, WebLLM, service workers, and OPFS.
 
 The default planner model id is `gemma-4-E2B-it-q4f16_1-MLC`. It is loaded through a custom WebLLM app config pointed at the `welcoma/gemma-4-E2B-it-q4f16_1-MLC` Hugging Face artifact because this Gemma 4 E2B variant is not part of the installed WebLLM prebuilt model list.
+
+Push-to-talk uses the browser Web Speech API. Depending on the browser, microphone audio or transcripts may be processed by the browser vendor. The app discloses this before starting speech recognition.
 
 ## Production Build
 

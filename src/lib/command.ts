@@ -24,6 +24,12 @@ export interface PlannedCommand {
   docs: string[];
 }
 
+export interface CommandValidationResult {
+  ok: boolean;
+  errors: string[];
+  outputName?: string;
+}
+
 const VALUE_FLAGS = new Set([
   "-i",
   "-c:v",
@@ -48,6 +54,10 @@ const VALUE_FLAGS = new Set([
   "-s",
   "-map",
   "-pix_fmt",
+  "-frames:v",
+  "-frames:a",
+  "-q:v",
+  "-q:a",
 ]);
 
 export function parseCommandLine(input: string): string[] {
@@ -124,12 +134,8 @@ export function inferOutputName(fileName: string, args: string[]): string {
       .replace("{output}", suggestedOutputName(fileName));
   }
 
-  for (let index = args.length - 1; index >= 0; index -= 1) {
-    const token = args[index];
-    if (!token.startsWith("-") && args[index - 1] !== "-i") {
-      return token;
-    }
-  }
+  const output = findOutputTokens(args).at(-1);
+  if (output) return output.token;
 
   return suggestedOutputName(fileName);
 }
@@ -198,6 +204,166 @@ export function commandToChips(args: string[]): CommandChip[] {
   }
 
   return chips;
+}
+
+export function commandLineToArgs(
+  commandLine: string,
+  fileName?: string,
+): string[] {
+  const args = parseCommandLine(commandLine);
+  if (!fileName) return args;
+
+  const safeName = safeVirtualFileName(fileName);
+  let hasInput = false;
+  const normalized = args.map((arg, index) => {
+    if (args[index - 1] !== "-i") return arg;
+    hasInput = true;
+    if (
+      arg === "$INPUT" ||
+      arg === "{input}" ||
+      arg === fileName ||
+      arg === safeName
+    ) {
+      return "$INPUT";
+    }
+    return arg;
+  });
+
+  return hasInput ? normalized : ["-i", "$INPUT", ...normalized];
+}
+
+export function validateCommandArgs(
+  args: string[],
+  fileName: string,
+): CommandValidationResult {
+  const errors: string[] = [];
+  const safeName = safeVirtualFileName(fileName);
+  let inputCount = 0;
+
+  for (let index = 0; index < args.length; index += 1) {
+    const token = args[index];
+
+    if (token === "ffmpeg") {
+      errors.push("Do not include the ffmpeg executable in the argument list.");
+      continue;
+    }
+
+    if (token === "-i") {
+      const input = args[index + 1];
+      if (!input) {
+        errors.push("Missing an input after -i.");
+        continue;
+      }
+      inputCount += 1;
+      if (
+        input !== "$INPUT" &&
+        input !== "{input}" &&
+        input !== fileName &&
+        input !== safeName
+      ) {
+        errors.push(
+          `Input "${input}" is not available in the browser workspace. Use $INPUT for the selected file.`,
+        );
+      }
+      index += 1;
+      continue;
+    }
+
+    if (VALUE_FLAGS.has(token)) {
+      if (!args[index + 1]) {
+        errors.push(`Missing a value after ${token}.`);
+      } else {
+        index += 1;
+      }
+    }
+  }
+
+  if (inputCount === 0) {
+    errors.push("Command must include exactly one selected input: -i $INPUT.");
+  } else if (inputCount > 1) {
+    errors.push("This workspace currently supports exactly one input file.");
+  }
+
+  const outputs = findOutputTokens(args);
+  if (outputs.length === 0) {
+    errors.push("Command must end with a writable output file.");
+  } else if (outputs.length > 1) {
+    errors.push("This workspace currently supports exactly one output file.");
+  }
+
+  const output = outputs.at(-1);
+  if (output) {
+    if (output.index !== args.length - 1) {
+      errors.push("The output file must be the final argument.");
+    }
+    if (!isSafeOutputToken(output.token)) {
+      errors.push(
+        "Output must be a simple file name, not a URL, absolute path, or parent-directory path.",
+      );
+    }
+  }
+
+  return {
+    ok: errors.length === 0,
+    errors,
+    outputName: output?.token,
+  };
+}
+
+export function ensureCommandOutput(args: string[], file?: File): string[] {
+  if (args.some((arg) => arg.includes("$OUTPUT") || arg.includes("{output}"))) {
+    return args;
+  }
+
+  if (findOutputTokens(args).length > 0) {
+    return args;
+  }
+
+  return [
+    ...args,
+    suggestedOutputName(file?.name ?? "output", extensionFor(file)),
+  ];
+}
+
+export function safeVirtualFileName(fileName: string): string {
+  const cleaned = fileName.replace(/[^a-zA-Z0-9._-]+/g, "_");
+  return cleaned || "input.bin";
+}
+
+function findOutputTokens(
+  args: string[],
+): Array<{ token: string; index: number }> {
+  const outputs: Array<{ token: string; index: number }> = [];
+
+  for (let index = 0; index < args.length; index += 1) {
+    const token = args[index];
+    if (token === "-i" || VALUE_FLAGS.has(token)) {
+      index += 1;
+      continue;
+    }
+
+    if (!token.startsWith("-")) {
+      outputs.push({ token, index });
+    }
+  }
+
+  return outputs;
+}
+
+function isSafeOutputToken(token: string): boolean {
+  if (token.includes("$OUTPUT") || token.includes("{output}")) return true;
+  if (!token || token.includes("\0")) return false;
+  if (token.includes("/") || token.includes("\\") || token.includes("..")) {
+    return false;
+  }
+  if (/^[a-z][a-z0-9+.-]*:/i.test(token)) return false;
+  return true;
+}
+
+function extensionFor(file?: File): string {
+  if (file?.type.startsWith("image/")) return "webp";
+  if (file?.type.startsWith("audio/")) return "mp3";
+  return "mp4";
 }
 
 function makeChip(

@@ -45,14 +45,18 @@ locally in the browser and should not be uploaded to an application server.
   `artifex-box.tail246db1.ts.net` allowed in `vite.config.ts`.
 - Dependency installs, browser binary installs, or any command that needs network or access outside
   the sandbox must be approval-gated. Ask before running them.
+- Package scripts are intentionally quiet. Prefer `npm --silent run <script>` when invoking them from
+  an agent so successful commands emit no output and failures remain visible.
 
 ## Recommended Validation Gates
 
 Run the smallest useful gate during iteration, then run the full local gate before handoff:
 
-1. `npm run build`
-2. `npm run lint`
-3. `npm run format:check`
+1. `npm --silent run build`
+2. `npm --silent run lint`
+3. `npm --silent run format:check`
+
+Use `npm --silent run verify` for the full local gate.
 
 Treat the Vite large-chunk warning from WebLLM as expected unless the task specifically concerns
 bundle splitting or model-loading performance.

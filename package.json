@@ -5,11 +5,12 @@
   "type": "module",
   "description": "A browser-native FFmpeg workstation with local AI-assisted command planning.",
   "scripts": {
-    "dev": "vite --host 0.0.0.0",
-    "build": "tsc -b && vite build",
-    "preview": "vite preview --host 0.0.0.0",
-    "lint": "eslint .",
-    "format:check": "prettier --check ."
+    "dev": "vite --host 0.0.0.0 --clearScreen false --logLevel error",
+    "build": "tsc -b --pretty false && vite build --logLevel error",
+    "preview": "vite preview --host 0.0.0.0 --clearScreen false --logLevel error",
+    "lint": "eslint . --quiet",
+    "format:check": "git ls-files -z | xargs -0 prettier --list-different --ignore-unknown",
+    "verify": "npm --silent run build && npm --silent run lint && npm --silent run format:check"
   },
   "dependencies": {
     "@ffmpeg/ffmpeg": "^0.12.15",

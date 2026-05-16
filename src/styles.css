@@ -240,6 +240,7 @@ button:disabled {
 }
 
 .text-input,
+.select-input,
 .prompt-box,
 .raw-command {
   width: 100%;
@@ -249,6 +250,25 @@ button:disabled {
   color: var(--ink);
   padding: 10px;
   outline-color: var(--blue);
+}
+
+.select-input {
+  min-height: 42px;
+}
+
+.preset-summary {
+  display: grid;
+  gap: 3px;
+  margin-top: 8px;
+  font-size: 0.84rem;
+}
+
+.preset-summary strong {
+  color: var(--green);
+}
+
+.preset-summary span {
+  color: var(--muted);
 }
 
 .prompt-box {

@@ -32,10 +32,26 @@ type DocsDb = AnyOrama;
 
 const gemma4E2BRepo =
   "https://huggingface.co/welcoma/gemma-4-E2B-it-q4f16_1-MLC";
-const defaultModelId = "gemma-4-E2B-it-q4f16_1-MLC";
+const gemma4E2BModelId = "gemma-4-E2B-it-q4f16_1-MLC";
+const qwen35MobileModelId = "Qwen3.5-0.8B-q4f16_1-MLC";
+const defaultModelId = qwen35MobileModelId;
+const modelPresets = [
+  {
+    id: qwen35MobileModelId,
+    name: "Qwen 3.5 0.8B",
+    recommendation: "Recommended for mobile",
+    summary: "447 MB download, about 1.6 GB WebGPU memory.",
+  },
+  {
+    id: gemma4E2BModelId,
+    name: "Gemma 4 E2B",
+    recommendation: "Recommended for desktop",
+    summary: "Larger high-memory planner for desktop-class devices.",
+  },
+];
 const gemma4E2BModelRecord = {
   model: gemma4E2BRepo,
-  model_id: defaultModelId,
+  model_id: gemma4E2BModelId,
   model_lib: `${gemma4E2BRepo}/resolve/main/libs/gemma-4-E2B-it-q4f16_1-MLC-webgpu.wasm`,
   required_features: ["shader-f16"],
 };
@@ -108,12 +124,11 @@ export async function ensureLocalModel(
   loadingModelId = modelId;
   enginePromise = (async () => {
     try {
-      const { CreateMLCEngine } = await import("@mlc-ai/web-llm");
+      const { CreateMLCEngine, prebuiltAppConfig } =
+        await import("@mlc-ai/web-llm");
       const engine = await CreateMLCEngine(modelId, {
         initProgressCallback: onProgress,
-        ...(modelId === defaultModelId
-          ? { appConfig: getGemma4E2BAppConfig() }
-          : {}),
+        appConfig: getModelAppConfig(modelId, prebuiltAppConfig),
       });
       loadedModelId = modelId;
       return engine;
@@ -129,10 +144,22 @@ export async function ensureLocalModel(
   return enginePromise;
 }
 
-function getGemma4E2BAppConfig(): AppConfig {
+function getModelAppConfig(
+  modelId: string,
+  prebuiltAppConfig: AppConfig,
+): AppConfig {
+  const cacheBackend: AppConfig["cacheBackend"] = hasCacheApi()
+    ? "cache"
+    : "indexeddb";
+  const modelList =
+    modelId === gemma4E2BModelId
+      ? [...prebuiltAppConfig.model_list, gemma4E2BModelRecord]
+      : prebuiltAppConfig.model_list;
+
   return {
-    cacheBackend: hasCacheApi() ? "cache" : "indexeddb",
-    model_list: [gemma4E2BModelRecord],
+    ...prebuiltAppConfig,
+    cacheBackend,
+    model_list: modelList,
   };
 }
 
@@ -497,4 +524,4 @@ function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
-export { defaultModelId };
+export { defaultModelId, gemma4E2BModelId, modelPresets };

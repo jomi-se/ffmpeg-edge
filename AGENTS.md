@@ -13,7 +13,7 @@ locally in the browser and should not be uploaded to an application server.
 
 - **Application**: Vite + React + TypeScript.
 - **Media engine**: `@ffmpeg/ffmpeg`, `@ffmpeg/util`, `ffmpeg.wasm`, and `ffprobe`.
-- **AI planning**: WebLLM with Gemma 4 E2B by default, plus deterministic fallback templates.
+- **AI planning**: WebLLM with Qwen 3.5 0.8B by default, Gemma 4 E2B as a desktop preset, plus deterministic fallback templates.
 - **Docs retrieval**: Orama over local FFmpeg documentation chunks.
 - **Storage**: Origin Private File System (OPFS) for saved outputs where supported; browser Cache API
   via the COOP/COEP service worker for runtime artifacts.
@@ -93,6 +93,7 @@ bundle splitting or model-loading performance.
      for what runs.
    - Invalid or unavailable WebLLM planning must fall back gracefully to deterministic templates.
    - Keep model defaults aligned with README. The current default is
+     `Qwen3.5-0.8B-q4f16_1-MLC`; the desktop Gemma preset is
      `gemma-4-E2B-it-q4f16_1-MLC` loaded through a custom WebLLM app config.
 
 5. **Separate pure command logic from browser side effects**

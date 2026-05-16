@@ -38,6 +38,7 @@ import {
 import {
   defaultModelId,
   ensureLocalModel,
+  modelPresets,
   planCommand,
   searchFfmpegDocs,
   type PlanResult,
@@ -106,6 +107,8 @@ export function App() {
 
   const chips = useMemo(() => commandToChips(args), [args]);
   const fileKind = getFileKind(file);
+  const selectedModelPreset =
+    modelPresets.find((preset) => preset.id === modelId) ?? modelPresets[0];
   const validation = useMemo(
     () => (file ? validateCommandArgs(args, file.name) : null),
     [args, file],
@@ -137,6 +140,16 @@ export function App() {
       ...existing.slice(-9),
       `${new Date().toLocaleTimeString()} ${message}`,
     ]);
+  }
+
+  function handleModelPresetChange(nextModelId: string) {
+    const preset =
+      modelPresets.find((candidate) => candidate.id === nextModelId) ??
+      modelPresets[0];
+    setModelId(preset.id);
+    setUseModel(false);
+    setModelStatus(`${preset.name} selected. Load it before local planning.`);
+    addModelEvent(`${preset.name} selected. Local planning is paused.`);
   }
 
   async function handleFile(nextFile: File | null) {
@@ -242,18 +255,18 @@ export function App() {
     setBrowserStatus(nextBrowserStatus);
     if (!nextBrowserStatus.webGpu) {
       const message =
-        "WebGPU is unavailable. Open this app on HTTPS or localhost in a WebGPU-capable browser before loading Gemma 4 E2B.";
+        "WebGPU is unavailable. Open this app on HTTPS or localhost in a WebGPU-capable browser before loading a local planner model.";
       setModelStatus(`Load blocked: ${message}`);
       addModelEvent(message);
       return;
     }
 
     setBusy("Loading local model");
-    setModelStatus("Starting Gemma 4 E2B load");
+    setModelStatus(`Starting ${selectedModelPreset.name} load`);
     addModelEvent(
       nextBrowserStatus.cacheApi
-        ? "Starting model load with browser Cache API available."
-        : "Starting model load with IndexedDB artifact cache because Cache API is unavailable.",
+        ? `Starting ${selectedModelPreset.name} load with browser Cache API available.`
+        : `Starting ${selectedModelPreset.name} load with IndexedDB artifact cache because Cache API is unavailable.`,
     );
     try {
       await ensureLocalModel(modelId, (report) => {
@@ -263,7 +276,7 @@ export function App() {
       });
       setUseModel(true);
       setModelStatus("Ready");
-      addModelEvent("Gemma 4 E2B is ready for local planning.");
+      addModelEvent(`${selectedModelPreset.name} is ready for local planning.`);
     } catch (error) {
       const message = errorMessage(error);
       setModelStatus(`Load failed: ${message}`);
@@ -481,15 +494,25 @@ export function App() {
               <Bot size={18} />
               <h2>Local Model</h2>
             </div>
-            <label className="field-label" htmlFor="model-id">
-              WebLLM model id
+            <label className="field-label" htmlFor="model-preset">
+              WebLLM model preset
             </label>
-            <input
-              id="model-id"
-              className="text-input"
+            <select
+              id="model-preset"
+              className="select-input"
               value={modelId}
-              onChange={(event) => setModelId(event.target.value)}
-            />
+              onChange={(event) => handleModelPresetChange(event.target.value)}
+            >
+              {modelPresets.map((preset) => (
+                <option key={preset.id} value={preset.id}>
+                  {preset.name} - {preset.recommendation}
+                </option>
+              ))}
+            </select>
+            <p className="preset-summary">
+              <strong>{selectedModelPreset.recommendation}</strong>
+              <span>{selectedModelPreset.summary}</span>
+            </p>
             <div className="toggle-row">
               <label>
                 <input
@@ -497,7 +520,7 @@ export function App() {
                   checked={useModel}
                   onChange={(event) => setUseModel(event.target.checked)}
                 />
-                Use local Gemma 4 E2B/WebLLM planning
+                Use loaded WebLLM model for planning
               </label>
             </div>
             <button

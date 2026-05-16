@@ -33,15 +33,11 @@ type DocsDb = AnyOrama;
 const gemma4E2BRepo =
   "https://huggingface.co/welcoma/gemma-4-E2B-it-q4f16_1-MLC";
 const defaultModelId = "gemma-4-E2B-it-q4f16_1-MLC";
-const gemma4E2BAppConfig: AppConfig = {
-  model_list: [
-    {
-      model: gemma4E2BRepo,
-      model_id: defaultModelId,
-      model_lib: `${gemma4E2BRepo}/resolve/main/libs/gemma-4-E2B-it-q4f16_1-MLC-webgpu.wasm`,
-      required_features: ["shader-f16"],
-    },
-  ],
+const gemma4E2BModelRecord = {
+  model: gemma4E2BRepo,
+  model_id: defaultModelId,
+  model_lib: `${gemma4E2BRepo}/resolve/main/libs/gemma-4-E2B-it-q4f16_1-MLC-webgpu.wasm`,
+  required_features: ["shader-f16"],
 };
 let docsDbPromise: Promise<DocsDb> | null = null;
 let enginePromise: Promise<MLCEngine> | null = null;
@@ -116,7 +112,7 @@ export async function ensureLocalModel(
       const engine = await CreateMLCEngine(modelId, {
         initProgressCallback: onProgress,
         ...(modelId === defaultModelId
-          ? { appConfig: gemma4E2BAppConfig }
+          ? { appConfig: getGemma4E2BAppConfig() }
           : {}),
       });
       loadedModelId = modelId;
@@ -131,6 +127,17 @@ export async function ensureLocalModel(
   })();
 
   return enginePromise;
+}
+
+function getGemma4E2BAppConfig(): AppConfig {
+  return {
+    cacheBackend: hasCacheApi() ? "cache" : "indexeddb",
+    model_list: [gemma4E2BModelRecord],
+  };
+}
+
+function hasCacheApi(): boolean {
+  return typeof globalThis.caches !== "undefined";
 }
 
 function getDocsDb(): Promise<DocsDb> {

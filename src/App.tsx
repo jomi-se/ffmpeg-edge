@@ -99,6 +99,7 @@ export function App() {
   const [isListening, setIsListening] = useState(false);
   const [modelEvents, setModelEvents] = useState<string[]>([]);
   const [runtimeStatus, setRuntimeStatus] = useState(getFfmpegRuntimeStatus());
+  const [browserStatus, setBrowserStatus] = useState(getBrowserRuntimeStatus());
   const [speechDisclosureAccepted, setSpeechDisclosureAccepted] =
     useState(false);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
@@ -116,10 +117,10 @@ export function App() {
   }, []);
 
   useEffect(() => {
-    const interval = window.setInterval(
-      () => setRuntimeStatus(getFfmpegRuntimeStatus()),
-      2000,
-    );
+    const interval = window.setInterval(() => {
+      setRuntimeStatus(getFfmpegRuntimeStatus());
+      setBrowserStatus(getBrowserRuntimeStatus());
+    }, 2000);
     return () => window.clearInterval(interval);
   }, []);
 
@@ -237,10 +238,22 @@ export function App() {
   }
 
   async function handleLoadModel() {
+    const nextBrowserStatus = getBrowserRuntimeStatus();
+    setBrowserStatus(nextBrowserStatus);
+    if (!nextBrowserStatus.webGpu) {
+      const message =
+        "WebGPU is unavailable. Open this app on HTTPS or localhost in a WebGPU-capable browser before loading Gemma 4 E2B.";
+      setModelStatus(`Load blocked: ${message}`);
+      addModelEvent(message);
+      return;
+    }
+
     setBusy("Loading local model");
     setModelStatus("Starting Gemma 4 E2B load");
     addModelEvent(
-      "Starting model load. Browser cache may be checked before any download.",
+      nextBrowserStatus.cacheApi
+        ? "Starting model load with browser Cache API available."
+        : "Starting model load with IndexedDB artifact cache because Cache API is unavailable.",
     );
     try {
       await ensureLocalModel(modelId, (report) => {
@@ -505,6 +518,7 @@ export function App() {
               browser. Media files are not uploaded.
             </p>
             <RuntimeStatus status={runtimeStatus} />
+            <BrowserStatus status={browserStatus} />
             <ModelDebug events={modelEvents} />
           </section>
         </aside>
@@ -799,6 +813,35 @@ function RuntimeStatus({
   );
 }
 
+function BrowserStatus({
+  status,
+}: {
+  status: ReturnType<typeof getBrowserRuntimeStatus>;
+}) {
+  return (
+    <dl className="runtime-grid browser-grid">
+      <div>
+        <dt>Secure</dt>
+        <dd>{status.secureContext ? "Yes" : "No"}</dd>
+      </div>
+      <div>
+        <dt>WebGPU</dt>
+        <dd>{status.webGpu ? "Available" : "Unavailable"}</dd>
+      </div>
+      <div>
+        <dt>Model cache</dt>
+        <dd>
+          {status.cacheApi
+            ? "Cache API"
+            : status.indexedDb
+              ? "IndexedDB"
+              : "Unavailable"}
+        </dd>
+      </div>
+    </dl>
+  );
+}
+
 function ModelDebug({ events }: { events: string[] }) {
   return (
     <details className="debug-details">
@@ -824,6 +867,15 @@ function getFileKind(
   if (file.type.startsWith("video/")) return "video";
   if (file.type.startsWith("image/")) return "image";
   return "unknown";
+}
+
+function getBrowserRuntimeStatus() {
+  return {
+    secureContext: window.isSecureContext,
+    webGpu: "gpu" in navigator,
+    cacheApi: "caches" in window,
+    indexedDb: "indexedDB" in window,
+  };
 }
 
 function defaultArgsForFile(file: File): string[] {

@@ -21,9 +21,9 @@ npm install
 npm run dev
 ```
 
-The dev server must be opened over `http://localhost` or HTTPS for the browser APIs used by FFmpeg, WebLLM, service workers, and OPFS.
+The dev server must be opened over `http://localhost` or HTTPS for the browser APIs used by FFmpeg, WebLLM, service workers, and OPFS. The Gemma 4 E2B model path also needs WebGPU; plain HTTP preview hosts usually cannot load it.
 
-The default planner model id is `gemma-4-E2B-it-q4f16_1-MLC`. It is loaded through a custom WebLLM app config pointed at the `welcoma/gemma-4-E2B-it-q4f16_1-MLC` Hugging Face artifact because this Gemma 4 E2B variant is not part of the installed WebLLM prebuilt model list.
+The default planner model id is `gemma-4-E2B-it-q4f16_1-MLC`. It is loaded through a custom WebLLM app config pointed at the `welcoma/gemma-4-E2B-it-q4f16_1-MLC` Hugging Face artifact because this Gemma 4 E2B variant is not part of the installed WebLLM prebuilt model list. The custom config prefers WebLLM's Cache API artifact cache and falls back to IndexedDB only when `globalThis.caches` is unavailable.
 
 Push-to-talk uses the browser Web Speech API. Depending on the browser, microphone audio or transcripts may be processed by the browser vendor. The app discloses this before starting speech recognition.
 

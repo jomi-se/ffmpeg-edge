@@ -795,21 +795,34 @@ function RuntimeStatus({
 }: {
   status: ReturnType<typeof getFfmpegRuntimeStatus>;
 }) {
+  const canReloadForIsolation =
+    window.isSecureContext && !status.crossOriginIsolated;
+
   return (
-    <dl className="runtime-grid">
-      <div>
-        <dt>Isolation</dt>
-        <dd>{status.crossOriginIsolated ? "Ready" : "Needs reload"}</dd>
-      </div>
-      <div>
-        <dt>SharedArrayBuffer</dt>
-        <dd>{status.sharedArrayBuffer ? "Available" : "Unavailable"}</dd>
-      </div>
-      <div>
-        <dt>FFmpeg core</dt>
-        <dd>{status.coreMode}</dd>
-      </div>
-    </dl>
+    <>
+      <dl className="runtime-grid">
+        <div>
+          <dt>Isolation</dt>
+          <dd>{status.crossOriginIsolated ? "Ready" : "Needs reload"}</dd>
+        </div>
+        <div>
+          <dt>SharedArrayBuffer</dt>
+          <dd>{status.sharedArrayBuffer ? "Available" : "Unavailable"}</dd>
+        </div>
+        <div>
+          <dt>FFmpeg core</dt>
+          <dd>{status.coreMode}</dd>
+        </div>
+      </dl>
+      {canReloadForIsolation && (
+        <button
+          className="secondary-button isolation-button"
+          onClick={() => window.location.reload()}
+        >
+          Reload for isolation
+        </button>
+      )}
+    </>
   );
 }
 

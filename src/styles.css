@@ -306,6 +306,12 @@ button:disabled {
   overflow-wrap: anywhere;
 }
 
+.isolation-button {
+  width: 100%;
+  min-height: 34px;
+  margin-bottom: 8px;
+}
+
 .debug-details {
   margin-top: 10px;
   border: 1px solid var(--line);

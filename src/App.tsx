@@ -29,6 +29,7 @@ import {
   validateCommandArgs,
 } from "./lib/command";
 import {
+  ensureFfmpeg,
   getFfmpegRuntimeStatus,
   getMediaElementMetadata,
   probeWithFfmpeg,
@@ -99,6 +100,10 @@ export function App() {
   const [savedOutputs, setSavedOutputs] = useState<StoredOutput[]>([]);
   const [isListening, setIsListening] = useState(false);
   const [modelEvents, setModelEvents] = useState<string[]>([]);
+  const [ffmpegStatus, setFfmpegStatus] = useState(
+    "FFmpeg core loads automatically on probe or run.",
+  );
+  const [ffmpegEvents, setFfmpegEvents] = useState<string[]>([]);
   const [runtimeStatus, setRuntimeStatus] = useState(getFfmpegRuntimeStatus());
   const [browserStatus, setBrowserStatus] = useState(getBrowserRuntimeStatus());
   const [speechDisclosureAccepted, setSpeechDisclosureAccepted] =
@@ -137,6 +142,14 @@ export function App() {
 
   function addModelEvent(message: string) {
     setModelEvents((existing) => [
+      ...existing.slice(-9),
+      `${new Date().toLocaleTimeString()} ${message}`,
+    ]);
+  }
+
+  function addFfmpegEvent(message: string) {
+    setFfmpegStatus(message);
+    setFfmpegEvents((existing) => [
       ...existing.slice(-9),
       `${new Date().toLocaleTimeString()} ${message}`,
     ]);
@@ -186,10 +199,13 @@ export function App() {
     setLogs([]);
 
     try {
-      const probed = await probeWithFfmpeg(file, (message) =>
-        setLogs((existing) => [...existing.slice(-80), message]),
+      const probed = await probeWithFfmpeg(
+        file,
+        (message) => setLogs((existing) => [...existing.slice(-80), message]),
+        addFfmpegEvent,
       );
       setRuntimeStatus(getFfmpegRuntimeStatus());
+      addFfmpegEvent("ffprobe finished.");
       setMetadata(probed);
       setMessages((existing) => [
         ...existing,
@@ -199,6 +215,8 @@ export function App() {
         },
       ]);
     } catch (error) {
+      setRuntimeStatus(getFfmpegRuntimeStatus());
+      addFfmpegEvent(`ffprobe failed: ${errorMessage(error)}`);
       setMessages((existing) => [
         ...existing,
         { role: "assistant", content: errorMessage(error) },
@@ -286,6 +304,24 @@ export function App() {
     }
   }
 
+  async function handleLoadFfmpeg() {
+    setBusy("Loading FFmpeg core");
+    setLogs([]);
+
+    try {
+      await ensureFfmpeg(addFfmpegEvent);
+      setRuntimeStatus(getFfmpegRuntimeStatus());
+    } catch (error) {
+      setRuntimeStatus(getFfmpegRuntimeStatus());
+      setMessages((existing) => [
+        ...existing,
+        { role: "assistant", content: errorMessage(error) },
+      ]);
+    } finally {
+      setBusy(null);
+    }
+  }
+
   async function handleRun() {
     if (!file) return;
     setBusy("Running FFmpeg");
@@ -299,6 +335,7 @@ export function App() {
         { file, args },
         (message) => setLogs((existing) => [...existing.slice(-120), message]),
         (nextProgress) => setProgress(Math.max(0, Math.min(1, nextProgress))),
+        addFfmpegEvent,
       );
 
       if (result.outputBlob) {
@@ -308,6 +345,11 @@ export function App() {
       }
 
       setRuntimeStatus(getFfmpegRuntimeStatus());
+      addFfmpegEvent(
+        result.exitCode === 0
+          ? "FFmpeg run finished."
+          : `FFmpeg exited with code ${result.exitCode}.`,
+      );
       setMessages((existing) => [
         ...existing,
         {
@@ -334,6 +376,8 @@ export function App() {
         }
       }
     } catch (error) {
+      setRuntimeStatus(getFfmpegRuntimeStatus());
+      addFfmpegEvent(`FFmpeg run failed: ${errorMessage(error)}`);
       setMessages((existing) => [
         ...existing,
         { role: "assistant", content: errorMessage(error) },
@@ -541,7 +585,21 @@ export function App() {
               browser. Media files are not uploaded.
             </p>
             <RuntimeStatus status={runtimeStatus} />
+            <button
+              className="secondary-button ffmpeg-load-button"
+              disabled={!!busy}
+              onClick={handleLoadFfmpeg}
+            >
+              {busy === "Loading FFmpeg core" ? (
+                <LoaderCircle className="spin" size={16} />
+              ) : (
+                <TerminalSquare size={16} />
+              )}
+              Load FFmpeg core
+            </button>
+            <p className="status-text">{ffmpegStatus}</p>
             <BrowserStatus status={browserStatus} />
+            <RuntimeDebug events={ffmpegEvents} />
             <ModelDebug events={modelEvents} />
           </section>
         </aside>
@@ -834,7 +892,7 @@ function RuntimeStatus({
         </div>
         <div>
           <dt>FFmpeg core</dt>
-          <dd>{status.coreMode}</dd>
+          <dd>{formatCoreMode(status.coreMode)}</dd>
         </div>
       </dl>
       {canReloadForIsolation && (
@@ -846,6 +904,23 @@ function RuntimeStatus({
         </button>
       )}
     </>
+  );
+}
+
+function RuntimeDebug({ events }: { events: string[] }) {
+  return (
+    <details className="debug-details">
+      <summary>FFmpeg debug</summary>
+      <ol>
+        {events.length ? (
+          events.map((event, index) => (
+            <li key={`${event}-${index}`}>{event}</li>
+          ))
+        ) : (
+          <li>No FFmpeg core events yet.</li>
+        )}
+      </ol>
+    </details>
   );
 }
 
@@ -876,6 +951,14 @@ function BrowserStatus({
       </div>
     </dl>
   );
+}
+
+function formatCoreMode(
+  coreMode: ReturnType<typeof getFfmpegRuntimeStatus>["coreMode"],
+) {
+  if (coreMode === "not-loaded") return "Ready to load";
+  if (coreMode === "single-thread") return "Single-thread";
+  return "Multithread";
 }
 
 function ModelDebug({ events }: { events: string[] }) {

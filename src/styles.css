@@ -332,6 +332,11 @@ button:disabled {
   margin-bottom: 8px;
 }
 
+.ffmpeg-load-button {
+  width: 100%;
+  margin-bottom: 8px;
+}
+
 .debug-details {
   margin-top: 10px;
   border: 1px solid var(--line);

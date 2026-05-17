@@ -36,11 +36,17 @@ export interface FfmpegRunResult {
 
 export type FfmpegProgressHandler = (progress: number, time: number) => void;
 export type FfmpegLogHandler = (message: string) => void;
+export type FfmpegLoadHandler = (message: string) => void;
 export type FfmpegCoreMode = "multithread" | "single-thread" | "not-loaded";
 
 const coreVersion = "0.12.10";
-const singleThreadBase = `https://unpkg.com/@ffmpeg/core@${coreVersion}/dist/umd`;
-const multiThreadBase = `https://unpkg.com/@ffmpeg/core-mt@${coreVersion}/dist/umd`;
+const singleThreadBase = `https://unpkg.com/@ffmpeg/core@${coreVersion}/dist/esm`;
+const multiThreadBase = `https://unpkg.com/@ffmpeg/core-mt@${coreVersion}/dist/esm`;
+const coreStartupTimeoutMs = 20_000;
+const classWorkerURL = new URL(
+  "../../node_modules/@ffmpeg/ffmpeg/dist/esm/worker.js",
+  import.meta.url,
+).toString();
 
 let ffmpegInstance: FFmpeg | null = null;
 let loading: Promise<FFmpeg> | null = null;
@@ -88,44 +94,45 @@ export async function getMediaElementMetadata(
   return metadata;
 }
 
-export async function ensureFfmpeg(): Promise<FFmpeg> {
+export async function ensureFfmpeg(
+  onLoadStatus?: FfmpegLoadHandler,
+): Promise<FFmpeg> {
   if (ffmpegInstance?.loaded) {
+    onLoadStatus?.(`FFmpeg core is already loaded in ${coreMode} mode.`);
     return ffmpegInstance;
   }
 
   if (loading) {
+    onLoadStatus?.("FFmpeg core is already loading.");
     return loading;
   }
 
   loading = (async () => {
     try {
-      const ffmpeg = new FFmpeg();
       const useThreads =
         typeof SharedArrayBuffer !== "undefined" && crossOriginIsolated;
-      const base = useThreads ? multiThreadBase : singleThreadBase;
 
-      await ffmpeg.load({
-        coreURL: await toBlobURL(`${base}/ffmpeg-core.js`, "text/javascript"),
-        wasmURL: await toBlobURL(
-          `${base}/ffmpeg-core.wasm`,
-          "application/wasm",
-        ),
-        ...(useThreads
-          ? {
-              workerURL: await toBlobURL(
-                `${base}/ffmpeg-core.worker.js`,
-                "text/javascript",
-              ),
-            }
-          : {}),
-      });
+      if (useThreads) {
+        try {
+          const ffmpeg = await loadCore("multithread", onLoadStatus);
+          coreMode = "multithread";
+          ffmpegInstance = ffmpeg;
+          return ffmpeg;
+        } catch (error) {
+          onLoadStatus?.(
+            `Multithreaded FFmpeg did not start cleanly: ${errorMessage(error)} Trying single-thread core.`,
+          );
+        }
+      }
 
-      coreMode = useThreads ? "multithread" : "single-thread";
+      const ffmpeg = await loadCore("single-thread", onLoadStatus);
+      coreMode = "single-thread";
       ffmpegInstance = ffmpeg;
       return ffmpeg;
     } catch (error) {
       coreMode = "not-loaded";
       ffmpegInstance = null;
+      onLoadStatus?.(`FFmpeg core load failed: ${errorMessage(error)}`);
       throw error;
     } finally {
       loading = null;
@@ -133,6 +140,47 @@ export async function ensureFfmpeg(): Promise<FFmpeg> {
   })();
 
   return loading;
+}
+
+async function loadCore(
+  mode: Exclude<FfmpegCoreMode, "not-loaded">,
+  onLoadStatus?: FfmpegLoadHandler,
+): Promise<FFmpeg> {
+  const ffmpeg = new FFmpeg();
+  const useThreads = mode === "multithread";
+  const base = useThreads ? multiThreadBase : singleThreadBase;
+  const label = useThreads ? "multithreaded" : "single-threaded";
+
+  onLoadStatus?.(`Fetching ${label} FFmpeg core JavaScript from unpkg.`);
+  const coreURL = await toBlobURL(`${base}/ffmpeg-core.js`, "text/javascript");
+  onLoadStatus?.(`Fetching ${label} FFmpeg core WebAssembly from unpkg.`);
+  const wasmURL = await toBlobURL(
+    `${base}/ffmpeg-core.wasm`,
+    "application/wasm",
+  );
+  let workerURL: string | undefined;
+
+  if (useThreads) {
+    onLoadStatus?.("Fetching multithreaded FFmpeg worker from unpkg.");
+    workerURL = await toBlobURL(
+      `${base}/ffmpeg-core.worker.js`,
+      "text/javascript",
+    );
+  }
+
+  onLoadStatus?.(`Starting ${label} FFmpeg core.`);
+  await withTimeout(
+    ffmpeg.load({
+      classWorkerURL,
+      coreURL,
+      wasmURL,
+      ...(workerURL ? { workerURL } : {}),
+    }),
+    coreStartupTimeoutMs,
+    `${label} FFmpeg core startup timed out`,
+  );
+  onLoadStatus?.(`FFmpeg core loaded in ${mode} mode.`);
+  return ffmpeg;
 }
 
 export function getFfmpegRuntimeStatus(): {
@@ -152,8 +200,9 @@ export function getFfmpegRuntimeStatus(): {
 export async function probeWithFfmpeg(
   file: File,
   onLog?: FfmpegLogHandler,
+  onLoadStatus?: FfmpegLoadHandler,
 ): Promise<MediaMetadata> {
-  const ffmpeg = await ensureFfmpeg();
+  const ffmpeg = await ensureFfmpeg(onLoadStatus);
   const inputName = safeInputName(file.name);
   const outputName = "probe.json";
   const cleanupEvents = attachFfmpegEvents(ffmpeg, onLog);
@@ -201,6 +250,7 @@ export async function runFfmpegCommand(
   request: FfmpegRunRequest,
   onLog?: FfmpegLogHandler,
   onProgress?: FfmpegProgressHandler,
+  onLoadStatus?: FfmpegLoadHandler,
 ): Promise<FfmpegRunResult> {
   const logs: string[] = [];
   const started = performance.now();
@@ -215,7 +265,7 @@ export async function runFfmpegCommand(
     desiredOutput === inputName
       ? suggestedOutputName(inputName)
       : desiredOutput;
-  const ffmpeg = await ensureFfmpeg();
+  const ffmpeg = await ensureFfmpeg(onLoadStatus);
   const cleanupEvents = attachFfmpegEvents(
     ffmpeg,
     (message) => {
@@ -319,4 +369,27 @@ function attachFfmpegEvents(
     ffmpeg.off("log", logCallback);
     ffmpeg.off("progress", progressCallback);
   };
+}
+
+async function withTimeout<T>(
+  promise: Promise<T>,
+  timeoutMs: number,
+  message: string,
+): Promise<T> {
+  let timeoutId: number | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timeoutId = window.setTimeout(() => reject(new Error(message)), timeoutMs);
+  });
+
+  try {
+    return await Promise.race([promise, timeout]);
+  } finally {
+    if (timeoutId !== undefined) {
+      window.clearTimeout(timeoutId);
+    }
+  }
+}
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }

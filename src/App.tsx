@@ -57,7 +57,7 @@ type ChatMessage = {
 };
 
 const starterPrompt =
-  "Compress this for sharing, keep it broadly compatible, and preserve reasonable quality.";
+  "Compress for sharing, keep broad compatibility, and preserve reasonable quality.";
 
 export function App() {
   const [file, setFile] = useState<File | null>(null);
@@ -98,7 +98,7 @@ export function App() {
   const [savedOutputs, setSavedOutputs] = useState<StoredOutput[]>([]);
   const [modelEvents, setModelEvents] = useState<string[]>([]);
   const [ffmpegStatus, setFfmpegStatus] = useState(
-    "FFmpeg core loads automatically on probe or run.",
+    "FFmpeg loads automatically when you probe or run a command.",
   );
   const [ffmpegEvents, setFfmpegEvents] = useState<string[]>([]);
   const [runtimeStatus, setRuntimeStatus] = useState(getFfmpegRuntimeStatus());
@@ -166,7 +166,9 @@ export function App() {
       modelPresets[0];
     setModelId(preset.id);
     setUseModel(false);
-    setModelStatus(`${preset.name} selected. Load it before local planning.`);
+    setModelStatus(
+      `${preset.name} selected. Load it to plan with the local model.`,
+    );
     addModelEvent(`${preset.name} selected. Local planning is paused.`);
   }
 
@@ -313,11 +315,11 @@ export function App() {
         addModelEvent(status);
       });
       setUseModel(true);
-      setModelStatus("Ready");
+      setModelStatus("Local model ready");
       addModelEvent(`${selectedModelPreset.name} is ready for local planning.`);
     } catch (error) {
       const message = errorMessage(error);
-      setModelStatus(`Load failed: ${message}`);
+      setModelStatus(`Model load failed: ${message}`);
       addModelEvent(`Load failed. You can retry without reloading: ${message}`);
     } finally {
       setBusy(null);
@@ -591,6 +593,7 @@ export function App() {
             <textarea
               className="prompt-box"
               aria-label="Prompt for command intent"
+              placeholder="Describe the output you want, for example: compress to 720p"
               value={prompt}
               onChange={(event) => setPrompt(event.target.value)}
             />
@@ -601,7 +604,7 @@ export function App() {
                 onClick={() => handlePlan()}
               >
                 <Wand2 size={17} />
-                Plan command
+                Plan FFmpeg args
               </button>
             </div>
           </section>
@@ -768,7 +771,7 @@ export function App() {
               onClick={handleSelfCorrect}
             >
               <Wand2 size={16} />
-              Ask planner to fix
+              Replan from logs
             </button>
           </section>
         </aside>

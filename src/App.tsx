@@ -109,6 +109,7 @@ export function App() {
   const [speechDisclosureAccepted, setSpeechDisclosureAccepted] =
     useState(false);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
+  const activeFileRef = useRef<File | null>(null);
 
   const chips = useMemo(() => commandToChips(args), [args]);
   const fileKind = getFileKind(file);
@@ -126,8 +127,18 @@ export function App() {
 
   useEffect(() => {
     const interval = window.setInterval(() => {
-      setRuntimeStatus(getFfmpegRuntimeStatus());
-      setBrowserStatus(getBrowserRuntimeStatus());
+      const nextRuntimeStatus = getFfmpegRuntimeStatus();
+      const nextBrowserStatus = getBrowserRuntimeStatus();
+      setRuntimeStatus((current) =>
+        JSON.stringify(current) === JSON.stringify(nextRuntimeStatus)
+          ? current
+          : nextRuntimeStatus,
+      );
+      setBrowserStatus((current) =>
+        JSON.stringify(current) === JSON.stringify(nextBrowserStatus)
+          ? current
+          : nextBrowserStatus,
+      );
     }, 2000);
     return () => window.clearInterval(interval);
   }, []);
@@ -166,30 +177,45 @@ export function App() {
   }
 
   async function handleFile(nextFile: File | null) {
+    activeFileRef.current = nextFile;
     setFile(nextFile);
     setPlan(null);
+    setMetadata(null);
     setLogs([]);
     setOutputUrl(null);
     setOutputName(null);
 
     if (!nextFile) {
-      setMetadata(null);
       return;
     }
 
     setArgs(defaultArgsForFile(nextFile));
     setBusy("Reading metadata");
     try {
-      setMetadata(await getMediaElementMetadata(nextFile));
-      setMessages((existing) => [
-        ...existing,
-        {
-          role: "system",
-          content: `Loaded ${nextFile.name} (${formatBytes(nextFile.size)}). Run ffprobe for stream-level details before complex commands.`,
-        },
-      ]);
+      const data = await getMediaElementMetadata(nextFile);
+      if (activeFileRef.current === nextFile) {
+        setMetadata(data);
+        setMessages((existing) => [
+          ...existing,
+          {
+            role: "system",
+            content: `Loaded ${nextFile.name} (${formatBytes(nextFile.size)}). Run ffprobe for stream-level details before complex commands.`,
+          },
+        ]);
+      }
+    } catch (error) {
+      if (activeFileRef.current === nextFile) {
+        const message = `Metadata error: ${errorMessage(error)}`;
+        setLogs((existing) => [...existing, message]);
+        setMessages((existing) => [
+          ...existing,
+          { role: "assistant", content: message },
+        ]);
+      }
     } finally {
-      setBusy(null);
+      if (activeFileRef.current === nextFile) {
+        setBusy(null);
+      }
     }
   }
 
@@ -449,7 +475,19 @@ export function App() {
     recognition.onerror = () => setIsListening(false);
     recognitionRef.current = recognition;
     setIsListening(true);
-    recognition.start();
+    try {
+      recognition.start();
+    } catch (error) {
+      setIsListening(false);
+      setLogs((existing) => [
+        ...existing,
+        `Speech recognition failed: ${errorMessage(error)}`,
+      ]);
+      setMessages((existing) => [
+        ...existing,
+        { role: "assistant", content: errorMessage(error) },
+      ]);
+    }
   }
 
   function stopListening() {

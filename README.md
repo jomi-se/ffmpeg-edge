@@ -25,8 +25,6 @@ The dev server must be opened over `http://localhost` or HTTPS for the browser A
 
 The default planner model id is `Qwen3.5-0.8B-q4f16_1-MLC`, which is part of the installed WebLLM prebuilt model list and is recommended for mobile devices. The desktop preset is `gemma-4-E2B-it-q4f16_1-MLC`; it is loaded through a custom WebLLM app config pointed at the `welcoma/gemma-4-E2B-it-q4f16_1-MLC` Hugging Face artifact because this Gemma 4 E2B variant is not part of the installed WebLLM prebuilt model list. The app config prefers WebLLM's Cache API artifact cache and falls back to IndexedDB only when `globalThis.caches` is unavailable.
 
-Catalyst does not include built-in microphone or browser speech recognition. To use spoken intent, bring your own local speech-recognition tool and paste the transcript into the planner prompt.
-
 ## Production Build
 
 ```sh

@@ -96,8 +96,6 @@ bundle splitting or model-loading performance.
    - Keep model defaults aligned with README. The current default is
      `Qwen3.5-0.8B-q4f16_1-MLC`; the desktop Gemma preset is
      `gemma-4-E2B-it-q4f16_1-MLC` loaded through a custom WebLLM app config.
-   - Do not add browser Web Speech API microphone capture. Spoken intent should come from a
-     user-provided local transcript unless a fully local in-browser ASR path is explicitly designed.
 
 5. **Separate pure command logic from browser side effects**
    - Keep command parsing, chip generation, and output-name inference in `src/lib/command.ts`.

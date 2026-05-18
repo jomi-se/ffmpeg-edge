@@ -1,6 +1,6 @@
-# FFmpeg Catalyst
+# Local Media Converter
 
-FFmpeg Catalyst is a browser-native media workstation that keeps FFmpeg visible and inspectable while local AI helps turn intent into editable command arguments.
+Local Media Converter converts audio, video, and images in your browser with FFmpeg. Files stay on your device, while optional local planning helps turn intent into editable FFmpeg command arguments.
 
 ## What It Does
 

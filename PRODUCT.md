@@ -10,11 +10,11 @@ Both technical users familiar with FFmpeg wanting a fast, local workflow, and no
 
 ## Product Purpose
 
-To provide a secure, browser-native media workstation that processes files locally. It uses local AI to translate intent into FFmpeg commands, replacing sketchy online converters while keeping the underlying FFmpeg engine visible, inspectable, and editable.
+To provide a secure, browser-native media converter that processes files locally. It uses optional local AI to translate intent into FFmpeg commands, replacing sketchy online converters while keeping the underlying FFmpeg engine visible, inspectable, and editable.
 
 ## Brand Personality
 
-Simple, elegant, powerful.
+Plain, trustworthy, capable.
 
 ## Anti-references
 

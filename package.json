@@ -1,9 +1,9 @@
 {
-  "name": "ffmpeg-catalyst",
+  "name": "local-media-converter",
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "A browser-native FFmpeg workstation with local AI-assisted command planning.",
+  "description": "A browser-based local media converter powered by FFmpeg.",
   "scripts": {
     "dev": "vite --host 0.0.0.0 --clearScreen false --logLevel error",
     "build": "tsc -b --pretty false && vite build --logLevel error",

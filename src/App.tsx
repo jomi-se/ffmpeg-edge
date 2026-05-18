@@ -456,8 +456,8 @@ export function App() {
     <main className="app-shell">
       <header className="top-bar">
         <div>
-          <p className="eyebrow">Gemma assists. FFmpeg leads.</p>
-          <h1>FFmpeg Catalyst</h1>
+          <p className="eyebrow">FFmpeg leads. Files stay local.</p>
+          <h1>Local Media Converter</h1>
         </div>
         <a
           className="text-link"
@@ -469,7 +469,10 @@ export function App() {
         </a>
       </header>
 
-      <section className="workspace" aria-label="FFmpeg Catalyst workspace">
+      <section
+        className="workspace"
+        aria-label="Local Media Converter workspace"
+      >
         <aside className="left-rail">
           <section className="panel upload-panel">
             <div className="panel-title">
@@ -621,9 +624,7 @@ export function App() {
                   className={`chip ${chip.kind}`}
                   disabled={!chip.editable}
                   onClick={() => editChip(chip.id, chip.token)}
-                  title={
-                    chip.editable ? "Edit argument" : "Managed by Catalyst"
-                  }
+                  title={chip.editable ? "Edit argument" : "Managed argument"}
                 >
                   <span>{chip.label}</span>
                   <code>{chip.token}</code>

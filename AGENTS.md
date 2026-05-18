@@ -1,8 +1,8 @@
-# AI Agent Instructions: FFmpeg Catalyst
+# AI Agent Instructions: Local Media Converter
 
 ## Project Context
 
-FFmpeg Catalyst is a browser-native media workstation that keeps FFmpeg visible, credited, and
+Local Media Converter is a browser-native media workstation that keeps FFmpeg visible, credited, and
 inspectable while local AI helps turn user intent into editable FFmpeg command arguments.
 
 This is a static Vite/React application intended to run locally during development and deploy as a

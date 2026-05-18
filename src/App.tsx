@@ -1,6 +1,5 @@
 import {
   Bot,
-  CircleStop,
   Database,
   Download,
   FileAudio,
@@ -8,7 +7,6 @@ import {
   FileVideo,
   Info,
   LoaderCircle,
-  Mic,
   Play,
   Save,
   Search,
@@ -98,7 +96,6 @@ export function App() {
   const [outputUrl, setOutputUrl] = useState<string | null>(null);
   const [outputName, setOutputName] = useState<string | null>(null);
   const [savedOutputs, setSavedOutputs] = useState<StoredOutput[]>([]);
-  const [isListening, setIsListening] = useState(false);
   const [modelEvents, setModelEvents] = useState<string[]>([]);
   const [ffmpegStatus, setFfmpegStatus] = useState(
     "FFmpeg core loads automatically on probe or run.",
@@ -106,9 +103,6 @@ export function App() {
   const [ffmpegEvents, setFfmpegEvents] = useState<string[]>([]);
   const [runtimeStatus, setRuntimeStatus] = useState(getFfmpegRuntimeStatus());
   const [browserStatus, setBrowserStatus] = useState(getBrowserRuntimeStatus());
-  const [speechDisclosureAccepted, setSpeechDisclosureAccepted] =
-    useState(false);
-  const recognitionRef = useRef<SpeechRecognition | null>(null);
   const activeFileRef = useRef<File | null>(null);
 
   const chips = useMemo(() => commandToChips(args), [args]);
@@ -441,60 +435,6 @@ export function App() {
     });
   }
 
-  function startListening() {
-    if (!speechDisclosureAccepted) {
-      const accepted = window.confirm(
-        "Speech recognition is provided by your browser and may use that browser vendor's remote service. Source media still stays local. Continue?",
-      );
-      if (!accepted) return;
-      setSpeechDisclosureAccepted(true);
-    }
-
-    const SpeechRecognitionClass =
-      window.SpeechRecognition ?? window.webkitSpeechRecognition;
-    if (!SpeechRecognitionClass) {
-      setMessages((existing) => [
-        ...existing,
-        {
-          role: "assistant",
-          content: "This browser does not expose the Web Speech API.",
-        },
-      ]);
-      return;
-    }
-
-    const recognition = new SpeechRecognitionClass();
-    recognition.continuous = false;
-    recognition.interimResults = false;
-    recognition.lang = "en-US";
-    recognition.onresult = (event) => {
-      const transcript = event.results[0]?.[0]?.transcript;
-      if (transcript) setPrompt(transcript);
-    };
-    recognition.onend = () => setIsListening(false);
-    recognition.onerror = () => setIsListening(false);
-    recognitionRef.current = recognition;
-    setIsListening(true);
-    try {
-      recognition.start();
-    } catch (error) {
-      setIsListening(false);
-      setLogs((existing) => [
-        ...existing,
-        `Speech recognition failed: ${errorMessage(error)}`,
-      ]);
-      setMessages((existing) => [
-        ...existing,
-        { role: "assistant", content: errorMessage(error) },
-      ]);
-    }
-  }
-
-  function stopListening() {
-    recognitionRef.current?.stop();
-    setIsListening(false);
-  }
-
   async function downloadSaved(name: string) {
     const saved = await readOutput(name);
     const url = URL.createObjectURL(saved);
@@ -662,13 +602,6 @@ export function App() {
               >
                 <Wand2 size={17} />
                 Plan command
-              </button>
-              <button
-                className={isListening ? "danger-button" : "secondary-button"}
-                onClick={isListening ? stopListening : startListening}
-              >
-                {isListening ? <CircleStop size={17} /> : <Mic size={17} />}
-                {isListening ? "Stop" : "Push to talk"}
               </button>
             </div>
           </section>

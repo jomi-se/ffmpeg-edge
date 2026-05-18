@@ -8,7 +8,7 @@ FFmpeg Catalyst is a browser-native media workstation that keeps FFmpeg visible 
 - Uses a COOP/COEP service worker so browsers that support `SharedArrayBuffer` can load the multithreaded FFmpeg core.
 - Retrieves local FFmpeg documentation chunks with Orama before planning a command.
 - Optionally loads a local WebLLM model for command planning. Qwen 3.5 0.8B is the mobile-friendly default, and Gemma 4 E2B remains available for desktop-class devices. If the model is unavailable, deterministic FFmpeg templates keep the app usable.
-- Shows the planned FFmpeg arguments as editable chips and as a raw command.
+- Shows the planned FFmpeg arguments as editable chips.
 - Captures FFmpeg logs, progress, and exit codes, then feeds failures back into the planner for correction.
 - Saves successful outputs to the Origin Private File System when the browser supports OPFS.
 - Processes files locally. The app does not upload source media to a server.
@@ -25,7 +25,7 @@ The dev server must be opened over `http://localhost` or HTTPS for the browser A
 
 The default planner model id is `Qwen3.5-0.8B-q4f16_1-MLC`, which is part of the installed WebLLM prebuilt model list and is recommended for mobile devices. The desktop preset is `gemma-4-E2B-it-q4f16_1-MLC`; it is loaded through a custom WebLLM app config pointed at the `welcoma/gemma-4-E2B-it-q4f16_1-MLC` Hugging Face artifact because this Gemma 4 E2B variant is not part of the installed WebLLM prebuilt model list. The app config prefers WebLLM's Cache API artifact cache and falls back to IndexedDB only when `globalThis.caches` is unavailable.
 
-Push-to-talk uses the browser Web Speech API. Depending on the browser, microphone audio or transcripts may be processed by the browser vendor. The app discloses this before starting speech recognition.
+Catalyst does not include built-in microphone or browser speech recognition. To use spoken intent, bring your own local speech-recognition tool and paste the transcript into the planner prompt.
 
 ## Production Build
 

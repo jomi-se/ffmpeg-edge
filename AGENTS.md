@@ -89,12 +89,15 @@ bundle splitting or model-loading performance.
      `SharedArrayBuffer` intent are still represented.
 
 4. **Planner is advisory**
-   - The AI planner proposes FFmpeg args; the editable chip UI and raw command remain the authority
-     for what runs.
+   - The AI planner proposes FFmpeg args; the editable chip UI and derived command args remain the
+     authority for what runs. Do not add an always-visible raw command editor unless explicitly
+     requested.
    - Invalid or unavailable WebLLM planning must fall back gracefully to deterministic templates.
    - Keep model defaults aligned with README. The current default is
      `Qwen3.5-0.8B-q4f16_1-MLC`; the desktop Gemma preset is
      `gemma-4-E2B-it-q4f16_1-MLC` loaded through a custom WebLLM app config.
+   - Do not add browser Web Speech API microphone capture. Spoken intent should come from a
+     user-provided local transcript unless a fully local in-browser ASR path is explicitly designed.
 
 5. **Separate pure command logic from browser side effects**
    - Keep command parsing, chip generation, and output-name inference in `src/lib/command.ts`.
@@ -115,8 +118,8 @@ bundle splitting or model-loading performance.
 ## Frontend Standards
 
 - Build the actual tool surface first, not a marketing page.
-- Keep controls dense, readable, and work-focused: upload/probe, planner, command chips, raw command,
-  run progress, outputs, docs, and logs should remain easy to scan.
+- Keep controls dense, readable, and work-focused: upload/probe, planner, command chips, run
+  progress, outputs, docs, and logs should remain easy to scan.
 - Use lucide icons for icon buttons where available.
 - Do not introduce decorative UI that competes with command inspection or logs.
 - Maintain responsive layouts for desktop and mobile-width previews. Text should not overflow its
@@ -142,7 +145,8 @@ bundle splitting or model-loading performance.
 - For FFmpeg runtime bugs, capture the command args, input type, relevant logs, and whether the
   browser was cross-origin isolated.
 - For UI bugs, reproduce in the local Vite preview when possible and verify the changed viewport or
-  interaction directly before handoff.
+  interaction directly before handoff. Include a Playwright mobile pass that approximates Chrome on a
+  Pixel 7 (412px-wide viewport with mobile/touch behavior where the harness supports it).
 
 ## Deployment Notes
 

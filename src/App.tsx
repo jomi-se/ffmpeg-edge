@@ -527,7 +527,11 @@ export function App() {
               disabled={!file || !!busy}
               onClick={handleProbe}
             >
-              <Search size={16} />
+              {busy === "Running ffprobe" ? (
+                <LoaderCircle className="spin" size={16} />
+              ) : (
+                <Search size={16} />
+              )}
               Probe with ffprobe
             </button>
             <MetadataView metadata={metadata} />
@@ -614,6 +618,8 @@ export function App() {
               className="prompt-box"
               value={prompt}
               onChange={(event) => setPrompt(event.target.value)}
+              placeholder="Describe what you want to do with the media file..."
+              aria-label="Intent for FFmpeg command"
             />
             <div className="button-row">
               <button
@@ -621,7 +627,12 @@ export function App() {
                 disabled={!!busy}
                 onClick={() => handlePlan()}
               >
-                <Wand2 size={17} />
+                {busy === "Planning with local model" ||
+                busy === "Planning with local docs" ? (
+                  <LoaderCircle className="spin" size={17} />
+                ) : (
+                  <Wand2 size={17} />
+                )}
                 Plan command
               </button>
               <button
@@ -766,12 +777,14 @@ export function App() {
                   <button
                     onClick={() => downloadSaved(output.name)}
                     title="Download saved output"
+                    aria-label={`Download ${output.name}`}
                   >
                     <Download size={15} />
                   </button>
                   <button
                     onClick={() => deleteSaved(output.name)}
                     title="Delete saved output"
+                    aria-label={`Delete ${output.name}`}
                   >
                     <Trash2 size={15} />
                   </button>
@@ -793,7 +806,12 @@ export function App() {
               disabled={!logs.length || !!busy}
               onClick={handleSelfCorrect}
             >
-              <Wand2 size={16} />
+              {busy === "Planning with local model" ||
+              busy === "Planning with local docs" ? (
+                <LoaderCircle className="spin" size={16} />
+              ) : (
+                <Wand2 size={16} />
+              )}
               Ask planner to fix
             </button>
           </section>

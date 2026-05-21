@@ -579,7 +579,9 @@ export function App() {
               )}
               Load model
             </button>
-            <p className="status-text">{modelStatus}</p>
+            <p className="status-text" aria-live="polite">
+              {modelStatus}
+            </p>
             <p className="disclosure-text">
               Model files are fetched from Hugging Face and then cached by the
               browser. Media files are not uploaded.
@@ -597,7 +599,9 @@ export function App() {
               )}
               Load FFmpeg core
             </button>
-            <p className="status-text">{ffmpegStatus}</p>
+            <p className="status-text" aria-live="polite">
+              {ffmpegStatus}
+            </p>
             <BrowserStatus status={browserStatus} />
             <RuntimeDebug events={ffmpegEvents} />
             <ModelDebug events={modelEvents} />
@@ -611,6 +615,8 @@ export function App() {
               <h2>Intent</h2>
             </div>
             <textarea
+              aria-label="Command intent"
+              placeholder="Describe what you want to do with the file..."
               className="prompt-box"
               value={prompt}
               onChange={(event) => setPrompt(event.target.value)}
@@ -690,7 +696,14 @@ export function App() {
               </ul>
             )}
             {busy === "Running FFmpeg" && (
-              <div className="progress-track">
+              <div
+                className="progress-track"
+                role="progressbar"
+                aria-valuenow={Math.round(progress * 100)}
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-label="FFmpeg progress"
+              >
                 <span style={{ width: `${Math.round(progress * 100)}%` }} />
               </div>
             )}
@@ -766,12 +779,14 @@ export function App() {
                   <button
                     onClick={() => downloadSaved(output.name)}
                     title="Download saved output"
+                    aria-label={`Download ${output.name}`}
                   >
                     <Download size={15} />
                   </button>
                   <button
                     onClick={() => deleteSaved(output.name)}
                     title="Delete saved output"
+                    aria-label={`Delete ${output.name}`}
                   >
                     <Trash2 size={15} />
                   </button>

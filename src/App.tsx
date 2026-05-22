@@ -468,6 +468,7 @@ export function App() {
   }
 
   async function deleteSaved(name: string) {
+    if (!window.confirm(`Are you sure you want to delete "${name}"?`)) return;
     await removeOutput(name);
     await refreshSavedOutputs();
   }
@@ -614,6 +615,7 @@ export function App() {
               className="prompt-box"
               value={prompt}
               onChange={(event) => setPrompt(event.target.value)}
+              aria-label="Describe what you want to do with the file"
             />
             <div className="button-row">
               <button
@@ -766,12 +768,14 @@ export function App() {
                   <button
                     onClick={() => downloadSaved(output.name)}
                     title="Download saved output"
+                    aria-label={`Download ${output.name}`}
                   >
                     <Download size={15} />
                   </button>
                   <button
                     onClick={() => deleteSaved(output.name)}
                     title="Delete saved output"
+                    aria-label={`Delete ${output.name}`}
                   >
                     <Trash2 size={15} />
                   </button>

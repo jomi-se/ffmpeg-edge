@@ -614,6 +614,8 @@ export function App() {
               className="prompt-box"
               value={prompt}
               onChange={(event) => setPrompt(event.target.value)}
+              placeholder="e.g. Convert this video to an animated GIF"
+              aria-label="Command intent"
             />
             <div className="button-row">
               <button
@@ -766,12 +768,14 @@ export function App() {
                   <button
                     onClick={() => downloadSaved(output.name)}
                     title="Download saved output"
+                    aria-label={`Download ${output.name}`}
                   >
                     <Download size={15} />
                   </button>
                   <button
                     onClick={() => deleteSaved(output.name)}
                     title="Delete saved output"
+                    aria-label={`Delete ${output.name}`}
                   >
                     <Trash2 size={15} />
                   </button>

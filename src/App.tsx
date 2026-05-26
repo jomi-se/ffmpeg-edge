@@ -468,8 +468,10 @@ export function App() {
   }
 
   async function deleteSaved(name: string) {
-    await removeOutput(name);
-    await refreshSavedOutputs();
+    if (window.confirm(`Are you sure you want to delete ${name}?`)) {
+      await removeOutput(name);
+      await refreshSavedOutputs();
+    }
   }
 
   return (

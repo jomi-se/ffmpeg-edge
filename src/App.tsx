@@ -612,6 +612,8 @@ export function App() {
             </div>
             <textarea
               className="prompt-box"
+              aria-label="Describe what you want to do with the file"
+              placeholder="E.g., Convert to mp4, extract audio..."
               value={prompt}
               onChange={(event) => setPrompt(event.target.value)}
             />
@@ -765,12 +767,14 @@ export function App() {
                   </span>
                   <button
                     onClick={() => downloadSaved(output.name)}
+                    aria-label="Download saved output"
                     title="Download saved output"
                   >
                     <Download size={15} />
                   </button>
                   <button
                     onClick={() => deleteSaved(output.name)}
+                    aria-label="Delete saved output"
                     title="Delete saved output"
                   >
                     <Trash2 size={15} />

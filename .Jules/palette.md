@@ -1,0 +1,3 @@
+## 2024-06-09 - Redundant ARIA Labels Overwriting Implicit Text
+**Learning:** Adding `aria-label` to `<input>` tags already enclosed in `<label>` elements overwrites the screen reader's expected text. The visible text in the `<label>` serves as the accessible name automatically, but assigning an `aria-label` with mismatching text introduces a WCAG 2.5.3 (Label in Name) violation, causing issues for voice dictation software users.
+**Action:** Before applying an `aria-label`, check if an `<input>` is wrapped in a `<label>` containing text or uses an explicit `id`/`htmlFor` pairing. Do not add `aria-label` if valid text labeling exists.

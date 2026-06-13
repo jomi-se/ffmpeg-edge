@@ -526,6 +526,7 @@ export function App() {
               className="secondary-button"
               disabled={!file || !!busy}
               onClick={handleProbe}
+              title="Probe with ffprobe"
             >
               <Search size={16} />
               Probe with ffprobe
@@ -614,6 +615,8 @@ export function App() {
               className="prompt-box"
               value={prompt}
               onChange={(event) => setPrompt(event.target.value)}
+              placeholder="e.g., Convert this to a 15fps GIF..."
+              aria-label="Describe what you want to do with the media"
             />
             <div className="button-row">
               <button
@@ -766,12 +769,14 @@ export function App() {
                   <button
                     onClick={() => downloadSaved(output.name)}
                     title="Download saved output"
+                    aria-label={`Download ${output.name}`}
                   >
                     <Download size={15} />
                   </button>
                   <button
                     onClick={() => deleteSaved(output.name)}
                     title="Delete saved output"
+                    aria-label={`Delete ${output.name}`}
                   >
                     <Trash2 size={15} />
                   </button>

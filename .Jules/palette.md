@@ -1,0 +1,3 @@
+## 2024-06-13 - Context-Aware ARIA Labels for Dynamic File Outputs
+**Learning:** Adding statically defined ARIA labels to dynamically mapped file items in React provides insufficient context for screen reader users when dealing with multiple identical actions (e.g., multiple "Download" buttons in a saved outputs list). By generating dynamic labels (`aria-label={\`Download ${output.name}\`}`), users gain clarity about which file the specific button acts upon.
+**Action:** When creating mapped lists of interactive elements representing discrete items, always construct ARIA labels using contextual variables (like item names or IDs) rather than generic strings.

@@ -612,6 +612,7 @@ export function App() {
             </div>
             <textarea
               className="prompt-box"
+              aria-label="Prompt for command intent"
               value={prompt}
               onChange={(event) => setPrompt(event.target.value)}
             />
@@ -766,12 +767,14 @@ export function App() {
                   <button
                     onClick={() => downloadSaved(output.name)}
                     title="Download saved output"
+                    aria-label={`Download ${output.name}`}
                   >
                     <Download size={15} />
                   </button>
                   <button
                     onClick={() => deleteSaved(output.name)}
                     title="Delete saved output"
+                    aria-label={`Delete ${output.name}`}
                   >
                     <Trash2 size={15} />
                   </button>

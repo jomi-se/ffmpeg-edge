@@ -579,7 +579,9 @@ export function App() {
               )}
               Load model
             </button>
-            <p className="status-text">{modelStatus}</p>
+            <p className="status-text" aria-live="polite">
+              {modelStatus}
+            </p>
             <p className="disclosure-text">
               Model files are fetched from Hugging Face and then cached by the
               browser. Media files are not uploaded.
@@ -597,7 +599,9 @@ export function App() {
               )}
               Load FFmpeg core
             </button>
-            <p className="status-text">{ffmpegStatus}</p>
+            <p className="status-text" aria-live="polite">
+              {ffmpegStatus}
+            </p>
             <BrowserStatus status={browserStatus} />
             <RuntimeDebug events={ffmpegEvents} />
             <ModelDebug events={modelEvents} />
@@ -691,7 +695,14 @@ export function App() {
               </ul>
             )}
             {busy === "Running FFmpeg" && (
-              <div className="progress-track">
+              <div
+                className="progress-track"
+                role="progressbar"
+                aria-label="FFmpeg conversion progress"
+                aria-valuenow={Math.round(progress * 100)}
+                aria-valuemin={0}
+                aria-valuemax={100}
+              >
                 <span style={{ width: `${Math.round(progress * 100)}%` }} />
               </div>
             )}
@@ -714,7 +725,7 @@ export function App() {
               <Info size={18} />
               <h2>Session</h2>
             </div>
-            <div className="messages">
+            <div className="messages" aria-live="polite">
               {messages.map((message, index) => (
                 <p
                   key={`${message.role}-${index}`}

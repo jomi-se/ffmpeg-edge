@@ -613,6 +613,7 @@ export function App() {
             </div>
             <textarea
               className="prompt-box"
+              aria-label="Prompt for command intent"
               value={prompt}
               onChange={(event) => setPrompt(event.target.value)}
               aria-label="Describe what you want to do with the file"

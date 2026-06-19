@@ -65,6 +65,8 @@ bundle splitting or model-loading performance.
 
 - Before making the repository public or after touching credentials, run a full-history secret scan
   with Gitleaks and TruffleHog when the tools are available locally.
+- Local clones should run `npm --silent run setup:hooks` once so `.githooks/pre-push` runs Gitleaks
+  and TruffleHog before every push.
 - If local scanners are unavailable, use targeted `git grep`, `rg`, and `git log -p -G` checks as a
   fallback, then rely on CI for the official scanner pass.
 - GitHub Actions runs Gitleaks and TruffleHog against full checkout history (`fetch-depth: 0`) so

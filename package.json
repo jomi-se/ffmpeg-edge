@@ -11,7 +11,8 @@
     "preview": "vite preview --host 0.0.0.0 --clearScreen false --logLevel error",
     "lint": "eslint . --quiet",
     "format:check": "git ls-files -z | xargs -0 prettier --list-different --ignore-unknown",
-    "verify": "npm --silent run build && npm --silent run lint && npm --silent run format:check"
+    "verify": "npm --silent run build && npm --silent run lint && npm --silent run format:check",
+    "setup:hooks": "git config core.hooksPath .githooks"
   },
   "dependencies": {
     "@ffmpeg/ffmpeg": "^0.12.15",

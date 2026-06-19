@@ -1,0 +1,50 @@
+#!/usr/bin/env sh
+set -eu
+
+if [ "${SKIP_SECRET_SCAN:-}" = "1" ]; then
+  echo "Skipping local secret scan because SKIP_SECRET_SCAN=1 is set."
+  exit 0
+fi
+
+repo_root="$(git rev-parse --show-toplevel)"
+
+run_gitleaks() {
+  if command -v gitleaks >/dev/null 2>&1; then
+    gitleaks git --no-banner --redact --verbose "$repo_root"
+    return
+  fi
+
+  if command -v docker >/dev/null 2>&1; then
+    docker run --rm \
+      -v "$repo_root:/repo" \
+      ghcr.io/gitleaks/gitleaks:v8.30.1 \
+      git --no-banner --redact --verbose /repo
+    return
+  fi
+
+  echo "Gitleaks is not available. Install gitleaks or Docker before pushing."
+  return 127
+}
+
+run_trufflehog() {
+  if command -v trufflehog >/dev/null 2>&1; then
+    trufflehog git "file://$repo_root" --results=verified,unknown --fail
+    return
+  fi
+
+  if command -v docker >/dev/null 2>&1; then
+    docker run --rm \
+      -v "$repo_root:/repo" \
+      trufflesecurity/trufflehog:v3.95.5 \
+      git file:///repo --results=verified,unknown --fail
+    return
+  fi
+
+  echo "TruffleHog is not available. Install trufflehog or Docker before pushing."
+  return 127
+}
+
+echo "Running local secret scans before push..."
+run_gitleaks
+run_trufflehog
+echo "Local secret scans passed."

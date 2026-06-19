@@ -1,7 +1,7 @@
 {
-  "name": "FFmpeg Catalyst",
-  "short_name": "Catalyst",
-  "description": "A local-first FFmpeg workstation with optional local AI command planning.",
+  "name": "Local Media Converter",
+  "short_name": "Media Converter",
+  "description": "Convert audio, video, and images in your browser with FFmpeg. Your files stay on your device.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#f7f8f3",

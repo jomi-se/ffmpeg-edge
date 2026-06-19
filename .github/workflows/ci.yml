@@ -30,7 +30,7 @@ jobs:
           path: ./
           base: ""
           head: HEAD
-          version: v3.95.5
+          version: 3.95.5
           extra_args: --results=verified,unknown
 
   verify:

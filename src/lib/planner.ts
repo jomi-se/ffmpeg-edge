@@ -96,7 +96,7 @@ export async function planCommand(request: PlanRequest): Promise<PlanResult> {
         source: "fallback",
         commandLine: argsToCommand(fallback.args),
         docsUsed,
-        warning: `Local model failed, so the app used deterministic fallback planning: ${errorMessage(error)}`,
+        warning: `Local model failed, so Catalyst used deterministic fallback planning: ${errorMessage(error)}`,
       };
     }
   }
@@ -238,7 +238,7 @@ function buildSystemPrompt(
   docsUsed: FfmpegDocChunk[],
 ): string {
   return [
-    "You are a specialist CLI agent for ffmpeg.wasm inside a browser app named Local Media Converter.",
+    "You are a specialist CLI agent for ffmpeg.wasm inside a browser app named FFmpeg Catalyst.",
     "FFmpeg is the primary tool and must remain visible and credited.",
     "Return only JSON with keys: args (array of strings), explanation (short string), docs (array of doc URLs).",
     "Do not include the literal 'ffmpeg' executable. Use $INPUT for the input file and $OUTPUT for the output file.",

@@ -1,13 +1,12 @@
 {
-  "name": "local-media-converter",
+  "name": "ffmpeg-catalyst",
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "A browser-based local media converter powered by FFmpeg.",
+  "description": "A browser-native FFmpeg workstation with local AI-assisted command planning.",
   "scripts": {
     "dev": "vite --host 0.0.0.0 --clearScreen false --logLevel error",
-    "typecheck": "tsc -b --pretty false",
-    "build": "npm --silent run typecheck && vite build --logLevel error",
+    "build": "tsc -b --pretty false && vite build --logLevel error",
     "preview": "vite preview --host 0.0.0.0 --clearScreen false --logLevel error",
     "lint": "eslint . --quiet",
     "format:check": "git ls-files -z | xargs -0 prettier --list-different --ignore-unknown",
@@ -32,7 +31,7 @@
     "eslint-plugin-react-refresh": "^0.4.24",
     "globals": "^16.5.0",
     "prettier": "^3.7.4",
-    "typescript": "~5.9.3",
+    "typescript": "~6.0.3",
     "typescript-eslint": "^8.50.0",
     "vite": "^7.2.7"
   }

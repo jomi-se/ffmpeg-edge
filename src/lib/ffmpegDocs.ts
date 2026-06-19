@@ -14,7 +14,7 @@ export const ffmpegDocChunks: FfmpegDocChunk[] = [
     title: "Input and output files",
     section: "ffmpeg CLI",
     summary:
-      "Use -i before each input. The final non-option token is usually the output file. The app uses $INPUT and $OUTPUT placeholders before execution.",
+      "Use -i before each input. The final non-option token is usually the output file. Catalyst uses $INPUT and $OUTPUT placeholders before execution.",
     syntax: "-i $INPUT [options] $OUTPUT",
     url: "https://ffmpeg.org/ffmpeg.html",
     tags: ["input", "output", "file", "placeholder"],
@@ -66,7 +66,7 @@ export const ffmpegDocChunks: FfmpegDocChunk[] = [
     title: "Create high quality GIFs",
     section: "Palette filters",
     summary:
-      "Generate a palette and apply paletteuse for better GIF colors. The app can start with a simpler one-pass command, but palettegen/paletteuse is the quality path.",
+      "Generate a palette and apply paletteuse for better GIF colors. Catalyst can start with a simpler one-pass command, but palettegen/paletteuse is the quality path.",
     syntax: "-i $INPUT -vf fps=12,scale=640:-1:flags=lanczos $OUTPUT",
     url: "https://ffmpeg.org/ffmpeg-filters.html#palettegen",
     tags: ["gif", "palette", "palettegen", "paletteuse", "image"],

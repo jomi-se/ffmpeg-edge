@@ -63,7 +63,6 @@ bundle splitting or model-loading performance.
 
 ## Secret Scanning
 
-- Use only free secret-scanning tools and features.
 - Local clones should run `npm --silent run setup:hooks` once so `.githooks/pre-push` runs Gitleaks
   before every push.
 - Before making the repository public or after touching credentials, run a full-history secret scan.

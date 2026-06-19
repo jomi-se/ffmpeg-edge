@@ -3,9 +3,12 @@ dist/
 .DS_Store
 .env
 .env.local
+.antigravitycli/
 .agents/
 .codex/
+.gemini/
 .playwright-mcp/
 *.tsbuildinfo
+skills-lock.json
 ADVERSARIAL_REVIEW_PROMPT.md
 ADVERSARIAL_REVIEW_OUTPUT.md

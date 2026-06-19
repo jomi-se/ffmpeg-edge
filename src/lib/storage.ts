@@ -4,7 +4,7 @@ export interface StoredOutput {
   updatedAt: number;
 }
 
-const rootName = "ffmpeg-catalyst";
+const rootName = "local-media-converter";
 const outputDirectory = "outputs";
 
 export function hasOPFSSupport(): boolean {

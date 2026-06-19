@@ -1,5 +1,5 @@
 const coepCredentialless = false;
-const runtimeCacheName = "ffmpeg-catalyst-runtime-v1";
+const runtimeCacheName = "local-media-converter-runtime-v1";
 
 const cacheableHosts = new Set([
   self.location.host,

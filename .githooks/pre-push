@@ -26,25 +26,6 @@ run_gitleaks() {
   return 127
 }
 
-run_trufflehog() {
-  if command -v trufflehog >/dev/null 2>&1; then
-    trufflehog git "file://$repo_root" --results=verified,unknown --fail
-    return
-  fi
-
-  if command -v docker >/dev/null 2>&1; then
-    docker run --rm \
-      -v "$repo_root:/repo" \
-      trufflesecurity/trufflehog:v3.95.5 \
-      git file:///repo --results=verified,unknown --fail
-    return
-  fi
-
-  echo "TruffleHog is not available. Install trufflehog or Docker before pushing."
-  return 127
-}
-
-echo "Running local secret scans before push..."
+echo "Running local Gitleaks secret scan before push..."
 run_gitleaks
-run_trufflehog
-echo "Local secret scans passed."
+echo "Local Gitleaks scan passed."

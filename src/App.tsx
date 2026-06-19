@@ -1,5 +1,6 @@
 import {
   Bot,
+  CircleStop,
   Database,
   Download,
   FileAudio,
@@ -7,6 +8,7 @@ import {
   FileVideo,
   Info,
   LoaderCircle,
+  Mic,
   Play,
   Save,
   Search,
@@ -57,7 +59,7 @@ type ChatMessage = {
 };
 
 const starterPrompt =
-  "Compress for sharing, keep broad compatibility, and preserve reasonable quality.";
+  "Compress this for sharing, keep it broadly compatible, and preserve reasonable quality.";
 
 export function App() {
   const [file, setFile] = useState<File | null>(null);
@@ -96,14 +98,17 @@ export function App() {
   const [outputUrl, setOutputUrl] = useState<string | null>(null);
   const [outputName, setOutputName] = useState<string | null>(null);
   const [savedOutputs, setSavedOutputs] = useState<StoredOutput[]>([]);
+  const [isListening, setIsListening] = useState(false);
   const [modelEvents, setModelEvents] = useState<string[]>([]);
   const [ffmpegStatus, setFfmpegStatus] = useState(
-    "FFmpeg loads automatically when you probe or run a command.",
+    "FFmpeg core loads automatically on probe or run.",
   );
   const [ffmpegEvents, setFfmpegEvents] = useState<string[]>([]);
   const [runtimeStatus, setRuntimeStatus] = useState(getFfmpegRuntimeStatus());
   const [browserStatus, setBrowserStatus] = useState(getBrowserRuntimeStatus());
-  const activeFileRef = useRef<File | null>(null);
+  const [speechDisclosureAccepted, setSpeechDisclosureAccepted] =
+    useState(false);
+  const recognitionRef = useRef<SpeechRecognition | null>(null);
 
   const chips = useMemo(() => commandToChips(args), [args]);
   const fileKind = getFileKind(file);
@@ -121,18 +126,8 @@ export function App() {
 
   useEffect(() => {
     const interval = window.setInterval(() => {
-      const nextRuntimeStatus = getFfmpegRuntimeStatus();
-      const nextBrowserStatus = getBrowserRuntimeStatus();
-      setRuntimeStatus((current) =>
-        JSON.stringify(current) === JSON.stringify(nextRuntimeStatus)
-          ? current
-          : nextRuntimeStatus,
-      );
-      setBrowserStatus((current) =>
-        JSON.stringify(current) === JSON.stringify(nextBrowserStatus)
-          ? current
-          : nextBrowserStatus,
-      );
+      setRuntimeStatus(getFfmpegRuntimeStatus());
+      setBrowserStatus(getBrowserRuntimeStatus());
     }, 2000);
     return () => window.clearInterval(interval);
   }, []);
@@ -166,52 +161,35 @@ export function App() {
       modelPresets[0];
     setModelId(preset.id);
     setUseModel(false);
-    setModelStatus(
-      `${preset.name} selected. Load it to plan with the local model.`,
-    );
+    setModelStatus(`${preset.name} selected. Load it before local planning.`);
     addModelEvent(`${preset.name} selected. Local planning is paused.`);
   }
 
   async function handleFile(nextFile: File | null) {
-    activeFileRef.current = nextFile;
     setFile(nextFile);
     setPlan(null);
-    setMetadata(null);
     setLogs([]);
     setOutputUrl(null);
     setOutputName(null);
 
     if (!nextFile) {
+      setMetadata(null);
       return;
     }
 
     setArgs(defaultArgsForFile(nextFile));
     setBusy("Reading metadata");
     try {
-      const data = await getMediaElementMetadata(nextFile);
-      if (activeFileRef.current === nextFile) {
-        setMetadata(data);
-        setMessages((existing) => [
-          ...existing,
-          {
-            role: "system",
-            content: `Loaded ${nextFile.name} (${formatBytes(nextFile.size)}). Run ffprobe for stream-level details before complex commands.`,
-          },
-        ]);
-      }
-    } catch (error) {
-      if (activeFileRef.current === nextFile) {
-        const message = `Metadata error: ${errorMessage(error)}`;
-        setLogs((existing) => [...existing, message]);
-        setMessages((existing) => [
-          ...existing,
-          { role: "assistant", content: message },
-        ]);
-      }
+      setMetadata(await getMediaElementMetadata(nextFile));
+      setMessages((existing) => [
+        ...existing,
+        {
+          role: "system",
+          content: `Loaded ${nextFile.name} (${formatBytes(nextFile.size)}). Run ffprobe for stream-level details before complex commands.`,
+        },
+      ]);
     } finally {
-      if (activeFileRef.current === nextFile) {
-        setBusy(null);
-      }
+      setBusy(null);
     }
   }
 
@@ -315,11 +293,11 @@ export function App() {
         addModelEvent(status);
       });
       setUseModel(true);
-      setModelStatus("Local model ready");
+      setModelStatus("Ready");
       addModelEvent(`${selectedModelPreset.name} is ready for local planning.`);
     } catch (error) {
       const message = errorMessage(error);
-      setModelStatus(`Model load failed: ${message}`);
+      setModelStatus(`Load failed: ${message}`);
       addModelEvent(`Load failed. You can retry without reloading: ${message}`);
     } finally {
       setBusy(null);
@@ -437,6 +415,48 @@ export function App() {
     });
   }
 
+  function startListening() {
+    if (!speechDisclosureAccepted) {
+      const accepted = window.confirm(
+        "Speech recognition is provided by your browser and may use that browser vendor's remote service. Source media still stays local. Continue?",
+      );
+      if (!accepted) return;
+      setSpeechDisclosureAccepted(true);
+    }
+
+    const SpeechRecognitionClass =
+      window.SpeechRecognition ?? window.webkitSpeechRecognition;
+    if (!SpeechRecognitionClass) {
+      setMessages((existing) => [
+        ...existing,
+        {
+          role: "assistant",
+          content: "This browser does not expose the Web Speech API.",
+        },
+      ]);
+      return;
+    }
+
+    const recognition = new SpeechRecognitionClass();
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.lang = "en-US";
+    recognition.onresult = (event) => {
+      const transcript = event.results[0]?.[0]?.transcript;
+      if (transcript) setPrompt(transcript);
+    };
+    recognition.onend = () => setIsListening(false);
+    recognition.onerror = () => setIsListening(false);
+    recognitionRef.current = recognition;
+    setIsListening(true);
+    recognition.start();
+  }
+
+  function stopListening() {
+    recognitionRef.current?.stop();
+    setIsListening(false);
+  }
+
   async function downloadSaved(name: string) {
     const saved = await readOutput(name);
     const url = URL.createObjectURL(saved);
@@ -458,8 +478,8 @@ export function App() {
     <main className="app-shell">
       <header className="top-bar">
         <div>
-          <p className="eyebrow">FFmpeg leads. Files stay local.</p>
-          <h1>Local Media Converter</h1>
+          <p className="eyebrow">Gemma assists. FFmpeg leads.</p>
+          <h1>FFmpeg Catalyst</h1>
         </div>
         <a
           className="text-link"
@@ -471,10 +491,7 @@ export function App() {
         </a>
       </header>
 
-      <section
-        className="workspace"
-        aria-label="Local Media Converter workspace"
-      >
+      <section className="workspace" aria-label="FFmpeg Catalyst workspace">
         <aside className="left-rail">
           <section className="panel upload-panel">
             <div className="panel-title">
@@ -597,8 +614,6 @@ export function App() {
             </div>
             <textarea
               className="prompt-box"
-              aria-label="Prompt for command intent"
-              placeholder="Describe the output you want, for example: compress to 720p"
               value={prompt}
               onChange={(event) => setPrompt(event.target.value)}
             />
@@ -609,7 +624,14 @@ export function App() {
                 onClick={() => handlePlan()}
               >
                 <Wand2 size={17} />
-                Plan FFmpeg args
+                Plan command
+              </button>
+              <button
+                className={isListening ? "danger-button" : "secondary-button"}
+                onClick={isListening ? stopListening : startListening}
+              >
+                {isListening ? <CircleStop size={17} /> : <Mic size={17} />}
+                {isListening ? "Stop" : "Push to talk"}
               </button>
             </div>
           </section>
@@ -626,7 +648,9 @@ export function App() {
                   className={`chip ${chip.kind}`}
                   disabled={!chip.editable}
                   onClick={() => editChip(chip.id, chip.token)}
-                  title={chip.editable ? "Edit argument" : "Managed argument"}
+                  title={
+                    chip.editable ? "Edit argument" : "Managed by Catalyst"
+                  }
                 >
                   <span>{chip.label}</span>
                   <code>{chip.token}</code>
@@ -774,7 +798,7 @@ export function App() {
               onClick={handleSelfCorrect}
             >
               <Wand2 size={16} />
-              Replan from logs
+              Ask planner to fix
             </button>
           </section>
         </aside>

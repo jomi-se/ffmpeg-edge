@@ -1,8 +1,8 @@
-# AI Agent Instructions: Local Media Converter
+# AI Agent Instructions: FFmpeg Catalyst
 
 ## Project Context
 
-Local Media Converter is a browser-native media workstation that keeps FFmpeg visible, credited, and
+FFmpeg Catalyst is a browser-native media workstation that keeps FFmpeg visible, credited, and
 inspectable while local AI helps turn user intent into editable FFmpeg command arguments.
 
 This is a static Vite/React application intended to run locally during development and deploy as a
@@ -61,22 +61,6 @@ Use `npm --silent run verify` for the full local gate.
 Treat the Vite large-chunk warning from WebLLM as expected unless the task specifically concerns
 bundle splitting or model-loading performance.
 
-## Secret Scanning
-
-- Local clones should run `npm --silent run setup:hooks` once so `.githooks/pre-push` runs Gitleaks
-  before every push.
-- Before making the repository public or after touching credentials, run a full-history secret scan.
-  Use Gitleaks locally when available; if local scanners are unavailable, use targeted `git grep`,
-  `rg`, and `git log -p -G` checks as a fallback, then rely on CI for the official scanner pass.
-- GitHub Actions runs TruffleHog against full checkout history (`fetch-depth: 0`) so deleted secrets
-  still fail CI.
-- Once the repository is public, also enable/rely on GitHub's native free secret scanning for public
-  repositories.
-- Treat scanner findings as sensitive. Do not paste raw secret values into chat, logs, commits, or
-  issues; redact them and rotate any exposed credential.
-- A deleted secret is still exposed in git history. Rotate it first, then consider history rewrite
-  before public release.
-
 ## Git & Workflow
 
 - Never push to any remote branch without explicit, separate confirmation from the user for that
@@ -105,9 +89,8 @@ bundle splitting or model-loading performance.
      `SharedArrayBuffer` intent are still represented.
 
 4. **Planner is advisory**
-   - The AI planner proposes FFmpeg args; the editable chip UI and derived command args remain the
-     authority for what runs. Do not add an always-visible raw command editor unless explicitly
-     requested.
+   - The AI planner proposes FFmpeg args; the editable chip UI and raw command remain the authority
+     for what runs.
    - Invalid or unavailable WebLLM planning must fall back gracefully to deterministic templates.
    - Keep model defaults aligned with README. The current default is
      `Qwen3.5-0.8B-q4f16_1-MLC`; the desktop Gemma preset is
@@ -132,8 +115,8 @@ bundle splitting or model-loading performance.
 ## Frontend Standards
 
 - Build the actual tool surface first, not a marketing page.
-- Keep controls dense, readable, and work-focused: upload/probe, planner, command chips, run
-  progress, outputs, docs, and logs should remain easy to scan.
+- Keep controls dense, readable, and work-focused: upload/probe, planner, command chips, raw command,
+  run progress, outputs, docs, and logs should remain easy to scan.
 - Use lucide icons for icon buttons where available.
 - Do not introduce decorative UI that competes with command inspection or logs.
 - Maintain responsive layouts for desktop and mobile-width previews. Text should not overflow its
@@ -159,8 +142,7 @@ bundle splitting or model-loading performance.
 - For FFmpeg runtime bugs, capture the command args, input type, relevant logs, and whether the
   browser was cross-origin isolated.
 - For UI bugs, reproduce in the local Vite preview when possible and verify the changed viewport or
-  interaction directly before handoff. Include a Playwright mobile pass that approximates Chrome on a
-  Pixel 7 (412px-wide viewport with mobile/touch behavior where the harness supports it).
+  interaction directly before handoff.
 
 ## Deployment Notes
 

@@ -145,7 +145,7 @@ export function suggestedOutputName(
   extension = "mp4",
 ): string {
   const base = fileName.replace(/\.[^.]+$/, "");
-  return `${base || "output"}-converted.${extension}`;
+  return `${base || "output"}-catalyst.${extension}`;
 }
 
 export function argsToCommand(args: string[]): string {

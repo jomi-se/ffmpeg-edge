@@ -248,11 +248,17 @@ export function App() {
     }
   }
 
-  async function handlePlan(promptOverride?: string) {
+  async function handlePlan(promptOverride?: string, isSelfCorrect?: boolean) {
     const activePrompt = promptOverride ?? prompt;
-    setBusy(
-      useModel ? "Planning with local model" : "Planning with local docs",
-    );
+    if (isSelfCorrect) {
+      setBusy(
+        useModel ? "Replanning with local model" : "Replanning with local docs",
+      );
+    } else {
+      setBusy(
+        useModel ? "Planning with local model" : "Planning with local docs",
+      );
+    }
     setMessages((existing) => [
       ...existing,
       { role: "user", content: activePrompt },
@@ -413,7 +419,7 @@ export function App() {
     const failure = logs.slice(-20).join("\n");
     const correctionPrompt = `The FFmpeg command failed. Current command: ${argsToCommand(args)}\nError log:\n${failure}\nReturn a corrected command.`;
     setPrompt(correctionPrompt);
-    await handlePlan(correctionPrompt);
+    await handlePlan(correctionPrompt, true);
   }
 
   function syncRawCommand() {
@@ -779,7 +785,7 @@ export function App() {
               disabled={!logs.length || !!busy}
               onClick={handleSelfCorrect}
             >
-              {busy?.startsWith("Planning") ? (
+              {busy?.startsWith("Replanning") ? (
                 <LoaderCircle className="spin" size={16} />
               ) : (
                 <Wand2 size={16} />

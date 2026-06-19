@@ -510,7 +510,11 @@ export function App() {
               disabled={!file || !!busy}
               onClick={handleProbe}
             >
-              <Search size={16} />
+              {busy === "Running ffprobe" ? (
+                <LoaderCircle className="spin" size={16} />
+              ) : (
+                <Search size={16} />
+              )}
               Probe with ffprobe
             </button>
             <MetadataView metadata={metadata} />
@@ -606,7 +610,11 @@ export function App() {
                 disabled={!!busy}
                 onClick={() => handlePlan()}
               >
-                <Wand2 size={17} />
+                {busy?.startsWith("Planning") ? (
+                  <LoaderCircle className="spin" size={17} />
+                ) : (
+                  <Wand2 size={17} />
+                )}
                 Plan FFmpeg args
               </button>
             </div>
@@ -771,7 +779,11 @@ export function App() {
               disabled={!logs.length || !!busy}
               onClick={handleSelfCorrect}
             >
-              <Wand2 size={16} />
+              {busy?.startsWith("Planning") ? (
+                <LoaderCircle className="spin" size={16} />
+              ) : (
+                <Wand2 size={16} />
+              )}
               Replan from logs
             </button>
           </section>

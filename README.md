@@ -36,7 +36,14 @@ The Vite build uses a relative base path so the static `dist/` output can be hos
 
 ## GitHub Pages Notes
 
-Deploy the contents of `dist/`. The app registers `coi-serviceworker.js` from the same base path as the page, which is required for cross-origin isolation on static hosts that cannot set COOP/COEP headers directly.
+Deploy the contents of `dist/`. The repository includes a GitHub Actions workflow at
+`.github/workflows/pages.yml` that verifies the app, builds `dist/`, uploads it as a Pages artifact,
+and deploys it on pushes to `main`.
+
+In GitHub, configure the repository under Settings -> Pages -> Build and deployment -> Source:
+GitHub Actions.
+
+The app registers `coi-serviceworker.js` from the same base path as the page, which is required for cross-origin isolation on static hosts that cannot set COOP/COEP headers directly.
 
 After the service worker activates, reload once if the page reports that `crossOriginIsolated` is still false. Browsers may require that first controlled reload before multithreaded `ffmpeg.wasm` is available.
 

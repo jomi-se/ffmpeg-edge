@@ -42,11 +42,7 @@ export type FfmpegCoreMode = "multithread" | "single-thread" | "not-loaded";
 const coreVersion = "0.12.10";
 const singleThreadBase = `https://unpkg.com/@ffmpeg/core@${coreVersion}/dist/esm`;
 const multiThreadBase = `https://unpkg.com/@ffmpeg/core-mt@${coreVersion}/dist/esm`;
-const coreStartupTimeoutMs = 20_000;
-const classWorkerURL = new URL(
-  "../../node_modules/@ffmpeg/ffmpeg/dist/esm/worker.js",
-  import.meta.url,
-).toString();
+const coreStartupTimeoutMs = 90_000;
 
 let ffmpegInstance: FFmpeg | null = null;
 let loading: Promise<FFmpeg> | null = null;
@@ -113,7 +109,6 @@ export async function ensureFfmpeg(
       const useThreads =
         typeof SharedArrayBuffer !== "undefined" && crossOriginIsolated;
       recordLoadDebug("Starting FFmpeg load", {
-        classWorkerURL,
         crossOriginIsolated,
         sharedArrayBuffer: typeof SharedArrayBuffer !== "undefined",
         useThreads,
@@ -184,13 +179,11 @@ async function loadCore(
     );
   }
 
-  await checkResourceWithDebug(classWorkerURL, "FFmpeg class worker");
   onLoadStatus?.(`Starting ${label} FFmpeg core.`);
   const startupStarted = performance.now();
   try {
     await withTimeout(
       ffmpeg.load({
-        classWorkerURL,
         coreURL,
         wasmURL,
         ...(workerURL ? { workerURL } : {}),
@@ -203,6 +196,7 @@ async function loadCore(
       elapsedMs: Math.round(performance.now() - startupStarted),
       error: errorMessage(error),
     });
+    ffmpeg.terminate();
     throw error;
   }
   recordLoadDebug(`${label} FFmpeg startup finished`, {
@@ -233,7 +227,7 @@ export function getFfmpegDebugSnapshot(): string[] {
     `Core version: ${coreVersion}`,
     `Runtime: mode=${runtime.coreMode}, crossOriginIsolated=${runtime.crossOriginIsolated}, sharedArrayBuffer=${runtime.sharedArrayBuffer}`,
     `Loader: loaded=${Boolean(ffmpegInstance?.loaded)}, loading=${Boolean(loading)}, startupTimeoutMs=${coreStartupTimeoutMs}`,
-    `Class worker URL: ${classWorkerURL}`,
+    "Class worker: bundled @ffmpeg/ffmpeg worker",
     `Single-thread base: ${singleThreadBase}`,
     `Multithread base: ${multiThreadBase}`,
     ...loadDebugEvents.map((event) => `Load event: ${event}`),
@@ -427,38 +421,6 @@ async function fetchBlobURLWithDebug(
     return URL.createObjectURL(typedBlob);
   } catch (error) {
     recordLoadDebug(`Fetch failed for ${label}`, {
-      elapsedMs: Math.round(performance.now() - started),
-      error: errorMessage(error),
-      url,
-    });
-    throw error;
-  }
-}
-
-async function checkResourceWithDebug(
-  url: string,
-  label: string,
-): Promise<void> {
-  const started = performance.now();
-  recordLoadDebug(`Checking ${label}`, { url });
-
-  try {
-    const response = await fetch(url);
-    recordLoadDebug(`Check response for ${label}`, {
-      contentLength: response.headers.get("content-length"),
-      contentType: response.headers.get("content-type"),
-      elapsedMs: Math.round(performance.now() - started),
-      ok: response.ok,
-      status: response.status,
-      type: response.type,
-      url: response.url,
-    });
-
-    if (!response.ok) {
-      throw new Error(`${label} returned status ${response.status}`);
-    }
-  } catch (error) {
-    recordLoadDebug(`Check failed for ${label}`, {
       elapsedMs: Math.round(performance.now() - started),
       error: errorMessage(error),
       url,

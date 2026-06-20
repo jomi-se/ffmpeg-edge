@@ -30,6 +30,7 @@ export interface PlanResult extends PlannedCommand {
 
 type DocsDb = AnyOrama;
 
+const modelPlanTimeoutMs = 60_000;
 const gemma4E2BRepo =
   "https://huggingface.co/welcoma/gemma-4-E2B-it-q4f16_1-MLC";
 const gemma4E2BModelId = "gemma-4-E2B-it-q4f16_1-MLC";
@@ -59,6 +60,9 @@ let docsDbPromise: Promise<DocsDb> | null = null;
 let enginePromise: Promise<MLCEngine> | null = null;
 let loadedModelId: string | null = null;
 let loadingModelId: string | null = null;
+let lastModelError: string | null = null;
+let lastModelProgress: InitProgressReport | null = null;
+const modelDebugEvents: string[] = [];
 
 export async function searchFfmpegDocs(
   query: string,
@@ -81,15 +85,30 @@ export async function searchFfmpegDocs(
 }
 
 export async function planCommand(request: PlanRequest): Promise<PlanResult> {
+  recordModelDebug("Planner request started", {
+    fileName: request.file?.name,
+    fileType: request.file?.type,
+    modelId: request.modelId ?? defaultModelId,
+    promptLength: request.prompt.length,
+    useLocalModel: Boolean(request.useLocalModel),
+  });
   const docsUsed = await searchFfmpegDocs(
     `${request.prompt} ${request.file?.type ?? ""} ${request.file?.name ?? ""}`,
   );
+  recordModelDebug("Planner docs retrieved", {
+    docs: docsUsed.map((doc) => doc.id),
+    count: docsUsed.length,
+  });
 
   if (request.useLocalModel) {
     try {
       const fromModel = await planWithWebLLM(request, docsUsed);
       return fromModel;
     } catch (error) {
+      lastModelError = errorMessage(error);
+      recordModelDebug("Local model planning failed; using fallback", {
+        error: lastModelError,
+      });
       const fallback = fallbackPlan(request.prompt, request.file, docsUsed);
       return {
         ...fallback,
@@ -102,6 +121,9 @@ export async function planCommand(request: PlanRequest): Promise<PlanResult> {
   }
 
   const fallback = fallbackPlan(request.prompt, request.file, docsUsed);
+  recordModelDebug("Planner used deterministic fallback", {
+    reason: "useLocalModel=false",
+  });
   return {
     ...fallback,
     source: "fallback",
@@ -114,6 +136,15 @@ export async function ensureLocalModel(
   modelId = defaultModelId,
   onProgress?: (report: InitProgressReport) => void,
 ): Promise<MLCEngine> {
+  recordModelDebug("Ensure local model requested", {
+    loadedModelId,
+    loadingModelId,
+    modelId,
+    reusingPromise:
+      Boolean(enginePromise) &&
+      (loadedModelId === modelId || loadingModelId === modelId),
+  });
+
   if (
     enginePromise &&
     (loadedModelId === modelId || loadingModelId === modelId)
@@ -124,17 +155,41 @@ export async function ensureLocalModel(
   loadingModelId = modelId;
   enginePromise = (async () => {
     try {
+      recordModelDebug("Importing WebLLM runtime", { modelId });
       const { CreateMLCEngine, prebuiltAppConfig } =
         await import("@mlc-ai/web-llm");
+      const appConfig = getModelAppConfig(modelId, prebuiltAppConfig);
+      recordModelDebug("Starting WebLLM engine creation", {
+        cacheBackend: appConfig.cacheBackend,
+        modelId,
+        modelRecordFound: appConfig.model_list.some(
+          (record) => record.model_id === modelId,
+        ),
+      });
       const engine = await CreateMLCEngine(modelId, {
-        initProgressCallback: onProgress,
-        appConfig: getModelAppConfig(modelId, prebuiltAppConfig),
+        initProgressCallback: (report) => {
+          lastModelProgress = report;
+          recordModelDebug("Model load progress", {
+            progressPercent: Math.round(report.progress * 1000) / 10,
+            text: report.text,
+            timeElapsed: report.timeElapsed,
+          });
+          onProgress?.(report);
+        },
+        appConfig,
       });
       loadedModelId = modelId;
+      lastModelError = null;
+      recordModelDebug("WebLLM engine ready", { modelId });
       return engine;
     } catch (error) {
+      lastModelError = errorMessage(error);
       loadedModelId = null;
       enginePromise = null;
+      recordModelDebug("WebLLM engine creation failed", {
+        error: lastModelError,
+        modelId,
+      });
       throw error;
     } finally {
       loadingModelId = null;
@@ -142,6 +197,27 @@ export async function ensureLocalModel(
   })();
 
   return enginePromise;
+}
+
+export function getModelDebugSnapshot(): string[] {
+  const progress = lastModelProgress
+    ? `${Math.round(lastModelProgress.progress * 1000) / 10}% ${lastModelProgress.text}`
+    : "none";
+  return [
+    `Model debug snapshot at ${new Date().toISOString()}`,
+    `Default model: ${defaultModelId}`,
+    `Loaded model: ${loadedModelId ?? "none"}`,
+    `Loading model: ${loadingModelId ?? "none"}`,
+    `Engine promise active: ${Boolean(enginePromise)}`,
+    `Model plan timeout ms: ${modelPlanTimeoutMs}`,
+    `Last progress: ${progress}`,
+    `Last model error: ${lastModelError ?? "none"}`,
+    `Runtime: webGpu=${hasWebGpu()}, cacheApi=${hasCacheApi()}, indexedDb=${hasIndexedDb()}, crossOriginIsolated=${Boolean(globalThis.crossOriginIsolated)}`,
+    `Presets: ${modelPresets
+      .map((preset) => `${preset.id} (${preset.summary})`)
+      .join("; ")}`,
+    ...modelDebugEvents.map((event) => `Model event: ${event}`),
+  ];
 }
 
 function getModelAppConfig(
@@ -165,6 +241,16 @@ function getModelAppConfig(
 
 function hasCacheApi(): boolean {
   return typeof globalThis.caches !== "undefined";
+}
+
+function hasIndexedDb(): boolean {
+  return typeof globalThis.indexedDB !== "undefined";
+}
+
+function hasWebGpu(): boolean {
+  return (
+    typeof globalThis.navigator !== "undefined" && "gpu" in globalThis.navigator
+  );
 }
 
 function getDocsDb(): Promise<DocsDb> {
@@ -194,11 +280,17 @@ async function planWithWebLLM(
   request: PlanRequest,
   docsUsed: FfmpegDocChunk[],
 ): Promise<PlanResult> {
-  const engine = await ensureLocalModel(
-    request.modelId ?? defaultModelId,
-    request.onModelProgress,
-  );
-  const completion = await engine.chat.completions.create({
+  const modelId = request.modelId ?? defaultModelId;
+  recordModelDebug("WebLLM plan started", {
+    docsCount: docsUsed.length,
+    fileName: request.file?.name,
+    fileType: request.file?.type,
+    modelId,
+    promptLength: request.prompt.length,
+  });
+  const engine = await ensureLocalModel(modelId, request.onModelProgress);
+  const completionStarted = performance.now();
+  const completionPromise = engine.chat.completions.create({
     messages: [
       {
         role: "system",
@@ -212,18 +304,54 @@ async function planWithWebLLM(
     temperature: 0.1,
     response_format: { type: "json_object" },
   });
+  completionPromise.catch((error: unknown) => {
+    recordModelDebug("WebLLM completion eventually rejected", {
+      error: errorMessage(error),
+      modelId,
+    });
+  });
+  const completion = await withModelTimeout(
+    completionPromise,
+    modelPlanTimeoutMs,
+    `Local model planning timed out after ${Math.round(modelPlanTimeoutMs / 1000)} seconds`,
+    () => {
+      recordModelDebug("Interrupting WebLLM generation after timeout", {
+        elapsedMs: Math.round(performance.now() - completionStarted),
+        modelId,
+      });
+      engine.interruptGenerate();
+    },
+  );
+  recordModelDebug("WebLLM completion finished", {
+    elapsedMs: Math.round(performance.now() - completionStarted),
+    finishReason: completion.choices[0]?.finish_reason,
+    modelId,
+  });
   const raw = completion.choices[0]?.message.content ?? "";
+  recordModelDebug("WebLLM raw output received", {
+    modelId,
+    rawLength: raw.length,
+  });
   const parsed = parseModelPlan(raw, request.file);
   const validation = request.file
     ? validateCommandArgs(parsed.args, request.file.name)
     : { ok: true, errors: [] };
 
   if (!validation.ok) {
+    recordModelDebug("WebLLM command validation failed", {
+      errors: validation.errors,
+      modelId,
+    });
     throw new Error(
       `Model returned an invalid FFmpeg command: ${validation.errors.join(" ")}`,
     );
   }
 
+  lastModelError = null;
+  recordModelDebug("WebLLM plan accepted", {
+    args: parsed.args,
+    modelId,
+  });
   return {
     ...parsed,
     source: "webllm",
@@ -231,6 +359,38 @@ async function planWithWebLLM(
     docsUsed,
     rawModelOutput: raw,
   };
+}
+
+async function withModelTimeout<T>(
+  promise: Promise<T>,
+  timeoutMs: number,
+  message: string,
+  onTimeout: () => void,
+): Promise<T> {
+  let timeoutId: number | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timeoutId = window.setTimeout(() => {
+      onTimeout();
+      reject(new Error(message));
+    }, timeoutMs);
+  });
+
+  try {
+    return await Promise.race([promise, timeout]);
+  } finally {
+    if (timeoutId !== undefined) {
+      window.clearTimeout(timeoutId);
+    }
+  }
+}
+
+function recordModelDebug(
+  message: string,
+  details?: Record<string, unknown>,
+): void {
+  const detail = details ? ` ${JSON.stringify(details)}` : "";
+  modelDebugEvents.push(`${new Date().toISOString()} ${message}${detail}`);
+  modelDebugEvents.splice(0, Math.max(0, modelDebugEvents.length - 120));
 }
 
 function buildSystemPrompt(

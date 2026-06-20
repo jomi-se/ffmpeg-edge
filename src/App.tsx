@@ -33,6 +33,7 @@ import {
 import {
   defaultModelId,
   ensureLocalModel,
+  getModelDebugSnapshot,
   modelPresets,
   planCommand,
 } from "./lib/planner";
@@ -181,6 +182,12 @@ export function App() {
       });
       setArgs(result.args);
       setPrompt("");
+      if (result.warning) {
+        setLogs((existing) => [
+          ...existing,
+          `Model Warning: ${result.warning}`,
+        ]);
+      }
     } catch (error) {
       setLogs((existing) => [
         ...existing,
@@ -210,6 +217,10 @@ export function App() {
       setModelStatus("Local model ready");
     } catch (error) {
       setModelStatus(`Model load failed: ${errorMessage(error)}`);
+      setLogs((existing) => [
+        ...existing,
+        `Model Error: ${errorMessage(error)}`,
+      ]);
     } finally {
       setBusy(null);
     }
@@ -242,6 +253,21 @@ export function App() {
       ...existing,
       "",
       ...getFfmpegDebugSnapshot(),
+      `Browser: secureContext=${nextBrowserStatus.secureContext}, webGpu=${nextBrowserStatus.webGpu}, cacheApi=${nextBrowserStatus.cacheApi}, indexedDb=${nextBrowserStatus.indexedDb}`,
+      `Service worker: ${serviceWorkerStatus}`,
+      `User agent: ${navigator.userAgent}`,
+    ]);
+  }
+
+  async function handleAddModelDebugSnapshot() {
+    const nextBrowserStatus = getBrowserRuntimeStatus();
+    const serviceWorkerStatus = await getServiceWorkerDebugStatus();
+    setBrowserStatus(nextBrowserStatus);
+    setLogs((existing) => [
+      ...existing,
+      "",
+      ...getModelDebugSnapshot(),
+      `UI model: selected=${modelId}, preset=${selectedModelPreset.name}, useModel=${useModel}, status=${modelStatus}`,
       `Browser: secureContext=${nextBrowserStatus.secureContext}, webGpu=${nextBrowserStatus.webGpu}, cacheApi=${nextBrowserStatus.cacheApi}, indexedDb=${nextBrowserStatus.indexedDb}`,
       `Service worker: ${serviceWorkerStatus}`,
       `User agent: ${navigator.userAgent}`,
@@ -608,10 +634,15 @@ export function App() {
                 <div className="log-actions">
                   <button
                     className="btn-primary btn-setting"
-                    disabled={!!busy}
                     onClick={handleAddDebugSnapshot}
                   >
-                    <TerminalSquare size={16} /> Add debug snapshot
+                    <TerminalSquare size={16} /> Add FFmpeg snapshot
+                  </button>
+                  <button
+                    className="btn-primary btn-setting"
+                    onClick={handleAddModelDebugSnapshot}
+                  >
+                    <Database size={16} /> Add model snapshot
                   </button>
                   {logs.length > 0 && (
                     <button

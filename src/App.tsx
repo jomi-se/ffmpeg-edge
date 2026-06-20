@@ -94,6 +94,9 @@ export function App() {
     "128k",
     "$OUTPUT",
   ]);
+  const [lastPlannedPrompt, setLastPlannedPrompt] = useState<string | null>(
+    null,
+  );
   const [useModel, setUseModel] = useState(false);
   const [modelId, setModelId] = useState(defaultModelId);
   const [modelStatus, setModelStatus] = useState("Not loaded");
@@ -229,6 +232,7 @@ export function App() {
     setMetadata(null);
     setOutputUrl(null);
     setOutputName(null);
+    setLastPlannedPrompt(null);
 
     if (!nextFile) {
       return;
@@ -289,6 +293,7 @@ export function App() {
         onPlanStatus: (status) => setModelStatus(status),
       });
       setArgs(result.args);
+      setLastPlannedPrompt(activePrompt.trim());
       setPrompt("");
       log.info("app", "Plan ready", {
         args: result.args,
@@ -567,6 +572,12 @@ export function App() {
                 <div className="command-header">
                   <h2 className="text-muted">Review FFmpeg args</h2>
                 </div>
+                {lastPlannedPrompt && (
+                  <p className="command-prompt-echo">
+                    <Wand2 size={13} />
+                    <span>{lastPlannedPrompt}</span>
+                  </p>
+                )}
                 <div className="chip-grid">
                   {chips.map((chip) => (
                     <button

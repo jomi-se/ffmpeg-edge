@@ -425,13 +425,14 @@ async function planWithWebLLM(
       },
       {
         role: "user",
-        // `/no_think` is Qwen3's soft switch to skip the <think> reasoning
-        // block, which otherwise consumes the token budget before any JSON.
-        content: `${request.prompt}\n\n/no_think`,
+        content: request.prompt,
       },
     ],
     temperature: 0.1,
     max_tokens: maxPlanTokens,
+    // WebLLM-native switch: skips the Qwen3 <think> reasoning block so the
+    // token budget is spent on the JSON answer instead of reasoning.
+    extra_body: { enable_thinking: false },
     stream: true,
   });
 
@@ -625,13 +626,9 @@ function buildSystemPrompt(
 }
 
 function parseModelPlan(raw: string, file?: File): PlannedCommand {
-  // Reasoning models (Qwen3) wrap output in <think>…</think>; strip it (and any
-  // unterminated leading block) before extracting the JSON object.
-  const withoutThink = raw
-    .replace(/<think>[\s\S]*?<\/think>/gi, "")
-    .replace(/<think>[\s\S]*$/i, "")
-    .trim();
-  const jsonText = withoutThink.match(/\{[\s\S]*\}/)?.[0] ?? withoutThink;
+  // Reasoning is suppressed at the engine level (extra_body.enable_thinking),
+  // so the answer is plain text; extract the JSON object from it.
+  const jsonText = raw.match(/\{[\s\S]*\}/)?.[0] ?? raw;
   const value = JSON.parse(jsonText) as Partial<PlannedCommand> | string[];
   const args = Array.isArray(value) ? value : value.args;
 

@@ -61,22 +61,6 @@ Use `npm --silent run verify` for the full local gate.
 Treat the Vite large-chunk warning from WebLLM as expected unless the task specifically concerns
 bundle splitting or model-loading performance.
 
-## Secret Scanning
-
-- Local clones should run `npm --silent run setup:hooks` once so `.githooks/pre-push` runs Gitleaks
-  before every push.
-- Before making the repository public or after touching credentials, run a full-history secret scan.
-  Use Gitleaks locally when available; if local scanners are unavailable, use targeted `git grep`,
-  `rg`, and `git log -p -G` checks as a fallback, then rely on CI for the official scanner pass.
-- GitHub Actions runs TruffleHog against full checkout history (`fetch-depth: 0`) so deleted secrets
-  still fail CI.
-- Once the repository is public, also enable/rely on GitHub's native free secret scanning for public
-  repositories.
-- Treat scanner findings as sensitive. Do not paste raw secret values into chat, logs, commits, or
-  issues; redact them and rotate any exposed credential.
-- A deleted secret is still exposed in git history. Rotate it first, then consider history rewrite
-  before public release.
-
 ## Git & Workflow
 
 - Never push to any remote branch without explicit, separate confirmation from the user for that

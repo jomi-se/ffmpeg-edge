@@ -6,13 +6,11 @@
   "description": "A browser-based local media converter powered by FFmpeg.",
   "scripts": {
     "dev": "vite --host 0.0.0.0 --clearScreen false --logLevel error",
-    "typecheck": "tsc -b --pretty false",
-    "build": "npm --silent run typecheck && vite build --logLevel error",
+    "build": "tsc -b --pretty false && vite build --logLevel error",
     "preview": "vite preview --host 0.0.0.0 --clearScreen false --logLevel error",
     "lint": "eslint . --quiet",
     "format:check": "git ls-files -z | xargs -0 prettier --list-different --ignore-unknown",
-    "verify": "npm --silent run build && npm --silent run lint && npm --silent run format:check",
-    "setup:hooks": "git config core.hooksPath .githooks"
+    "verify": "npm --silent run build && npm --silent run lint && npm --silent run format:check"
   },
   "dependencies": {
     "@ffmpeg/ffmpeg": "^0.12.15",

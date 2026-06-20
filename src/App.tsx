@@ -24,6 +24,7 @@ import {
 } from "./lib/command";
 import {
   ensureFfmpeg,
+  getFfmpegDebugSnapshot,
   getFfmpegRuntimeStatus,
   getMediaElementMetadata,
   runFfmpegCommand,
@@ -229,6 +230,22 @@ export function App() {
     } finally {
       setBusy(null);
     }
+  }
+
+  async function handleAddDebugSnapshot() {
+    const nextRuntimeStatus = getFfmpegRuntimeStatus();
+    const nextBrowserStatus = getBrowserRuntimeStatus();
+    const serviceWorkerStatus = await getServiceWorkerDebugStatus();
+    setRuntimeStatus(nextRuntimeStatus);
+    setBrowserStatus(nextBrowserStatus);
+    setLogs((existing) => [
+      ...existing,
+      "",
+      ...getFfmpegDebugSnapshot(),
+      `Browser: secureContext=${nextBrowserStatus.secureContext}, webGpu=${nextBrowserStatus.webGpu}, cacheApi=${nextBrowserStatus.cacheApi}, indexedDb=${nextBrowserStatus.indexedDb}`,
+      `Service worker: ${serviceWorkerStatus}`,
+      `User agent: ${navigator.userAgent}`,
+    ]);
   }
 
   async function handleRun() {
@@ -588,15 +605,24 @@ export function App() {
                     </div>
                   )}
                 </div>
-                {logs.length > 0 && (
+                <div className="log-actions">
                   <button
                     className="btn-primary btn-setting"
                     disabled={!!busy}
-                    onClick={handleSelfCorrect}
+                    onClick={handleAddDebugSnapshot}
                   >
-                    <Wand2 size={16} /> Replan from logs
+                    <TerminalSquare size={16} /> Add debug snapshot
                   </button>
-                )}
+                  {logs.length > 0 && (
+                    <button
+                      className="btn-primary btn-setting"
+                      disabled={!!busy}
+                      onClick={handleSelfCorrect}
+                    >
+                      <Wand2 size={16} /> Replan from logs
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -623,6 +649,22 @@ function getBrowserRuntimeStatus() {
     cacheApi: "caches" in window,
     indexedDb: "indexedDB" in window,
   };
+}
+
+async function getServiceWorkerDebugStatus(): Promise<string> {
+  if (!("serviceWorker" in navigator)) {
+    return "unsupported";
+  }
+
+  const controller = navigator.serviceWorker.controller;
+  try {
+    const registration = await navigator.serviceWorker.getRegistration();
+    const scope = registration?.scope ?? "none";
+    const activeState = registration?.active?.state ?? "none";
+    return `controller=${controller ? "yes" : "no"}, scope=${scope}, active=${activeState}`;
+  } catch (error) {
+    return `controller=${controller ? "yes" : "no"}, registrationError=${errorMessage(error)}`;
+  }
 }
 
 function formatCoreMode(

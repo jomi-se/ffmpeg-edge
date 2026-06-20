@@ -1,5 +1,5 @@
 import { FFmpeg } from "@ffmpeg/ffmpeg";
-import { fetchFile, toBlobURL } from "@ffmpeg/util";
+import { fetchFile } from "@ffmpeg/util";
 import {
   commandLineToArgs as parseCommandLineToArgs,
   inferOutputName,
@@ -51,6 +51,7 @@ const classWorkerURL = new URL(
 let ffmpegInstance: FFmpeg | null = null;
 let loading: Promise<FFmpeg> | null = null;
 let coreMode: FfmpegCoreMode = "not-loaded";
+const loadDebugEvents: string[] = [];
 
 export async function getMediaElementMetadata(
   file: File,
@@ -111,6 +112,12 @@ export async function ensureFfmpeg(
     try {
       const useThreads =
         typeof SharedArrayBuffer !== "undefined" && crossOriginIsolated;
+      recordLoadDebug("Starting FFmpeg load", {
+        classWorkerURL,
+        crossOriginIsolated,
+        sharedArrayBuffer: typeof SharedArrayBuffer !== "undefined",
+        useThreads,
+      });
 
       if (useThreads) {
         try {
@@ -132,6 +139,9 @@ export async function ensureFfmpeg(
     } catch (error) {
       coreMode = "not-loaded";
       ffmpegInstance = null;
+      recordLoadDebug("FFmpeg core load failed", {
+        error: errorMessage(error),
+      });
       onLoadStatus?.(`FFmpeg core load failed: ${errorMessage(error)}`);
       throw error;
     } finally {
@@ -152,33 +162,52 @@ async function loadCore(
   const label = useThreads ? "multithreaded" : "single-threaded";
 
   onLoadStatus?.(`Fetching ${label} FFmpeg core JavaScript from unpkg.`);
-  const coreURL = await toBlobURL(`${base}/ffmpeg-core.js`, "text/javascript");
+  const coreURL = await fetchBlobURLWithDebug(
+    `${base}/ffmpeg-core.js`,
+    "text/javascript",
+    `${label} core JavaScript`,
+  );
   onLoadStatus?.(`Fetching ${label} FFmpeg core WebAssembly from unpkg.`);
-  const wasmURL = await toBlobURL(
+  const wasmURL = await fetchBlobURLWithDebug(
     `${base}/ffmpeg-core.wasm`,
     "application/wasm",
+    `${label} core WebAssembly`,
   );
   let workerURL: string | undefined;
 
   if (useThreads) {
     onLoadStatus?.("Fetching multithreaded FFmpeg worker from unpkg.");
-    workerURL = await toBlobURL(
+    workerURL = await fetchBlobURLWithDebug(
       `${base}/ffmpeg-core.worker.js`,
       "text/javascript",
+      "multithreaded core worker",
     );
   }
 
+  await checkResourceWithDebug(classWorkerURL, "FFmpeg class worker");
   onLoadStatus?.(`Starting ${label} FFmpeg core.`);
-  await withTimeout(
-    ffmpeg.load({
-      classWorkerURL,
-      coreURL,
-      wasmURL,
-      ...(workerURL ? { workerURL } : {}),
-    }),
-    coreStartupTimeoutMs,
-    `${label} FFmpeg core startup timed out`,
-  );
+  const startupStarted = performance.now();
+  try {
+    await withTimeout(
+      ffmpeg.load({
+        classWorkerURL,
+        coreURL,
+        wasmURL,
+        ...(workerURL ? { workerURL } : {}),
+      }),
+      coreStartupTimeoutMs,
+      `${label} FFmpeg core startup timed out`,
+    );
+  } catch (error) {
+    recordLoadDebug(`${label} FFmpeg startup failed`, {
+      elapsedMs: Math.round(performance.now() - startupStarted),
+      error: errorMessage(error),
+    });
+    throw error;
+  }
+  recordLoadDebug(`${label} FFmpeg startup finished`, {
+    elapsedMs: Math.round(performance.now() - startupStarted),
+  });
   onLoadStatus?.(`FFmpeg core loaded in ${mode} mode.`);
   return ffmpeg;
 }
@@ -195,6 +224,20 @@ export function getFfmpegRuntimeStatus(): {
       globalThis.crossOriginIsolated,
     sharedArrayBuffer: typeof SharedArrayBuffer !== "undefined",
   };
+}
+
+export function getFfmpegDebugSnapshot(): string[] {
+  const runtime = getFfmpegRuntimeStatus();
+  return [
+    `FFmpeg debug snapshot at ${new Date().toISOString()}`,
+    `Core version: ${coreVersion}`,
+    `Runtime: mode=${runtime.coreMode}, crossOriginIsolated=${runtime.crossOriginIsolated}, sharedArrayBuffer=${runtime.sharedArrayBuffer}`,
+    `Loader: loaded=${Boolean(ffmpegInstance?.loaded)}, loading=${Boolean(loading)}, startupTimeoutMs=${coreStartupTimeoutMs}`,
+    `Class worker URL: ${classWorkerURL}`,
+    `Single-thread base: ${singleThreadBase}`,
+    `Multithread base: ${multiThreadBase}`,
+    ...loadDebugEvents.map((event) => `Load event: ${event}`),
+  ];
 }
 
 export async function probeWithFfmpeg(
@@ -348,6 +391,82 @@ async function cleanupFiles(ffmpeg: FFmpeg, paths: string[]): Promise<void> {
   );
 }
 
+async function fetchBlobURLWithDebug(
+  url: string,
+  mimeType: string,
+  label: string,
+): Promise<string> {
+  const started = performance.now();
+  recordLoadDebug(`Fetching ${label}`, { mimeType, url });
+
+  try {
+    const response = await fetch(url);
+    const responseElapsedMs = Math.round(performance.now() - started);
+    recordLoadDebug(`Fetch response for ${label}`, {
+      contentLength: response.headers.get("content-length"),
+      contentType: response.headers.get("content-type"),
+      elapsedMs: responseElapsedMs,
+      ok: response.ok,
+      status: response.status,
+      type: response.type,
+      url: response.url,
+    });
+
+    if (!response.ok) {
+      throw new Error(`${label} fetch failed with status ${response.status}`);
+    }
+
+    const blob = await response.blob();
+    const typedBlob =
+      blob.type === mimeType ? blob : new Blob([blob], { type: mimeType });
+    recordLoadDebug(`Blob URL ready for ${label}`, {
+      elapsedMs: Math.round(performance.now() - started),
+      size: typedBlob.size,
+      type: typedBlob.type,
+    });
+    return URL.createObjectURL(typedBlob);
+  } catch (error) {
+    recordLoadDebug(`Fetch failed for ${label}`, {
+      elapsedMs: Math.round(performance.now() - started),
+      error: errorMessage(error),
+      url,
+    });
+    throw error;
+  }
+}
+
+async function checkResourceWithDebug(
+  url: string,
+  label: string,
+): Promise<void> {
+  const started = performance.now();
+  recordLoadDebug(`Checking ${label}`, { url });
+
+  try {
+    const response = await fetch(url);
+    recordLoadDebug(`Check response for ${label}`, {
+      contentLength: response.headers.get("content-length"),
+      contentType: response.headers.get("content-type"),
+      elapsedMs: Math.round(performance.now() - started),
+      ok: response.ok,
+      status: response.status,
+      type: response.type,
+      url: response.url,
+    });
+
+    if (!response.ok) {
+      throw new Error(`${label} returned status ${response.status}`);
+    }
+  } catch (error) {
+    recordLoadDebug(`Check failed for ${label}`, {
+      elapsedMs: Math.round(performance.now() - started),
+      error: errorMessage(error),
+      url,
+    });
+    throw error;
+  }
+}
+
 function attachFfmpegEvents(
   ffmpeg: FFmpeg,
   onLog?: FfmpegLogHandler,
@@ -369,6 +488,15 @@ function attachFfmpegEvents(
     ffmpeg.off("log", logCallback);
     ffmpeg.off("progress", progressCallback);
   };
+}
+
+function recordLoadDebug(
+  message: string,
+  details?: Record<string, unknown>,
+): void {
+  const detail = details ? ` ${JSON.stringify(details)}` : "";
+  loadDebugEvents.push(`${new Date().toISOString()} ${message}${detail}`);
+  loadDebugEvents.splice(0, Math.max(0, loadDebugEvents.length - 80));
 }
 
 async function withTimeout<T>(

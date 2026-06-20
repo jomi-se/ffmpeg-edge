@@ -488,6 +488,12 @@ select.input-select {
   padding: var(--space-4) 0;
 }
 
+.log-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
 /* Progress */
 .progress-bar {
   height: 4px;

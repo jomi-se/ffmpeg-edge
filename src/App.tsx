@@ -513,6 +513,7 @@ export function App() {
                 onClick={() => setIsFlipped(true)}
                 className="icon-btn"
                 title="Runtime and logs"
+                aria-label="Runtime and logs"
               >
                 <Settings2 size={18} />
               </button>
@@ -559,6 +560,7 @@ export function App() {
                   onClick={() => handleFile(null)}
                   className="icon-btn"
                   title="Remove file"
+                  aria-label="Remove file"
                   disabled={!!busy}
                 >
                   <Trash2 size={16} />
@@ -662,6 +664,7 @@ export function App() {
                 <textarea
                   ref={promptRef}
                   placeholder="Describe the output you want, for example: compress to 720p"
+                  aria-label="FFmpeg planner prompt"
                   value={prompt}
                   onChange={(e) => setPrompt(e.target.value)}
                   onFocus={() => {
@@ -682,6 +685,7 @@ export function App() {
                   onClick={() => handlePlan()}
                   disabled={!!busy || !prompt.trim()}
                   title="Plan FFmpeg args"
+                  aria-label="Plan FFmpeg args"
                 >
                   {planning ? (
                     <LoaderCircle className="spin" size={16} />
@@ -703,6 +707,7 @@ export function App() {
                 onClick={() => setIsFlipped(false)}
                 className="icon-btn"
                 title="Back to local workspace"
+                aria-label="Back to local workspace"
               >
                 <ChevronLeft size={20} />
               </button>

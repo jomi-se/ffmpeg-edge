@@ -1,5 +1,10 @@
 import { create, insertMultiple, search, type AnyOrama } from "@orama/orama";
-import type { AppConfig, InitProgressReport, MLCEngine } from "@mlc-ai/web-llm";
+import type {
+  AppConfig,
+  CompletionUsage,
+  InitProgressReport,
+  MLCEngine,
+} from "@mlc-ai/web-llm";
 import {
   argsToCommand,
   ensureCommandOutput,
@@ -505,39 +510,51 @@ async function runWebLLMPlan(
     promptLength: request.prompt.length,
   });
   const engine = await ensureLocalModel(modelId, request.onModelProgress);
+
+  // Log the exact context the model receives so context quality can be judged
+  // from the debug view (the whole point of small-model + good-context).
+  const systemPrompt = buildSystemPrompt(request.metadata, docsUsed);
+  recordModelDebug("Injected docs", {
+    count: docsUsed.length,
+    docs: docsUsed.map((doc) => ({
+      id: doc.id,
+      title: doc.title,
+      syntax: doc.syntax,
+    })),
+  });
+  recordModelDebug("System prompt", {
+    chars: systemPrompt.length,
+    text: systemPrompt,
+  });
+  recordModelDebug("User prompt", { text: request.prompt });
+
   const completionStarted = performance.now();
   // No response_format/grammar: grammar-masked decoding hangs at the first
   // token on some mobile GPUs (observed: arm/valhall, 0 tokens in 100s+).
   // The system prompt asks for JSON and parseModelPlan extracts/validates it.
   const stream = await engine.chat.completions.create({
     messages: [
-      {
-        role: "system",
-        content: buildSystemPrompt(request.metadata, docsUsed),
-      },
-      {
-        role: "user",
-        content: request.prompt,
-      },
+      { role: "system", content: systemPrompt },
+      { role: "user", content: request.prompt },
     ],
     temperature: 0.1,
     max_tokens: maxPlanTokens,
     // WebLLM-native switch: skips the Qwen3 <think> reasoning block so the
     // token budget is spent on the JSON answer instead of reasoning.
-    extra_body: { enable_thinking: false },
+    extra_body: { enable_thinking: false, enable_latency_breakdown: true },
+    // Final chunk carries token usage + prefill/decode tokens-per-second.
+    stream_options: { include_usage: true },
     stream: true,
   });
 
   recordModelDebug("Generation started (streaming)", { modelId });
   request.onPlanStatus?.("Planning locally…");
-  const { raw, tokenCount, finishReason, abortReason } =
+  const { raw, tokenCount, finishReason, abortReason, usage } =
     await consumePlanStream(stream, engine, completionStarted, (count) =>
       request.onPlanStatus?.(`Planning locally… ${count} tokens`),
     );
 
   const elapsedMs = Math.round(performance.now() - completionStarted);
-  const tokensPerSecond =
-    elapsedMs > 0 ? Math.round((tokenCount / elapsedMs) * 10000) / 10 : 0;
   recordModelDebug(
     "WebLLM streaming finished",
     {
@@ -547,10 +564,24 @@ async function runWebLLMPlan(
       modelId,
       rawLength: raw.length,
       tokenCount,
-      tokensPerSecond,
     },
     abortReason ? "warn" : "info",
   );
+  // Authoritative perf from WebLLM: prefill vs decode are very different (prefill
+  // dominates time-to-first-token); our own tokenCount/elapsed conflates them.
+  if (usage) {
+    recordModelDebug("Generation metrics", {
+      promptTokens: usage.prompt_tokens,
+      completionTokens: usage.completion_tokens,
+      prefillTokensPerSec:
+        Math.round((usage.extra?.prefill_tokens_per_s ?? 0) * 10) / 10,
+      decodeTokensPerSec:
+        Math.round((usage.extra?.decode_tokens_per_s ?? 0) * 10) / 10,
+      timeToFirstTokenSec:
+        Math.round((usage.extra?.time_to_first_token_s ?? 0) * 10) / 10,
+      e2eLatencySec: Math.round((usage.extra?.e2e_latency_s ?? 0) * 10) / 10,
+    });
+  }
   // Always record what the model actually produced (truncated) so parse
   // failures are diagnosable from the log alone.
   recordModelDebug("WebLLM raw output", {
@@ -559,7 +590,7 @@ async function runWebLLMPlan(
 
   if (abortReason && !raw.trim()) {
     throw new Error(
-      `Local planning stopped because ${abortReason} (${tokenCount} tokens, ${tokensPerSecond} tokens/sec). Using deterministic fallback planning instead.`,
+      `Local planning stopped because ${abortReason} (${tokenCount} tokens). Using deterministic fallback planning instead.`,
     );
   }
 
@@ -602,6 +633,7 @@ type PlanChunk = {
     delta?: { content?: string | null };
     finish_reason?: string | null;
   }[];
+  usage?: CompletionUsage | null;
 };
 
 interface StreamConsumption {
@@ -609,6 +641,7 @@ interface StreamConsumption {
   tokenCount: number;
   finishReason: string | null;
   abortReason: string | null;
+  usage: CompletionUsage | null;
 }
 
 /**
@@ -630,6 +663,7 @@ async function consumePlanStream(
   let tokenCount = 0;
   let finishReason: string | null = null;
   let abortReason: string | null = null;
+  let usage: CompletionUsage | null = null;
 
   try {
     while (true) {
@@ -669,6 +703,9 @@ async function consumePlanStream(
         break;
       }
 
+      if (result.value.usage) {
+        usage = result.value.usage;
+      }
       const choice = result.value.choices[0];
       const delta = choice?.delta?.content ?? "";
       if (delta) {
@@ -711,7 +748,7 @@ async function consumePlanStream(
     }
   }
 
-  return { raw, tokenCount, finishReason, abortReason };
+  return { raw, tokenCount, finishReason, abortReason, usage };
 }
 
 function recordModelDebug(

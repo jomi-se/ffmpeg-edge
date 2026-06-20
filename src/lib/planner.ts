@@ -45,6 +45,11 @@ type DocsDb = AnyOrama;
 const modelPlanStallTimeoutMs = 60_000;
 const modelPlanHardCapMs = 180_000;
 const maxPlanTokens = 700;
+// A 0.8B model blends every doc it sees: given 4 docs for a GIF request it
+// merged audio/image/gif flags into nonsense. Inject only the top couple of
+// reranked docs — fewer distractors AND less prefill (the docs JSON is the bulk
+// of the ~650-token prompt that costs ~30s TTFT at ~21 tok/s prefill).
+const maxInjectedDocs = 2;
 const gemma4E2BRepo =
   "https://huggingface.co/welcoma/gemma-4-E2B-it-q4f16_1-MLC";
 const gemma4E2BModelId = "gemma-4-E2B-it-q4f16_1-MLC";
@@ -134,8 +139,20 @@ export async function planCommand(request: PlanRequest): Promise<PlanResult> {
   // Query with the user's intent only. Appending file type/name keywords pulls
   // source-format docs and pushes out docs for the requested OUTPUT (e.g. a GIF
   // request would otherwise rank MP4/scale docs above the GIF doc).
-  const docsUsed = await searchFfmpegDocs(request.prompt);
+  //
+  // BM25 alone ranks poorly here: "Convert to a small gif" puts "Extract or
+  // convert audio" first (the generic verb "convert" hits its title+tag) and
+  // buries gif-palette at #3. So we over-fetch, then pull any doc matching the
+  // requested OUTPUT format to the front before trimming to the top few.
+  const retrievedDocs = await searchFfmpegDocs(request.prompt, 6);
+  const intentFormat = detectIntentFormat(request.prompt);
+  const docsUsed = prioritizeDocsByFormat(retrievedDocs, intentFormat).slice(
+    0,
+    maxInjectedDocs,
+  );
   recordModelDebug("Planner docs retrieved", {
+    retrieved: retrievedDocs.map((doc) => doc.id),
+    intentFormat,
     docs: docsUsed.map((doc) => doc.id),
     count: docsUsed.length,
   });
@@ -766,8 +783,7 @@ function buildSystemPrompt(
   return [
     "You are a specialist FFmpeg (ffmpeg.wasm) command planner inside the browser app Local Media Converter.",
     "Plan the FFmpeg command that fulfils the USER'S request for this specific file. Choose the output format the user asks for (e.g. a GIF request must produce a GIF, not an MP4).",
-    "Base the command on the user's request and the docs below; when a doc matches the request, follow its syntax. Do not invent flags.",
-    "Prefer browser-safe codecs: libx264/aac for MP4, libmp3lame for MP3, png/jpeg/webp for images.",
+    "The first doc below is the closest match to the request: start from its syntax and only change values the request requires (size, format, quality). Do not merge flags from the other docs and do not invent flags.",
     "Use $INPUT for the input file and $OUTPUT for the output file. Never include the literal 'ffmpeg' executable.",
     'Reply with ONLY a JSON object, no prose, using exactly this shape (placeholders, do NOT copy these values): {"args":["-i","$INPUT","…","$OUTPUT"],"explanation":"<one short sentence>","docs":["<url>"]}',
     "args must be an array of individual CLI tokens (each flag and each value is its own string).",
@@ -826,27 +842,55 @@ function extractFirstJsonObject(text: string): string | null {
 // Picks the output extension from the user's request and the model's own words,
 // so a "gif"/"webp"/"mp3" request gets that container even when the model omits
 // $OUTPUT (otherwise ensureCommandOutput defaults to the SOURCE type, e.g. mp4).
+// Output formats the app supports. `tag` matches the doc corpus tags/titles
+// (used to rerank retrieval toward the requested output); `ext` is the file
+// extension. One list so reranking and extension inference never drift apart.
+const OUTPUT_FORMATS: Array<{ pattern: RegExp; tag: string; ext: string }> = [
+  { pattern: /\bgif\b/, tag: "gif", ext: "gif" },
+  { pattern: /\bwebp\b/, tag: "webp", ext: "webp" },
+  { pattern: /\bavif\b/, tag: "avif", ext: "avif" },
+  { pattern: /\bpng\b/, tag: "png", ext: "png" },
+  { pattern: /\bjpe?g\b/, tag: "jpeg", ext: "jpg" },
+  { pattern: /\bwebm\b/, tag: "webm", ext: "webm" },
+  { pattern: /\bmkv\b/, tag: "mkv", ext: "mkv" },
+  { pattern: /\bmov\b/, tag: "mov", ext: "mov" },
+  { pattern: /\bwav\b/, tag: "wav", ext: "wav" },
+  { pattern: /\bm4a\b/, tag: "m4a", ext: "m4a" },
+  { pattern: /\b(?:mp3|extract audio|audio only)\b/, tag: "mp3", ext: "mp3" },
+  { pattern: /\bmp4\b/, tag: "mp4", ext: "mp4" },
+];
+
+/** The output format the user explicitly asked for, from the prompt alone. */
+function detectIntentFormat(prompt: string): string | null {
+  const text = prompt.toLowerCase();
+  for (const { pattern, tag } of OUTPUT_FORMATS) {
+    if (pattern.test(text)) {
+      return tag;
+    }
+  }
+  return null;
+}
+
+/** Stable-sort docs so ones matching the requested output format come first. */
+function prioritizeDocsByFormat(
+  docs: FfmpegDocChunk[],
+  format: string | null,
+): FfmpegDocChunk[] {
+  if (!format) {
+    return docs;
+  }
+  const matches = (doc: FfmpegDocChunk) =>
+    doc.tags?.includes(format) || doc.title.toLowerCase().includes(format);
+  return [...docs.filter(matches), ...docs.filter((doc) => !matches(doc))];
+}
+
 function inferOutputExtension(
   prompt: string,
   explanation: string,
   args: string[],
 ): string | undefined {
   const text = `${prompt} ${explanation} ${args.join(" ")}`.toLowerCase();
-  const formats: Array<[RegExp, string]> = [
-    [/\bgif\b/, "gif"],
-    [/\bwebp\b/, "webp"],
-    [/\bavif\b/, "avif"],
-    [/\bpng\b/, "png"],
-    [/\bjpe?g\b/, "jpg"],
-    [/\bwebm\b/, "webm"],
-    [/\bmkv\b/, "mkv"],
-    [/\bmov\b/, "mov"],
-    [/\bwav\b/, "wav"],
-    [/\bm4a\b/, "m4a"],
-    [/\b(?:mp3|extract audio|audio only)\b/, "mp3"],
-    [/\bmp4\b/, "mp4"],
-  ];
-  for (const [pattern, ext] of formats) {
+  for (const { pattern, ext } of OUTPUT_FORMATS) {
     if (pattern.test(text)) {
       return ext;
     }

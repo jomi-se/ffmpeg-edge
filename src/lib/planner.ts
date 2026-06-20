@@ -414,6 +414,9 @@ async function planWithWebLLM(
   });
   const engine = await ensureLocalModel(modelId, request.onModelProgress);
   const completionStarted = performance.now();
+  // No response_format/grammar: grammar-masked decoding hangs at the first
+  // token on some mobile GPUs (observed: arm/valhall, 0 tokens in 100s+).
+  // The system prompt asks for JSON and parseModelPlan extracts/validates it.
   const stream = await engine.chat.completions.create({
     messages: [
       {
@@ -426,53 +429,15 @@ async function planWithWebLLM(
       },
     ],
     temperature: 0.1,
-    response_format: { type: "json_object" },
     max_tokens: maxPlanTokens,
     stream: true,
   });
 
-  let raw = "";
-  let tokenCount = 0;
-  let lastTokenAt = performance.now();
-  let finishReason: string | null = null;
-  let abortReason: string | null = null;
-
   request.onPlanStatus?.("Planning locally…");
-  const watchdog = window.setInterval(() => {
-    const now = performance.now();
-    if (now - lastTokenAt > modelPlanStallTimeoutMs) {
-      abortReason = `the model produced no output for ${Math.round(modelPlanStallTimeoutMs / 1000)} seconds`;
-    } else if (now - completionStarted > modelPlanHardCapMs) {
-      abortReason = `generation exceeded the ${Math.round(modelPlanHardCapMs / 1000)} second limit`;
-    }
-    if (abortReason) {
-      recordModelDebug("Interrupting WebLLM generation", {
-        abortReason,
-        elapsedMs: Math.round(now - completionStarted),
-        modelId,
-        tokenCount,
-      });
-      engine.interruptGenerate();
-    }
-  }, 1000);
-
-  try {
-    for await (const chunk of stream) {
-      const choice = chunk.choices[0];
-      const delta = choice?.delta?.content ?? "";
-      if (delta) {
-        raw += delta;
-        tokenCount += 1;
-        lastTokenAt = performance.now();
-        request.onPlanStatus?.(`Planning locally… ${tokenCount} tokens`);
-      }
-      if (choice?.finish_reason) {
-        finishReason = choice.finish_reason;
-      }
-    }
-  } finally {
-    window.clearInterval(watchdog);
-  }
+  const { raw, tokenCount, finishReason, abortReason } =
+    await consumePlanStream(stream, engine, completionStarted, (count) =>
+      request.onPlanStatus?.(`Planning locally… ${count} tokens`),
+    );
 
   const elapsedMs = Math.round(performance.now() - completionStarted);
   const tokensPerSecond =
@@ -489,7 +454,7 @@ async function planWithWebLLM(
 
   if (abortReason && !raw.trim()) {
     throw new Error(
-      `Local planning stopped because ${abortReason}. This device's GPU is generating too slowly (${tokensPerSecond} tokens/sec); using deterministic fallback planning instead.`,
+      `Local planning stopped because ${abortReason} (${tokenCount} tokens, ${tokensPerSecond} tokens/sec). Using deterministic fallback planning instead.`,
     );
   }
 
@@ -522,6 +487,106 @@ async function planWithWebLLM(
   };
 }
 
+type PlanChunk = {
+  choices: {
+    delta?: { content?: string | null };
+    finish_reason?: string | null;
+  }[];
+};
+
+interface StreamConsumption {
+  raw: string;
+  tokenCount: number;
+  finishReason: string | null;
+  abortReason: string | null;
+}
+
+/**
+ * Drains a streaming completion with a per-chunk stall timeout and an overall
+ * hard cap. Each `iterator.next()` is raced against the stall timer, so a stuck
+ * first token (no output ever) is caught and we break out of the loop
+ * ourselves — we do not rely on interruptGenerate() ending the stream, which it
+ * does not do when generation never started.
+ */
+async function consumePlanStream(
+  stream: AsyncIterable<PlanChunk>,
+  engine: MLCEngine,
+  startedAt: number,
+  onToken: (count: number) => void,
+): Promise<StreamConsumption> {
+  const iterator = stream[Symbol.asyncIterator]();
+  const stall = Symbol("stall");
+  let raw = "";
+  let tokenCount = 0;
+  let finishReason: string | null = null;
+  let abortReason: string | null = null;
+
+  try {
+    while (true) {
+      if (performance.now() - startedAt > modelPlanHardCapMs) {
+        abortReason = `generation exceeded the ${Math.round(modelPlanHardCapMs / 1000)} second limit`;
+        break;
+      }
+
+      let timer: number | undefined;
+      const stallTimeout = new Promise<typeof stall>((resolve) => {
+        timer = window.setTimeout(
+          () => resolve(stall),
+          modelPlanStallTimeoutMs,
+        );
+      });
+
+      // Keep a handle on next() so that if the stall timer wins the race, a
+      // late rejection from the abandoned generation doesn't surface as an
+      // unhandled rejection.
+      const nextPromise = iterator.next();
+      nextPromise.catch(() => {});
+
+      let result: IteratorResult<PlanChunk> | typeof stall;
+      try {
+        result = await Promise.race([nextPromise, stallTimeout]);
+      } finally {
+        if (timer !== undefined) {
+          window.clearTimeout(timer);
+        }
+      }
+
+      if (result === stall) {
+        abortReason = `the model produced no output for ${Math.round(modelPlanStallTimeoutMs / 1000)} seconds`;
+        break;
+      }
+      if (result.done) {
+        break;
+      }
+
+      const choice = result.value.choices[0];
+      const delta = choice?.delta?.content ?? "";
+      if (delta) {
+        raw += delta;
+        tokenCount += 1;
+        onToken(tokenCount);
+      }
+      if (choice?.finish_reason) {
+        finishReason = choice.finish_reason;
+      }
+    }
+  } finally {
+    if (abortReason) {
+      try {
+        engine.interruptGenerate();
+      } catch {
+        // best effort; generation may already be unrecoverable
+      }
+    }
+    // Fire-and-forget: a frozen generator's return() can hang (interrupt may
+    // not unstick it), and we must not block falling back to deterministic
+    // planning on that.
+    void Promise.resolve(iterator.return?.()).catch(() => {});
+  }
+
+  return { raw, tokenCount, finishReason, abortReason };
+}
+
 function recordModelDebug(
   message: string,
   details?: Record<string, unknown>,
@@ -538,7 +603,8 @@ function buildSystemPrompt(
   return [
     "You are a specialist CLI agent for ffmpeg.wasm inside a browser app named Local Media Converter.",
     "FFmpeg is the primary tool and must remain visible and credited.",
-    "Return only JSON with keys: args (array of strings), explanation (short string), docs (array of doc URLs).",
+    "Return only a single JSON object and nothing else, with keys: args (array of strings), explanation (short string), docs (array of doc URLs).",
+    'Example response: {"args":["-i","$INPUT","-vf","scale=1280:-2","-c:v","libx264","-crf","24","-c:a","aac","$OUTPUT"],"explanation":"Scales to 720p H.264/AAC MP4.","docs":[]}',
     "Do not include the literal 'ffmpeg' executable. Use $INPUT for the input file and $OUTPUT for the output file.",
     "Prefer browser-safe codecs: libx264/aac for MP4, libmp3lame for MP3, png/jpeg/webp for images.",
     "Use the provided probe metadata and docs. Do not invent flags.",

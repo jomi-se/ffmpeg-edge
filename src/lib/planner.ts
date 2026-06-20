@@ -100,10 +100,13 @@ export async function searchFfmpegDocs(
   limit = 4,
 ): Promise<FfmpegDocChunk[]> {
   const db = await getDocsDb();
+  // threshold:1 ranks by relevance and returns docs matching ANY token. With
+  // threshold:0 (match ALL tokens) a multi-word query never intersects across
+  // docs, so retrieval silently returned nothing and the model got no grounding.
   const result = await search(db, {
     term: query,
     limit,
-    threshold: 0,
+    threshold: 1,
     properties: ["title", "section", "summary", "syntax", "tags"],
     boost: {
       title: 2,
@@ -123,9 +126,10 @@ export async function planCommand(request: PlanRequest): Promise<PlanResult> {
     promptLength: request.prompt.length,
     useLocalModel: Boolean(request.useLocalModel),
   });
-  const docsUsed = await searchFfmpegDocs(
-    `${request.prompt} ${request.file?.type ?? ""} ${request.file?.name ?? ""}`,
-  );
+  // Query with the user's intent only. Appending file type/name keywords pulls
+  // source-format docs and pushes out docs for the requested OUTPUT (e.g. a GIF
+  // request would otherwise rank MP4/scale docs above the GIF doc).
+  const docsUsed = await searchFfmpegDocs(request.prompt);
   recordModelDebug("Planner docs retrieved", {
     docs: docsUsed.map((doc) => doc.id),
     count: docsUsed.length,
@@ -676,14 +680,14 @@ function buildSystemPrompt(
   docsUsed: FfmpegDocChunk[],
 ): string {
   return [
-    "You are a specialist CLI agent for ffmpeg.wasm inside a browser app named Local Media Converter.",
-    "FFmpeg is the primary tool and must remain visible and credited.",
-    "Return only a single JSON object and nothing else, with keys: args (array of strings), explanation (short string), docs (array of doc URLs).",
-    'Example response: {"args":["-i","$INPUT","-vf","scale=1280:-2","-c:v","libx264","-crf","24","-c:a","aac","$OUTPUT"],"explanation":"Scales to 720p H.264/AAC MP4.","docs":[]}',
-    "Do not include the literal 'ffmpeg' executable. Use $INPUT for the input file and $OUTPUT for the output file.",
+    "You are a specialist FFmpeg (ffmpeg.wasm) command planner inside the browser app Local Media Converter.",
+    "Plan the FFmpeg command that fulfils the USER'S request for this specific file. Choose the output format the user asks for (e.g. a GIF request must produce a GIF, not an MP4).",
+    "Base the command on the user's request and the docs below; when a doc matches the request, follow its syntax. Do not invent flags.",
     "Prefer browser-safe codecs: libx264/aac for MP4, libmp3lame for MP3, png/jpeg/webp for images.",
-    "Use the provided probe metadata and docs. Do not invent flags.",
-    `Probe metadata: ${JSON.stringify(metadata ?? {}, null, 2)}`,
+    "Use $INPUT for the input file and $OUTPUT for the output file. Never include the literal 'ffmpeg' executable.",
+    'Reply with ONLY a JSON object, no prose, using exactly this shape (placeholders, do NOT copy these values): {"args":["-i","$INPUT","…","$OUTPUT"],"explanation":"<one short sentence>","docs":["<url>"]}',
+    "args must be an array of individual CLI tokens (each flag and each value is its own string).",
+    `Probe metadata: ${JSON.stringify(metadata ?? {})}`,
     `Relevant docs: ${JSON.stringify(
       docsUsed.map(({ title, summary, syntax, url }) => ({
         title,
@@ -691,10 +695,8 @@ function buildSystemPrompt(
         syntax,
         url,
       })),
-      null,
-      2,
     )}`,
-  ].join("\n\n");
+  ].join("\n");
 }
 
 /**

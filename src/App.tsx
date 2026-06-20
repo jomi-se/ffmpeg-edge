@@ -1,17 +1,14 @@
 import {
-  Bot,
+  ArrowUp,
+  ChevronLeft,
   Database,
   Download,
   FileAudio,
   FileImage,
   FileVideo,
-  Info,
   LoaderCircle,
   Play,
-  Save,
-  Search,
   Settings2,
-  Sparkles,
   TerminalSquare,
   Trash2,
   Upload,
@@ -20,7 +17,6 @@ import {
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   argsToCommand,
-  commandLineToArgs,
   commandToChips,
   parseCommandLine,
   suggestedOutputName,
@@ -30,7 +26,6 @@ import {
   ensureFfmpeg,
   getFfmpegRuntimeStatus,
   getMediaElementMetadata,
-  probeWithFfmpeg,
   runFfmpegCommand,
   type MediaMetadata,
 } from "./lib/media";
@@ -39,37 +34,19 @@ import {
   ensureLocalModel,
   modelPresets,
   planCommand,
-  searchFfmpegDocs,
-  type PlanResult,
 } from "./lib/planner";
-import {
-  hasOPFSSupport,
-  listOutputs,
-  readOutput,
-  removeOutput,
-  saveOutput,
-  type StoredOutput,
-} from "./lib/storage";
-
-type ChatMessage = {
-  role: "user" | "assistant" | "system";
-  content: string;
-};
+import { hasOPFSSupport, saveOutput } from "./lib/storage";
 
 const starterPrompt =
   "Compress for sharing, keep broad compatibility, and preserve reasonable quality.";
 
 export function App() {
+  const [isFlipped, setIsFlipped] = useState(false);
+
   const [file, setFile] = useState<File | null>(null);
   const [metadata, setMetadata] = useState<MediaMetadata | null>(null);
   const [prompt, setPrompt] = useState(starterPrompt);
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    {
-      role: "assistant",
-      content:
-        "Drop in audio, video, or an image. I will use local FFmpeg docs plus file metadata to propose a command you can inspect and edit.",
-    },
-  ]);
+
   const [args, setArgs] = useState<string[]>([
     "-i",
     "$INPUT",
@@ -85,8 +62,6 @@ export function App() {
     "128k",
     "$OUTPUT",
   ]);
-  const [rawCommand, setRawCommand] = useState(argsToCommand(args));
-  const [plan, setPlan] = useState<PlanResult | null>(null);
   const [useModel, setUseModel] = useState(false);
   const [modelId, setModelId] = useState(defaultModelId);
   const [modelStatus, setModelStatus] = useState("Not loaded");
@@ -95,12 +70,9 @@ export function App() {
   const [progress, setProgress] = useState(0);
   const [outputUrl, setOutputUrl] = useState<string | null>(null);
   const [outputName, setOutputName] = useState<string | null>(null);
-  const [savedOutputs, setSavedOutputs] = useState<StoredOutput[]>([]);
-  const [modelEvents, setModelEvents] = useState<string[]>([]);
   const [ffmpegStatus, setFfmpegStatus] = useState(
-    "FFmpeg loads automatically when you probe or run a command.",
+    "FFmpeg loads automatically when you run a command.",
   );
-  const [ffmpegEvents, setFfmpegEvents] = useState<string[]>([]);
   const [runtimeStatus, setRuntimeStatus] = useState(getFfmpegRuntimeStatus());
   const [browserStatus, setBrowserStatus] = useState(getBrowserRuntimeStatus());
   const activeFileRef = useRef<File | null>(null);
@@ -116,48 +88,21 @@ export function App() {
   const canRun = !!file && args.length > 0 && !busy && validation?.ok !== false;
 
   useEffect(() => {
-    refreshSavedOutputs();
-  }, []);
-
-  useEffect(() => {
     const interval = window.setInterval(() => {
-      const nextRuntimeStatus = getFfmpegRuntimeStatus();
-      const nextBrowserStatus = getBrowserRuntimeStatus();
-      setRuntimeStatus((current) =>
-        JSON.stringify(current) === JSON.stringify(nextRuntimeStatus)
-          ? current
-          : nextRuntimeStatus,
+      const newRuntime = getFfmpegRuntimeStatus();
+      const newBrowser = getBrowserRuntimeStatus();
+      setRuntimeStatus((prev) =>
+        JSON.stringify(prev) === JSON.stringify(newRuntime) ? prev : newRuntime,
       );
-      setBrowserStatus((current) =>
-        JSON.stringify(current) === JSON.stringify(nextBrowserStatus)
-          ? current
-          : nextBrowserStatus,
+      setBrowserStatus((prev) =>
+        JSON.stringify(prev) === JSON.stringify(newBrowser) ? prev : newBrowser,
       );
     }, 2000);
     return () => window.clearInterval(interval);
   }, []);
 
-  useEffect(() => {
-    setRawCommand(argsToCommand(args));
-  }, [args]);
-
-  async function refreshSavedOutputs() {
-    setSavedOutputs(await listOutputs().catch(() => []));
-  }
-
-  function addModelEvent(message: string) {
-    setModelEvents((existing) => [
-      ...existing.slice(-9),
-      `${new Date().toLocaleTimeString()} ${message}`,
-    ]);
-  }
-
   function addFfmpegEvent(message: string) {
     setFfmpegStatus(message);
-    setFfmpegEvents((existing) => [
-      ...existing.slice(-9),
-      `${new Date().toLocaleTimeString()} ${message}`,
-    ]);
   }
 
   function handleModelPresetChange(nextModelId: string) {
@@ -169,13 +114,11 @@ export function App() {
     setModelStatus(
       `${preset.name} selected. Load it to plan with the local model.`,
     );
-    addModelEvent(`${preset.name} selected. Local planning is paused.`);
   }
 
   async function handleFile(nextFile: File | null) {
     activeFileRef.current = nextFile;
     setFile(nextFile);
-    setPlan(null);
     setMetadata(null);
     setLogs([]);
     setOutputUrl(null);
@@ -191,21 +134,12 @@ export function App() {
       const data = await getMediaElementMetadata(nextFile);
       if (activeFileRef.current === nextFile) {
         setMetadata(data);
-        setMessages((existing) => [
-          ...existing,
-          {
-            role: "system",
-            content: `Loaded ${nextFile.name} (${formatBytes(nextFile.size)}). Run ffprobe for stream-level details before complex commands.`,
-          },
-        ]);
       }
-    } catch (error) {
+    } catch (e) {
       if (activeFileRef.current === nextFile) {
-        const message = `Metadata error: ${errorMessage(error)}`;
-        setLogs((existing) => [...existing, message]);
-        setMessages((existing) => [
+        setLogs((existing) => [
           ...existing,
-          { role: "assistant", content: message },
+          `Metadata error: ${errorMessage(e)}`,
         ]);
       }
     } finally {
@@ -215,54 +149,13 @@ export function App() {
     }
   }
 
-  async function handleProbe() {
-    if (!file) return;
-    setBusy("Running ffprobe");
-    setLogs([]);
-
-    try {
-      const probed = await probeWithFfmpeg(
-        file,
-        (message) => setLogs((existing) => [...existing.slice(-80), message]),
-        addFfmpegEvent,
-      );
-      setRuntimeStatus(getFfmpegRuntimeStatus());
-      addFfmpegEvent("ffprobe finished.");
-      setMetadata(probed);
-      setMessages((existing) => [
-        ...existing,
-        {
-          role: "system",
-          content: `ffprobe found ${probed.streams?.length ?? 0} stream(s). Future plans will include stream metadata.`,
-        },
-      ]);
-    } catch (error) {
-      setRuntimeStatus(getFfmpegRuntimeStatus());
-      addFfmpegEvent(`ffprobe failed: ${errorMessage(error)}`);
-      setMessages((existing) => [
-        ...existing,
-        { role: "assistant", content: errorMessage(error) },
-      ]);
-    } finally {
-      setBusy(null);
-    }
-  }
-
-  async function handlePlan(promptOverride?: string, isSelfCorrect?: boolean) {
+  async function handlePlan(promptOverride?: string) {
     const activePrompt = promptOverride ?? prompt;
-    if (isSelfCorrect) {
-      setBusy(
-        useModel ? "Replanning with local model" : "Replanning with local docs",
-      );
-    } else {
-      setBusy(
-        useModel ? "Planning with local model" : "Planning with local docs",
-      );
-    }
-    setMessages((existing) => [
-      ...existing,
-      { role: "user", content: activePrompt },
-    ]);
+    if (!activePrompt.trim()) return;
+
+    setBusy(
+      useModel ? "Planning with local model" : "Planning with local docs",
+    );
 
     try {
       const result = await planCommand({
@@ -276,21 +169,14 @@ export function App() {
             `${Math.round(report.progress * 100)}% ${report.text}`,
           ),
       });
-      setPlan(result);
       setArgs(result.args);
-      if (result.warning) addModelEvent(result.warning);
-      setMessages((existing) => [
-        ...existing,
-        {
-          role: "assistant",
-          content: `${result.explanation} Source: ${result.source}.${result.warning ? ` ${result.warning}` : ""}`,
-        },
-      ]);
+      setPrompt("");
     } catch (error) {
-      setMessages((existing) => [
+      setLogs((existing) => [
         ...existing,
-        { role: "assistant", content: errorMessage(error) },
+        `Planner Error: ${errorMessage(error)}`,
       ]);
+      setIsFlipped(true); // Flip to show error log
     } finally {
       setBusy(null);
     }
@@ -300,33 +186,20 @@ export function App() {
     const nextBrowserStatus = getBrowserRuntimeStatus();
     setBrowserStatus(nextBrowserStatus);
     if (!nextBrowserStatus.webGpu) {
-      const message =
-        "WebGPU is unavailable. Open this app on HTTPS or localhost in a WebGPU-capable browser before loading a local planner model.";
-      setModelStatus(`Load blocked: ${message}`);
-      addModelEvent(message);
+      setModelStatus("Cannot load model: this browser does not expose WebGPU.");
       return;
     }
 
     setBusy("Loading local model");
     setModelStatus(`Starting ${selectedModelPreset.name} load`);
-    addModelEvent(
-      nextBrowserStatus.cacheApi
-        ? `Starting ${selectedModelPreset.name} load with browser Cache API available.`
-        : `Starting ${selectedModelPreset.name} load with IndexedDB artifact cache because Cache API is unavailable.`,
-    );
     try {
       await ensureLocalModel(modelId, (report) => {
-        const status = `${Math.round(report.progress * 100)}% ${report.text}`;
-        setModelStatus(status);
-        addModelEvent(status);
+        setModelStatus(`${Math.round(report.progress * 100)}% ${report.text}`);
       });
       setUseModel(true);
       setModelStatus("Local model ready");
-      addModelEvent(`${selectedModelPreset.name} is ready for local planning.`);
     } catch (error) {
-      const message = errorMessage(error);
-      setModelStatus(`Model load failed: ${message}`);
-      addModelEvent(`Load failed. You can retry without reloading: ${message}`);
+      setModelStatus(`Model load failed: ${errorMessage(error)}`);
     } finally {
       setBusy(null);
     }
@@ -335,15 +208,14 @@ export function App() {
   async function handleLoadFfmpeg() {
     setBusy("Loading FFmpeg core");
     setLogs([]);
-
     try {
       await ensureFfmpeg(addFfmpegEvent);
       setRuntimeStatus(getFfmpegRuntimeStatus());
     } catch (error) {
       setRuntimeStatus(getFfmpegRuntimeStatus());
-      setMessages((existing) => [
+      setLogs((existing) => [
         ...existing,
-        { role: "assistant", content: errorMessage(error) },
+        `FFmpeg Error: ${errorMessage(error)}`,
       ]);
     } finally {
       setBusy(null);
@@ -378,38 +250,21 @@ export function App() {
           ? "FFmpeg run finished."
           : `FFmpeg exited with code ${result.exitCode}.`,
       );
-      setMessages((existing) => [
-        ...existing,
-        {
-          role: "assistant",
-          content:
-            result.exitCode === 0
-              ? `FFmpeg finished in ${(result.elapsedMs / 1000).toFixed(1)}s.`
-              : `FFmpeg exited with code ${result.exitCode}. The log is ready for self-correction.`,
-        },
-      ]);
 
       if (result.outputBlob && hasOPFSSupport()) {
         try {
           await saveOutput(result.outputName, result.outputBlob);
-          await refreshSavedOutputs();
         } catch (error) {
-          setMessages((existing) => [
+          setLogs((existing) => [
             ...existing,
-            {
-              role: "assistant",
-              content: `FFmpeg output is ready to download, but OPFS save failed: ${errorMessage(error)}`,
-            },
+            `Storage Warning: Output download is ready, but OPFS save failed: ${errorMessage(error)}`,
           ]);
         }
       }
     } catch (error) {
       setRuntimeStatus(getFfmpegRuntimeStatus());
       addFfmpegEvent(`FFmpeg run failed: ${errorMessage(error)}`);
-      setMessages((existing) => [
-        ...existing,
-        { role: "assistant", content: errorMessage(error) },
-      ]);
+      setIsFlipped(true);
     } finally {
       setBusy(null);
     }
@@ -419,11 +274,8 @@ export function App() {
     const failure = logs.slice(-20).join("\n");
     const correctionPrompt = `The FFmpeg command failed. Current command: ${argsToCommand(args)}\nError log:\n${failure}\nReturn a corrected command.`;
     setPrompt(correctionPrompt);
-    await handlePlan(correctionPrompt, true);
-  }
-
-  function syncRawCommand() {
-    setArgs(commandLineToArgs(rawCommand, file?.name));
+    setIsFlipped(false);
+    await handlePlan(correctionPrompt);
   }
 
   function editChip(indexToken: string, token: string) {
@@ -443,534 +295,299 @@ export function App() {
     });
   }
 
-  async function downloadSaved(name: string) {
-    const saved = await readOutput(name);
-    const url = URL.createObjectURL(saved);
-    const anchor = document.createElement("a");
-    anchor.href = url;
-    anchor.download = name;
-    anchor.click();
-    URL.revokeObjectURL(url);
-  }
-
-  async function deleteSaved(name: string) {
-    await removeOutput(name);
-    await refreshSavedOutputs();
-  }
-
   return (
-    <main className="app-shell">
-      <header className="top-bar">
-        <div>
-          <p className="eyebrow">FFmpeg leads. Files stay local.</p>
-          <h1>Local Media Converter</h1>
-        </div>
-        <a
-          className="text-link"
-          href="https://ffmpeg.org/"
-          target="_blank"
-          rel="noreferrer"
-        >
-          Official FFmpeg
-        </a>
+    <main className="app-main">
+      <header className="desk-header">
+        <h1>Local Media Converter</h1>
+        <p>
+          Convert audio, video, and images in your browser with FFmpeg. Your
+          files stay on your device.
+        </p>
       </header>
 
-      <section
-        className="workspace"
-        aria-label="Local Media Converter workspace"
-      >
-        <aside className="left-rail">
-          <section className="panel upload-panel">
-            <div className="panel-title">
-              <Upload size={18} />
-              <h2>Source</h2>
+      <div className="workstation-container">
+        <div className={`flip-container ${isFlipped ? "flipped" : ""}`}>
+          {/* FRONT FACE */}
+          <div
+            className="card-face front-face"
+            inert={isFlipped ? true : undefined}
+          >
+            <div className="card-header card-header-actions">
+              <button
+                onClick={() => setIsFlipped(true)}
+                className="icon-btn"
+                title="Runtime and logs"
+              >
+                <Settings2 size={18} />
+              </button>
             </div>
-            <label className="drop-zone">
-              <input
-                type="file"
-                accept="audio/*,video/*,image/*"
-                onChange={(event) =>
-                  handleFile(event.target.files?.[0] ?? null)
-                }
-              />
-              <span className={`file-kind ${fileKind}`}>
-                {fileKind === "audio" ? (
-                  <FileAudio />
-                ) : fileKind === "image" ? (
-                  <FileImage />
-                ) : (
-                  <FileVideo />
-                )}
-              </span>
-              <strong>
-                {file ? file.name : "Choose audio, video, or image"}
-              </strong>
-              <small>
-                {file
-                  ? formatBytes(file.size)
-                  : "Everything stays on this device"}
-              </small>
-            </label>
-            <button
-              className="secondary-button"
-              disabled={!file || !!busy}
-              onClick={handleProbe}
-            >
-              {busy === "Running ffprobe" ? (
-                <LoaderCircle className="spin" size={16} />
-              ) : (
-                <Search size={16} />
-              )}
-              Probe with ffprobe
-            </button>
-            <MetadataView metadata={metadata} />
-          </section>
 
-          <section className="panel">
-            <div className="panel-title">
-              <Bot size={18} />
-              <h2>Local Model</h2>
-            </div>
-            <label className="field-label" htmlFor="model-preset">
-              WebLLM model preset
-            </label>
-            <select
-              id="model-preset"
-              className="select-input"
-              value={modelId}
-              onChange={(event) => handleModelPresetChange(event.target.value)}
-            >
-              {modelPresets.map((preset) => (
-                <option key={preset.id} value={preset.id}>
-                  {preset.name} - {preset.recommendation}
-                </option>
-              ))}
-            </select>
-            <p className="preset-summary">
-              <strong>{selectedModelPreset.recommendation}</strong>
-              <span>{selectedModelPreset.summary}</span>
-            </p>
-            <div className="toggle-row">
-              <label>
+            {/* File Loader / File State */}
+            {!file ? (
+              <label className="drop-zone">
                 <input
-                  type="checkbox"
-                  checked={useModel}
-                  onChange={(event) => setUseModel(event.target.checked)}
+                  type="file"
+                  accept="audio/*,video/*,image/*"
+                  onChange={(event) =>
+                    handleFile(event.target.files?.[0] ?? null)
+                  }
                 />
-                Use loaded WebLLM model for planning
+                <Upload size={32} className="file-icon" />
+                <div>
+                  <strong>Choose a media file</strong>
+                  <div className="text-muted text-sm mt-1">
+                    Runs in this browser. Nothing is uploaded.
+                  </div>
+                </div>
               </label>
-            </div>
-            <button
-              className="secondary-button"
-              disabled={!!busy}
-              onClick={handleLoadModel}
-            >
-              {busy === "Loading local model" ? (
-                <LoaderCircle className="spin" size={16} />
-              ) : (
-                <Database size={16} />
-              )}
-              Load model
-            </button>
-            <p className="status-text">{modelStatus}</p>
-            <p className="disclosure-text">
-              Model files are fetched from Hugging Face and then cached by the
-              browser. Media files are not uploaded.
-            </p>
-            <RuntimeStatus status={runtimeStatus} />
-            <button
-              className="secondary-button ffmpeg-load-button"
-              disabled={!!busy}
-              onClick={handleLoadFfmpeg}
-            >
-              {busy === "Loading FFmpeg core" ? (
-                <LoaderCircle className="spin" size={16} />
-              ) : (
-                <TerminalSquare size={16} />
-              )}
-              Load FFmpeg core
-            </button>
-            <p className="status-text">{ffmpegStatus}</p>
-            <BrowserStatus status={browserStatus} />
-            <RuntimeDebug events={ffmpegEvents} />
-            <ModelDebug events={modelEvents} />
-          </section>
-        </aside>
-
-        <section className="center-stage">
-          <section className="panel planner-panel">
-            <div className="panel-title">
-              <Sparkles size={18} />
-              <h2>Intent</h2>
-            </div>
-            <textarea
-              className="prompt-box"
-              aria-label="Prompt for command intent"
-              placeholder="Describe the output you want, for example: compress to 720p"
-              value={prompt}
-              onChange={(event) => setPrompt(event.target.value)}
-            />
-            <div className="button-row">
-              <button
-                className="primary-button"
-                disabled={!!busy}
-                onClick={() => handlePlan()}
-              >
-                {busy?.startsWith("Planning") ? (
-                  <LoaderCircle className="spin" size={17} />
-                ) : (
-                  <Wand2 size={17} />
-                )}
-                Plan FFmpeg args
-              </button>
-            </div>
-          </section>
-
-          <section className="panel command-panel">
-            <div className="panel-title">
-              <Settings2 size={18} />
-              <h2>Option Builder</h2>
-            </div>
-            <div className="chip-grid">
-              {chips.map((chip) => (
+            ) : (
+              <div className="loaded-file">
+                <div className="file-icon">
+                  {fileKind === "audio" ? (
+                    <FileAudio />
+                  ) : fileKind === "image" ? (
+                    <FileImage />
+                  ) : (
+                    <FileVideo />
+                  )}
+                </div>
+                <div className="loaded-file-info">
+                  <strong>{file.name}</strong>
+                  <div className="text-muted text-sm">
+                    {formatBytes(file.size)}{" "}
+                    {metadata?.duration &&
+                      `• ${formatDuration(metadata.duration)}`}
+                  </div>
+                </div>
                 <button
-                  key={chip.id}
-                  className={`chip ${chip.kind}`}
-                  disabled={!chip.editable}
-                  onClick={() => editChip(chip.id, chip.token)}
-                  title={chip.editable ? "Edit argument" : "Managed argument"}
+                  onClick={() => handleFile(null)}
+                  className="icon-btn"
+                  title="Remove file"
+                  disabled={!!busy}
                 >
-                  <span>{chip.label}</span>
-                  <code>{chip.token}</code>
+                  <Trash2 size={16} />
                 </button>
-              ))}
-            </div>
-            <label className="field-label" htmlFor="raw-command">
-              Raw command
-            </label>
-            <textarea
-              id="raw-command"
-              className="raw-command"
-              value={rawCommand}
-              onChange={(event) => setRawCommand(event.target.value)}
-            />
-            <div className="button-row">
-              <button className="secondary-button" onClick={syncRawCommand}>
-                <TerminalSquare size={16} />
-                Sync to chips
-              </button>
-              <button
-                className="primary-button"
-                disabled={!canRun}
-                onClick={handleRun}
-              >
-                {busy === "Running FFmpeg" ? (
-                  <LoaderCircle className="spin" size={17} />
-                ) : (
-                  <Play size={17} />
-                )}
-                Run FFmpeg
-              </button>
-            </div>
-            {validation && !validation.ok && (
-              <ul className="validation-list">
-                {validation.errors.map((error) => (
-                  <li key={error}>{error}</li>
-                ))}
-              </ul>
-            )}
-            {busy === "Running FFmpeg" && (
-              <div className="progress-track">
-                <span style={{ width: `${Math.round(progress * 100)}%` }} />
               </div>
             )}
-            {outputUrl && outputName && (
-              <a
-                className="download-callout"
-                href={outputUrl}
-                download={outputName}
-              >
-                <Download size={18} />
-                Download {outputName}
-              </a>
-            )}
-          </section>
-        </section>
 
-        <aside className="right-rail">
-          <section className="panel chat-panel">
-            <div className="panel-title">
-              <Info size={18} />
-              <h2>Session</h2>
-            </div>
-            <div className="messages">
-              {messages.map((message, index) => (
-                <p
-                  key={`${message.role}-${index}`}
-                  className={`message ${message.role}`}
-                >
-                  {message.content}
-                </p>
-              ))}
-            </div>
-          </section>
+            {/* Command & Run */}
+            {file && (
+              <div className="command-section">
+                <div className="command-header">
+                  <h2 className="text-muted">Review FFmpeg args</h2>
+                </div>
+                <div className="chip-grid">
+                  {chips.map((chip) => (
+                    <button
+                      key={chip.id}
+                      className="chip"
+                      disabled={!chip.editable || !!busy}
+                      data-editable={chip.editable}
+                      onClick={() => editChip(chip.id, chip.token)}
+                      title={chip.editable ? "Edit argument" : "Managed"}
+                    >
+                      <span className="chip-label">{chip.label}</span>
+                      <span>{chip.token}</span>
+                    </button>
+                  ))}
+                </div>
 
-          <section className="panel docs-panel">
-            <div className="panel-title">
-              <Search size={18} />
-              <h2>Retrieved Docs</h2>
-            </div>
-            {plan ? (
-              <ul className="doc-list">
-                {plan.docsUsed.map((doc) => (
-                  <li key={doc.id}>
-                    <a href={doc.url} target="_blank" rel="noreferrer">
-                      {doc.title}
+                <div className="action-row mt-4">
+                  <button
+                    className="btn-primary"
+                    disabled={!canRun}
+                    onClick={handleRun}
+                  >
+                    {busy === "Running FFmpeg" ? (
+                      <LoaderCircle className="spin" size={18} />
+                    ) : (
+                      <Play size={18} />
+                    )}
+                    Run FFmpeg
+                  </button>
+                </div>
+                {validation && !validation.ok && (
+                  <div className="text-sm validation-error">
+                    {validation.errors[0]}
+                  </div>
+                )}
+                {busy === "Running FFmpeg" && (
+                  <div className="progress-bar">
+                    <div
+                      className="progress-fill"
+                      style={{ width: `${Math.round(progress * 100)}%` }}
+                    />
+                  </div>
+                )}
+                {outputUrl && outputName && (
+                  <div className="action-row mt-2">
+                    <a
+                      href={outputUrl}
+                      download={outputName}
+                      className="btn-primary btn-success"
+                    >
+                      <Download size={18} /> Download output
                     </a>
-                    <span>{doc.syntax}</span>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <DocsPreview prompt={prompt} />
+                  </div>
+                )}
+              </div>
             )}
-          </section>
 
-          <section className="panel outputs-panel">
-            <div className="panel-title">
-              <Save size={18} />
-              <h2>Saved Outputs</h2>
+            {/* Chat Bubble / Planner */}
+            <div className="planner-bubble">
+              <textarea
+                placeholder="Describe the output you want, for example: compress to 720p"
+                value={prompt}
+                onChange={(e) => setPrompt(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    handlePlan();
+                  }
+                }}
+                disabled={!!busy}
+              />
+              <button
+                className="btn-send"
+                onClick={() => handlePlan()}
+                disabled={!!busy || !prompt.trim()}
+                title="Plan FFmpeg args"
+              >
+                {busy && busy.includes("Planning") ? (
+                  <LoaderCircle className="spin" size={16} />
+                ) : (
+                  <ArrowUp size={16} strokeWidth={3} />
+                )}
+              </button>
             </div>
-            <p className="status-text">
-              {hasOPFSSupport()
-                ? "OPFS available"
-                : "OPFS unavailable in this browser"}
-            </p>
-            <ul className="output-list">
-              {savedOutputs.map((output) => (
-                <li key={output.name}>
-                  <span>
-                    <strong>{output.name}</strong>
-                    <small>{formatBytes(output.size)}</small>
-                  </span>
-                  <button
-                    onClick={() => downloadSaved(output.name)}
-                    title="Download saved output"
-                    aria-label={`Download ${output.name}`}
-                  >
-                    <Download size={15} />
-                  </button>
-                  <button
-                    onClick={() => deleteSaved(output.name)}
-                    title="Delete saved output"
-                    aria-label={`Delete ${output.name}`}
-                  >
-                    <Trash2 size={15} />
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </section>
+          </div>
 
-          <section className="panel logs-panel">
-            <div className="panel-title">
-              <TerminalSquare size={18} />
-              <h2>Logs</h2>
+          {/* BACK FACE */}
+          <div
+            className="card-face back-face"
+            inert={!isFlipped ? true : undefined}
+          >
+            <div className="card-header">
+              <button
+                onClick={() => setIsFlipped(false)}
+                className="icon-btn"
+                title="Back to local workspace"
+              >
+                <ChevronLeft size={20} />
+              </button>
+              <h2 className="text-muted">Runtime and logs</h2>
+              <div className="header-spacer"></div>
             </div>
-            <pre>
-              {logs.length ? logs.join("\n") : "FFmpeg logs will appear here."}
-            </pre>
-            <button
-              className="secondary-button"
-              disabled={!logs.length || !!busy}
-              onClick={handleSelfCorrect}
-            >
-              {busy?.startsWith("Replanning") ? (
-                <LoaderCircle className="spin" size={16} />
-              ) : (
-                <Wand2 size={16} />
-              )}
-              Replan from logs
-            </button>
-          </section>
-        </aside>
-      </section>
+
+            <div className="settings-grid">
+              <div className="setting-group">
+                <label>Local planner model</label>
+                <select
+                  className="input-select"
+                  value={modelId}
+                  onChange={(event) =>
+                    handleModelPresetChange(event.target.value)
+                  }
+                  disabled={!!busy}
+                >
+                  {modelPresets.map((preset) => (
+                    <option key={preset.id} value={preset.id}>
+                      {preset.name} - {preset.recommendation}
+                    </option>
+                  ))}
+                </select>
+                <div className="setting-checkbox">
+                  <input
+                    type="checkbox"
+                    id="use-model"
+                    checked={useModel}
+                    onChange={(event) => setUseModel(event.target.checked)}
+                    disabled={!!busy}
+                  />
+                  <label htmlFor="use-model">
+                    Use local model for planning
+                  </label>
+                </div>
+                <button
+                  className="btn-primary btn-setting"
+                  disabled={!!busy}
+                  onClick={handleLoadModel}
+                >
+                  <Database size={16} /> Load local model
+                </button>
+                <div className="text-muted text-sm mt-1">
+                  Status: {modelStatus}
+                </div>
+              </div>
+
+              <div className="setting-group">
+                <label>FFmpeg runtime</label>
+                <div className="status-grid">
+                  <div className="status-item">
+                    <dt>Isolation</dt>
+                    <dd>
+                      {runtimeStatus.crossOriginIsolated
+                        ? "Ready"
+                        : "Needs reload"}
+                    </dd>
+                  </div>
+                  <div className="status-item">
+                    <dt>SharedArrayBuffer</dt>
+                    <dd>
+                      {runtimeStatus.sharedArrayBuffer
+                        ? "Available"
+                        : "Unavailable"}
+                    </dd>
+                  </div>
+                  <div className="status-item">
+                    <dt>Mode</dt>
+                    <dd>{formatCoreMode(runtimeStatus.coreMode)}</dd>
+                  </div>
+                  <div className="status-item">
+                    <dt>WebGPU</dt>
+                    <dd>
+                      {browserStatus.webGpu ? "Available" : "Unavailable"}
+                    </dd>
+                  </div>
+                </div>
+                <button
+                  className="btn-primary btn-setting"
+                  disabled={!!busy}
+                  onClick={handleLoadFfmpeg}
+                >
+                  <TerminalSquare size={16} /> Load FFmpeg
+                </button>
+                <div className="text-muted text-sm mt-1">
+                  Status: {ffmpegStatus}
+                </div>
+              </div>
+
+              <div className="setting-group">
+                <label>Run logs</label>
+                <div className="logs-container">
+                  {logs.length > 0 ? (
+                    logs.join("\n")
+                  ) : (
+                    <div className="empty-logs">
+                      No logs yet. Run a command to see FFmpeg output here.
+                    </div>
+                  )}
+                </div>
+                {logs.length > 0 && (
+                  <button
+                    className="btn-primary btn-setting"
+                    disabled={!!busy}
+                    onClick={handleSelfCorrect}
+                  >
+                    <Wand2 size={16} /> Replan from logs
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </main>
-  );
-}
-
-function MetadataView({ metadata }: { metadata: MediaMetadata | null }) {
-  if (!metadata) {
-    return <p className="status-text">No file loaded.</p>;
-  }
-
-  return (
-    <dl className="metadata-grid">
-      <div>
-        <dt>Type</dt>
-        <dd>{metadata.type || "unknown"}</dd>
-      </div>
-      <div>
-        <dt>Size</dt>
-        <dd>{formatBytes(metadata.size)}</dd>
-      </div>
-      {metadata.duration !== undefined && (
-        <div>
-          <dt>Duration</dt>
-          <dd>{formatDuration(metadata.duration)}</dd>
-        </div>
-      )}
-      {metadata.width && metadata.height && (
-        <div>
-          <dt>Frame</dt>
-          <dd>
-            {metadata.width}x{metadata.height}
-          </dd>
-        </div>
-      )}
-      {metadata.streams && (
-        <div>
-          <dt>Streams</dt>
-          <dd>{metadata.streams.length}</dd>
-        </div>
-      )}
-    </dl>
-  );
-}
-
-function DocsPreview({ prompt }: { prompt: string }) {
-  const [docs, setDocs] = useState<
-    Array<{ id: string; title: string; syntax: string; url: string }>
-  >([]);
-
-  useEffect(() => {
-    let cancelled = false;
-    searchFfmpegDocs(prompt).then((results) => {
-      if (!cancelled) setDocs(results);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [prompt]);
-
-  return (
-    <ul className="doc-list">
-      {docs.map((doc) => (
-        <li key={doc.id}>
-          <a href={doc.url} target="_blank" rel="noreferrer">
-            {doc.title}
-          </a>
-          <span>{doc.syntax}</span>
-        </li>
-      ))}
-    </ul>
-  );
-}
-
-function RuntimeStatus({
-  status,
-}: {
-  status: ReturnType<typeof getFfmpegRuntimeStatus>;
-}) {
-  const canReloadForIsolation =
-    window.isSecureContext && !status.crossOriginIsolated;
-
-  return (
-    <>
-      <dl className="runtime-grid">
-        <div>
-          <dt>Isolation</dt>
-          <dd>{status.crossOriginIsolated ? "Ready" : "Needs reload"}</dd>
-        </div>
-        <div>
-          <dt>SharedArrayBuffer</dt>
-          <dd>{status.sharedArrayBuffer ? "Available" : "Unavailable"}</dd>
-        </div>
-        <div>
-          <dt>FFmpeg core</dt>
-          <dd>{formatCoreMode(status.coreMode)}</dd>
-        </div>
-      </dl>
-      {canReloadForIsolation && (
-        <button
-          className="secondary-button isolation-button"
-          onClick={() => window.location.reload()}
-        >
-          Reload for isolation
-        </button>
-      )}
-    </>
-  );
-}
-
-function RuntimeDebug({ events }: { events: string[] }) {
-  return (
-    <details className="debug-details">
-      <summary>FFmpeg debug</summary>
-      <ol>
-        {events.length ? (
-          events.map((event, index) => (
-            <li key={`${event}-${index}`}>{event}</li>
-          ))
-        ) : (
-          <li>No FFmpeg core events yet.</li>
-        )}
-      </ol>
-    </details>
-  );
-}
-
-function BrowserStatus({
-  status,
-}: {
-  status: ReturnType<typeof getBrowserRuntimeStatus>;
-}) {
-  return (
-    <dl className="runtime-grid browser-grid">
-      <div>
-        <dt>Secure</dt>
-        <dd>{status.secureContext ? "Yes" : "No"}</dd>
-      </div>
-      <div>
-        <dt>WebGPU</dt>
-        <dd>{status.webGpu ? "Available" : "Unavailable"}</dd>
-      </div>
-      <div>
-        <dt>Model cache</dt>
-        <dd>
-          {status.cacheApi
-            ? "Cache API"
-            : status.indexedDb
-              ? "IndexedDB"
-              : "Unavailable"}
-        </dd>
-      </div>
-    </dl>
-  );
-}
-
-function formatCoreMode(
-  coreMode: ReturnType<typeof getFfmpegRuntimeStatus>["coreMode"],
-) {
-  if (coreMode === "not-loaded") return "Ready to load";
-  if (coreMode === "single-thread") return "Single-thread";
-  return "Multithread";
-}
-
-function ModelDebug({ events }: { events: string[] }) {
-  return (
-    <details className="debug-details">
-      <summary>Model debug</summary>
-      <ol>
-        {events.length ? (
-          events.map((event, index) => (
-            <li key={`${event}-${index}`}>{event}</li>
-          ))
-        ) : (
-          <li>No model load events yet.</li>
-        )}
-      </ol>
-    </details>
   );
 }
 
@@ -993,6 +610,14 @@ function getBrowserRuntimeStatus() {
   };
 }
 
+function formatCoreMode(
+  coreMode: ReturnType<typeof getFfmpegRuntimeStatus>["coreMode"],
+) {
+  if (coreMode === "not-loaded") return "Ready to load";
+  if (coreMode === "single-thread") return "Single-thread";
+  return "Multithread";
+}
+
 function defaultArgsForFile(file: File): string[] {
   if (file.type.startsWith("image/")) {
     return [
@@ -1003,7 +628,6 @@ function defaultArgsForFile(file: File): string[] {
       suggestedOutputName(file.name, "webp"),
     ];
   }
-
   if (file.type.startsWith("audio/")) {
     return [
       "-i",
@@ -1015,7 +639,6 @@ function defaultArgsForFile(file: File): string[] {
       suggestedOutputName(file.name, "mp3"),
     ];
   }
-
   return [
     "-i",
     "$INPUT",

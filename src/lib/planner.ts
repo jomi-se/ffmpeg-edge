@@ -448,7 +448,51 @@ function getDocsDb(): Promise<DocsDb> {
   return docsDbPromise;
 }
 
+/**
+ * Mobile browsers reclaim the WebGPU device when the tab is backgrounded/idle,
+ * which disposes WebLLM's GPU objects while our engine promise still points at
+ * the dead engine. The next request then throws "already been disposed" /
+ * "device lost". Detect that, drop the cached engine, reload, and retry once.
+ */
 async function planWithWebLLM(
+  request: PlanRequest,
+  docsUsed: FfmpegDocChunk[],
+): Promise<PlanResult> {
+  try {
+    return await runWebLLMPlan(request, docsUsed);
+  } catch (error) {
+    if (!isRecoverableEngineError(error)) {
+      throw error;
+    }
+    recordModelDebug(
+      "Engine was disposed/lost; reloading and retrying once",
+      { error: errorMessage(error) },
+      "warn",
+    );
+    resetEngineState();
+    return runWebLLMPlan(request, docsUsed);
+  }
+}
+
+function isRecoverableEngineError(error: unknown): boolean {
+  const message = errorMessage(error).toLowerCase();
+  return (
+    message.includes("already been disposed") ||
+    message.includes("disposed") ||
+    message.includes("device was lost") ||
+    message.includes("device lost") ||
+    message.includes("context lost")
+  );
+}
+
+/** Drops the cached engine so the next ensureLocalModel reloads from scratch. */
+function resetEngineState(): void {
+  enginePromise = null;
+  loadedModelId = null;
+  loadingModelId = null;
+}
+
+async function runWebLLMPlan(
   request: PlanRequest,
   docsUsed: FfmpegDocChunk[],
 ): Promise<PlanResult> {
@@ -642,6 +686,9 @@ async function consumePlanStream(
       }
     }
   } finally {
+    // Only finalize the generator when we abort early. On normal completion the
+    // generator already ran its own teardown; calling return() again triggers a
+    // second resetChat and can dispose KV-cache state for the next request.
     if (abortReason) {
       recordModelDebug(
         "Interrupting WebLLM generation",
@@ -657,11 +704,11 @@ async function consumePlanStream(
       } catch {
         // best effort; generation may already be unrecoverable
       }
+      // Fire-and-forget: a frozen generator's return() can hang (interrupt may
+      // not unstick it), and we must not block falling back to deterministic
+      // planning on that.
+      void Promise.resolve(iterator.return?.()).catch(() => {});
     }
-    // Fire-and-forget: a frozen generator's return() can hang (interrupt may
-    // not unstick it), and we must not block falling back to deterministic
-    // planning on that.
-    void Promise.resolve(iterator.return?.()).catch(() => {});
   }
 
   return { raw, tokenCount, finishReason, abortReason };

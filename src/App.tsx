@@ -14,7 +14,7 @@ import {
   Upload,
   Wand2,
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   argsToCommand,
   commandToChips,
@@ -76,6 +76,7 @@ export function App() {
   const [runtimeStatus, setRuntimeStatus] = useState(getFfmpegRuntimeStatus());
   const [browserStatus, setBrowserStatus] = useState(getBrowserRuntimeStatus());
   const activeFileRef = useRef<File | null>(null);
+  const promptRef = useRef<HTMLTextAreaElement | null>(null);
 
   const chips = useMemo(() => commandToChips(args), [args]);
   const fileKind = getFileKind(file);
@@ -100,6 +101,14 @@ export function App() {
     }, 2000);
     return () => window.clearInterval(interval);
   }, []);
+
+  useLayoutEffect(() => {
+    const promptInput = promptRef.current;
+    if (!promptInput) return;
+
+    promptInput.style.height = "auto";
+    promptInput.style.height = `${promptInput.scrollHeight}px`;
+  }, [prompt]);
 
   function addFfmpegEvent(message: string) {
     setFfmpegStatus(message);
@@ -436,9 +445,15 @@ export function App() {
             {/* Chat Bubble / Planner */}
             <div className="planner-bubble">
               <textarea
+                ref={promptRef}
                 placeholder="Describe the output you want, for example: compress to 720p"
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
+                onFocus={() => {
+                  if (prompt === starterPrompt) {
+                    setPrompt("");
+                  }
+                }}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && !e.shiftKey) {
                     e.preventDefault();

@@ -390,8 +390,10 @@ h2 {
   padding: var(--space-2);
   resize: none;
   min-height: 44px;
+  max-height: min(34dvh, 240px);
   line-height: 1.5;
   outline: none;
+  overflow-y: auto;
 }
 
 .planner-bubble .btn-send {

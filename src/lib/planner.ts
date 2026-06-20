@@ -18,6 +18,8 @@ export interface PlanRequest {
   modelId?: string;
   useLocalModel?: boolean;
   onModelProgress?: (report: InitProgressReport) => void;
+  /** Live status during generation (token counts), distinct from load progress. */
+  onPlanStatus?: (status: string) => void;
 }
 
 export interface PlanResult extends PlannedCommand {
@@ -30,7 +32,13 @@ export interface PlanResult extends PlannedCommand {
 
 type DocsDb = AnyOrama;
 
-const modelPlanTimeoutMs = 60_000;
+// Generation is streamed and watched two ways: abort if no new token arrives
+// for the stall window (covers a truly stuck generation, including slow
+// first-token/prefill on mobile GPUs), or if the whole generation exceeds the
+// hard cap. A slow-but-steady mobile decode is no longer killed mid-flight.
+const modelPlanStallTimeoutMs = 60_000;
+const modelPlanHardCapMs = 180_000;
+const maxPlanTokens = 700;
 const gemma4E2BRepo =
   "https://huggingface.co/welcoma/gemma-4-E2B-it-q4f16_1-MLC";
 const gemma4E2BModelId = "gemma-4-E2B-it-q4f16_1-MLC";
@@ -232,7 +240,7 @@ export function getModelDebugSnapshot(): string[] {
     `Loaded model: ${loadedModelId ?? "none"}`,
     `Loading model: ${loadingModelId ?? "none"}`,
     `Engine promise active: ${Boolean(enginePromise)}`,
-    `Model plan timeout ms: ${modelPlanTimeoutMs}`,
+    `Model plan limits: stall ${Math.round(modelPlanStallTimeoutMs / 1000)}s, hard cap ${Math.round(modelPlanHardCapMs / 1000)}s, max tokens ${maxPlanTokens}`,
     `Last progress: ${progress}`,
     `Last model error: ${lastModelError ?? "none"}`,
     `Runtime: webGpu=${hasWebGpu()}, cacheApi=${hasCacheApi()}, indexedDb=${hasIndexedDb()}, crossOriginIsolated=${Boolean(globalThis.crossOriginIsolated)}`,
@@ -406,7 +414,7 @@ async function planWithWebLLM(
   });
   const engine = await ensureLocalModel(modelId, request.onModelProgress);
   const completionStarted = performance.now();
-  const completionPromise = engine.chat.completions.create({
+  const stream = await engine.chat.completions.create({
     messages: [
       {
         role: "system",
@@ -419,35 +427,72 @@ async function planWithWebLLM(
     ],
     temperature: 0.1,
     response_format: { type: "json_object" },
+    max_tokens: maxPlanTokens,
+    stream: true,
   });
-  completionPromise.catch((error: unknown) => {
-    recordModelDebug("WebLLM completion eventually rejected", {
-      error: errorMessage(error),
-      modelId,
-    });
-  });
-  const completion = await withModelTimeout(
-    completionPromise,
-    modelPlanTimeoutMs,
-    `Local model planning timed out after ${Math.round(modelPlanTimeoutMs / 1000)} seconds`,
-    () => {
-      recordModelDebug("Interrupting WebLLM generation after timeout", {
-        elapsedMs: Math.round(performance.now() - completionStarted),
+
+  let raw = "";
+  let tokenCount = 0;
+  let lastTokenAt = performance.now();
+  let finishReason: string | null = null;
+  let abortReason: string | null = null;
+
+  request.onPlanStatus?.("Planning locally…");
+  const watchdog = window.setInterval(() => {
+    const now = performance.now();
+    if (now - lastTokenAt > modelPlanStallTimeoutMs) {
+      abortReason = `the model produced no output for ${Math.round(modelPlanStallTimeoutMs / 1000)} seconds`;
+    } else if (now - completionStarted > modelPlanHardCapMs) {
+      abortReason = `generation exceeded the ${Math.round(modelPlanHardCapMs / 1000)} second limit`;
+    }
+    if (abortReason) {
+      recordModelDebug("Interrupting WebLLM generation", {
+        abortReason,
+        elapsedMs: Math.round(now - completionStarted),
         modelId,
+        tokenCount,
       });
       engine.interruptGenerate();
-    },
-  );
-  recordModelDebug("WebLLM completion finished", {
-    elapsedMs: Math.round(performance.now() - completionStarted),
-    finishReason: completion.choices[0]?.finish_reason,
-    modelId,
-  });
-  const raw = completion.choices[0]?.message.content ?? "";
-  recordModelDebug("WebLLM raw output received", {
+    }
+  }, 1000);
+
+  try {
+    for await (const chunk of stream) {
+      const choice = chunk.choices[0];
+      const delta = choice?.delta?.content ?? "";
+      if (delta) {
+        raw += delta;
+        tokenCount += 1;
+        lastTokenAt = performance.now();
+        request.onPlanStatus?.(`Planning locally… ${tokenCount} tokens`);
+      }
+      if (choice?.finish_reason) {
+        finishReason = choice.finish_reason;
+      }
+    }
+  } finally {
+    window.clearInterval(watchdog);
+  }
+
+  const elapsedMs = Math.round(performance.now() - completionStarted);
+  const tokensPerSecond =
+    elapsedMs > 0 ? Math.round((tokenCount / elapsedMs) * 10000) / 10 : 0;
+  recordModelDebug("WebLLM streaming finished", {
+    abortReason,
+    elapsedMs,
+    finishReason,
     modelId,
     rawLength: raw.length,
+    tokenCount,
+    tokensPerSecond,
   });
+
+  if (abortReason && !raw.trim()) {
+    throw new Error(
+      `Local planning stopped because ${abortReason}. This device's GPU is generating too slowly (${tokensPerSecond} tokens/sec); using deterministic fallback planning instead.`,
+    );
+  }
+
   const parsed = parseModelPlan(raw, request.file);
   const validation = request.file
     ? validateCommandArgs(parsed.args, request.file.name)
@@ -475,29 +520,6 @@ async function planWithWebLLM(
     docsUsed,
     rawModelOutput: raw,
   };
-}
-
-async function withModelTimeout<T>(
-  promise: Promise<T>,
-  timeoutMs: number,
-  message: string,
-  onTimeout: () => void,
-): Promise<T> {
-  let timeoutId: number | undefined;
-  const timeout = new Promise<never>((_, reject) => {
-    timeoutId = window.setTimeout(() => {
-      onTimeout();
-      reject(new Error(message));
-    }, timeoutMs);
-  });
-
-  try {
-    return await Promise.race([promise, timeout]);
-  } finally {
-    if (timeoutId !== undefined) {
-      window.clearTimeout(timeoutId);
-    }
-  }
 }
 
 function recordModelDebug(

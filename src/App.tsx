@@ -193,6 +193,7 @@ export function App() {
           setModelStatus(
             `${Math.round(report.progress * 100)}% ${report.text}`,
           ),
+        onPlanStatus: (status) => setModelStatus(status),
       });
       setArgs(result.args);
       setPrompt("");

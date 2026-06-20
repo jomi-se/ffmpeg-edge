@@ -62,7 +62,30 @@ let loadedModelId: string | null = null;
 let loadingModelId: string | null = null;
 let lastModelError: string | null = null;
 let lastModelProgress: InitProgressReport | null = null;
+let lastWebGpuStatus: WebGpuStatus | null = null;
 const modelDebugEvents: string[] = [];
+
+export interface WebGpuStatus {
+  /** navigator.gpu exists. True does NOT mean a GPU is usable. */
+  apiPresent: boolean;
+  /** navigator.gpu.requestAdapter() returned a usable adapter. */
+  adapterAvailable: boolean;
+  /** Adapter exposes the shader-f16 feature these quantized models require. */
+  shaderF16: boolean;
+  adapterInfo?: string;
+  /** Human-readable reason the model would fail to load, if any. */
+  error?: string;
+  checkedAt: string;
+}
+
+// Minimal structural typing for WebGPU so we avoid adding @webgpu/types.
+type MinimalGpuAdapter = {
+  features: { has(name: string): boolean } & Iterable<string>;
+  info?: { vendor?: string; architecture?: string };
+};
+type MinimalGpu = {
+  requestAdapter(): Promise<MinimalGpuAdapter | null>;
+};
 
 export async function searchFfmpegDocs(
   query: string,
@@ -213,6 +236,7 @@ export function getModelDebugSnapshot(): string[] {
     `Last progress: ${progress}`,
     `Last model error: ${lastModelError ?? "none"}`,
     `Runtime: webGpu=${hasWebGpu()}, cacheApi=${hasCacheApi()}, indexedDb=${hasIndexedDb()}, crossOriginIsolated=${Boolean(globalThis.crossOriginIsolated)}`,
+    `WebGPU probe: ${webGpuProbeSummary()}`,
     `Presets: ${modelPresets
       .map((preset) => `${preset.id} (${preset.summary})`)
       .join("; ")}`,
@@ -251,6 +275,98 @@ function hasWebGpu(): boolean {
   return (
     typeof globalThis.navigator !== "undefined" && "gpu" in globalThis.navigator
   );
+}
+
+/**
+ * Actively probes whether WebGPU can really be used, not just whether the API
+ * is exposed. `'gpu' in navigator` is true in many browsers (and headless
+ * Chromium) that have no usable GPU adapter, which is the most common reason
+ * local model loading fails with "Unable to find a compatible GPU".
+ */
+export async function probeWebGpu(): Promise<WebGpuStatus> {
+  const checkedAt = new Date().toISOString();
+  if (!hasWebGpu()) {
+    lastWebGpuStatus = {
+      apiPresent: false,
+      adapterAvailable: false,
+      shaderF16: false,
+      error: "This browser does not expose the WebGPU API (navigator.gpu).",
+      checkedAt,
+    };
+    recordModelDebug("WebGPU probe: API not present");
+    return lastWebGpuStatus;
+  }
+
+  try {
+    const gpu = (globalThis.navigator as Navigator & { gpu?: MinimalGpu }).gpu;
+    const adapter = (await gpu?.requestAdapter()) ?? null;
+    if (!adapter) {
+      lastWebGpuStatus = {
+        apiPresent: true,
+        adapterAvailable: false,
+        shaderF16: false,
+        error:
+          "WebGPU is exposed but no compatible GPU adapter is available to this browser. requestAdapter() returned nothing — check chrome://gpu, that hardware acceleration is enabled, and https://webgpureport.org/.",
+        checkedAt,
+      };
+      recordModelDebug(
+        "WebGPU probe: no adapter (requestAdapter returned null)",
+      );
+      return lastWebGpuStatus;
+    }
+
+    const shaderF16 = adapter.features.has("shader-f16");
+    const info = adapter.info;
+    lastWebGpuStatus = {
+      apiPresent: true,
+      adapterAvailable: true,
+      shaderF16,
+      adapterInfo: info
+        ? `${info.vendor ?? "unknown"}/${info.architecture ?? "unknown"}`
+        : undefined,
+      error: shaderF16
+        ? undefined
+        : "The GPU adapter is missing the shader-f16 feature these quantized models require, so loading will fail.",
+      checkedAt,
+    };
+    recordModelDebug("WebGPU probe: adapter available", {
+      adapterInfo: lastWebGpuStatus.adapterInfo,
+      shaderF16,
+    });
+    return lastWebGpuStatus;
+  } catch (error) {
+    lastWebGpuStatus = {
+      apiPresent: true,
+      adapterAvailable: false,
+      shaderF16: false,
+      error: `WebGPU adapter probe threw: ${errorMessage(error)}`,
+      checkedAt,
+    };
+    recordModelDebug("WebGPU probe: threw", { error: errorMessage(error) });
+    return lastWebGpuStatus;
+  }
+}
+
+export function getLastWebGpuStatus(): WebGpuStatus | null {
+  return lastWebGpuStatus;
+}
+
+function webGpuProbeSummary(): string {
+  if (!lastWebGpuStatus) {
+    return `apiPresent=${hasWebGpu()} (adapter not probed yet)`;
+  }
+  const parts = [
+    `apiPresent=${lastWebGpuStatus.apiPresent}`,
+    `adapterAvailable=${lastWebGpuStatus.adapterAvailable}`,
+    `shaderF16=${lastWebGpuStatus.shaderF16}`,
+  ];
+  if (lastWebGpuStatus.adapterInfo) {
+    parts.push(`adapter=${lastWebGpuStatus.adapterInfo}`);
+  }
+  if (lastWebGpuStatus.error) {
+    parts.push(`note="${lastWebGpuStatus.error}"`);
+  }
+  return parts.join(", ");
 }
 
 function getDocsDb(): Promise<DocsDb> {

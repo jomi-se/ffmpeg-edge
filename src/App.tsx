@@ -1,6 +1,8 @@
 import {
   ArrowUp,
+  Check,
   ChevronLeft,
+  Copy,
   Database,
   Download,
   FileAudio,
@@ -36,6 +38,8 @@ import {
   getModelDebugSnapshot,
   modelPresets,
   planCommand,
+  probeWebGpu,
+  type WebGpuStatus,
 } from "./lib/planner";
 import { hasOPFSSupport, saveOutput } from "./lib/storage";
 
@@ -76,7 +80,8 @@ export function App() {
     "FFmpeg loads automatically when you run a command.",
   );
   const [runtimeStatus, setRuntimeStatus] = useState(getFfmpegRuntimeStatus());
-  const [browserStatus, setBrowserStatus] = useState(getBrowserRuntimeStatus());
+  const [webGpu, setWebGpu] = useState<WebGpuStatus | null>(null);
+  const [logsCopied, setLogsCopied] = useState(false);
   const activeFileRef = useRef<File | null>(null);
   const promptRef = useRef<HTMLTextAreaElement | null>(null);
 
@@ -84,6 +89,7 @@ export function App() {
   const fileKind = getFileKind(file);
   const selectedModelPreset =
     modelPresets.find((preset) => preset.id === modelId) ?? modelPresets[0];
+  const webGpuLabel = describeWebGpu(webGpu);
   const validation = useMemo(
     () => (file ? validateCommandArgs(args, file.name) : null),
     [args, file],
@@ -93,15 +99,23 @@ export function App() {
   useEffect(() => {
     const interval = window.setInterval(() => {
       const newRuntime = getFfmpegRuntimeStatus();
-      const newBrowser = getBrowserRuntimeStatus();
       setRuntimeStatus((prev) =>
         JSON.stringify(prev) === JSON.stringify(newRuntime) ? prev : newRuntime,
       );
-      setBrowserStatus((prev) =>
-        JSON.stringify(prev) === JSON.stringify(newBrowser) ? prev : newBrowser,
-      );
     }, 2000);
     return () => window.clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    probeWebGpu()
+      .then((status) => {
+        if (active) setWebGpu(status);
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
   }, []);
 
   useLayoutEffect(() => {
@@ -200,11 +214,23 @@ export function App() {
   }
 
   async function handleLoadModel() {
-    const nextBrowserStatus = getBrowserRuntimeStatus();
-    setBrowserStatus(nextBrowserStatus);
-    if (!nextBrowserStatus.webGpu) {
-      setModelStatus("Cannot load model: this browser does not expose WebGPU.");
+    setBusy("Checking WebGPU");
+    setModelStatus("Checking WebGPU support…");
+    const gpu = await probeWebGpu();
+    setWebGpu(gpu);
+
+    if (!gpu.apiPresent || !gpu.adapterAvailable) {
+      setBusy(null);
+      const detail = gpu.error ?? "WebGPU is not usable in this browser.";
+      setModelStatus(`Cannot load model: ${detail}`);
+      setLogs((existing) => [...existing, `WebGPU: ${detail}`]);
       return;
+    }
+    if (!gpu.shaderF16) {
+      setLogs((existing) => [
+        ...existing,
+        `WebGPU Warning: ${gpu.error ?? "Adapter is missing the shader-f16 feature; loading may fail."}`,
+      ]);
     }
 
     setBusy("Loading local model");
@@ -248,7 +274,6 @@ export function App() {
     const nextBrowserStatus = getBrowserRuntimeStatus();
     const serviceWorkerStatus = await getServiceWorkerDebugStatus();
     setRuntimeStatus(nextRuntimeStatus);
-    setBrowserStatus(nextBrowserStatus);
     setLogs((existing) => [
       ...existing,
       "",
@@ -262,7 +287,7 @@ export function App() {
   async function handleAddModelDebugSnapshot() {
     const nextBrowserStatus = getBrowserRuntimeStatus();
     const serviceWorkerStatus = await getServiceWorkerDebugStatus();
-    setBrowserStatus(nextBrowserStatus);
+    setWebGpu(await probeWebGpu());
     setLogs((existing) => [
       ...existing,
       "",
@@ -272,6 +297,29 @@ export function App() {
       `Service worker: ${serviceWorkerStatus}`,
       `User agent: ${navigator.userAgent}`,
     ]);
+  }
+
+  async function handleCopyLogs() {
+    const text = logs.join("\n");
+    if (!text) return;
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      // Clipboard API can be unavailable (e.g. non-secure context); fall back.
+      const textarea = document.createElement("textarea");
+      textarea.value = text;
+      textarea.style.position = "fixed";
+      textarea.style.opacity = "0";
+      document.body.appendChild(textarea);
+      textarea.select();
+      try {
+        document.execCommand("copy");
+      } finally {
+        document.body.removeChild(textarea);
+      }
+    }
+    setLogsCopied(true);
+    window.setTimeout(() => setLogsCopied(false), 1500);
   }
 
   async function handleRun() {
@@ -603,9 +651,7 @@ export function App() {
                   </div>
                   <div className="status-item">
                     <dt>WebGPU</dt>
-                    <dd>
-                      {browserStatus.webGpu ? "Available" : "Unavailable"}
-                    </dd>
+                    <dd title={webGpu?.error ?? undefined}>{webGpuLabel}</dd>
                   </div>
                 </div>
                 <button
@@ -621,7 +667,19 @@ export function App() {
               </div>
 
               <div className="setting-group">
-                <label>Run logs</label>
+                <div className="logs-header">
+                  <label>Run logs</label>
+                  {logs.length > 0 && (
+                    <button
+                      className="btn-ghost btn-copy"
+                      onClick={handleCopyLogs}
+                      title="Copy logs to clipboard"
+                    >
+                      {logsCopied ? <Check size={14} /> : <Copy size={14} />}
+                      {logsCopied ? "Copied" : "Copy logs"}
+                    </button>
+                  )}
+                </div>
                 <div className="logs-container">
                   {logs.length > 0 ? (
                     logs.join("\n")
@@ -671,6 +729,14 @@ function getFileKind(
   if (file.type.startsWith("video/")) return "video";
   if (file.type.startsWith("image/")) return "image";
   return "unknown";
+}
+
+function describeWebGpu(status: WebGpuStatus | null): string {
+  if (!status) return "Checking…";
+  if (!status.apiPresent) return "Unavailable";
+  if (!status.adapterAvailable) return "No GPU adapter";
+  if (!status.shaderF16) return "No shader-f16";
+  return "Available";
 }
 
 function getBrowserRuntimeStatus() {

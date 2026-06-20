@@ -310,7 +310,11 @@ export function validateCommandArgs(
   };
 }
 
-export function ensureCommandOutput(args: string[], file?: File): string[] {
+export function ensureCommandOutput(
+  args: string[],
+  file?: File,
+  extension?: string,
+): string[] {
   if (args.some((arg) => arg.includes("$OUTPUT") || arg.includes("{output}"))) {
     return args;
   }
@@ -321,7 +325,10 @@ export function ensureCommandOutput(args: string[], file?: File): string[] {
 
   return [
     ...args,
-    suggestedOutputName(file?.name ?? "output", extensionFor(file)),
+    suggestedOutputName(
+      file?.name ?? "output",
+      extension ?? extensionFor(file),
+    ),
   ];
 }
 

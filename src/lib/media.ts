@@ -8,6 +8,7 @@ import {
   suggestedOutputName,
   validateCommandArgs,
 } from "./command";
+import { log, type LogLevel } from "./log";
 
 export interface MediaMetadata {
   name: string;
@@ -47,7 +48,6 @@ const coreStartupTimeoutMs = 90_000;
 let ffmpegInstance: FFmpeg | null = null;
 let loading: Promise<FFmpeg> | null = null;
 let coreMode: FfmpegCoreMode = "not-loaded";
-const loadDebugEvents: string[] = [];
 
 export async function getMediaElementMetadata(
   file: File,
@@ -121,6 +121,11 @@ export async function ensureFfmpeg(
           ffmpegInstance = ffmpeg;
           return ffmpeg;
         } catch (error) {
+          recordLoadDebug(
+            "Multithreaded core failed; falling back to single-thread",
+            { error: errorMessage(error) },
+            "warn",
+          );
           onLoadStatus?.(
             `Multithreaded FFmpeg did not start cleanly: ${errorMessage(error)} Trying single-thread core.`,
           );
@@ -134,9 +139,11 @@ export async function ensureFfmpeg(
     } catch (error) {
       coreMode = "not-loaded";
       ffmpegInstance = null;
-      recordLoadDebug("FFmpeg core load failed", {
-        error: errorMessage(error),
-      });
+      recordLoadDebug(
+        "FFmpeg core load failed",
+        { error: errorMessage(error) },
+        "error",
+      );
       onLoadStatus?.(`FFmpeg core load failed: ${errorMessage(error)}`);
       throw error;
     } finally {
@@ -192,10 +199,14 @@ async function loadCore(
       `${label} FFmpeg core startup timed out`,
     );
   } catch (error) {
-    recordLoadDebug(`${label} FFmpeg startup failed`, {
-      elapsedMs: Math.round(performance.now() - startupStarted),
-      error: errorMessage(error),
-    });
+    recordLoadDebug(
+      `${label} FFmpeg startup failed`,
+      {
+        elapsedMs: Math.round(performance.now() - startupStarted),
+        error: errorMessage(error),
+      },
+      "error",
+    );
     ffmpeg.terminate();
     throw error;
   }
@@ -220,18 +231,20 @@ export function getFfmpegRuntimeStatus(): {
   };
 }
 
-export function getFfmpegDebugSnapshot(): string[] {
+/** Emits a point-in-time FFmpeg runtime state summary into the ffmpeg log. */
+export function logFfmpegState(): void {
   const runtime = getFfmpegRuntimeStatus();
-  return [
-    `FFmpeg debug snapshot at ${new Date().toISOString()}`,
-    `Core version: ${coreVersion}`,
-    `Runtime: mode=${runtime.coreMode}, crossOriginIsolated=${runtime.crossOriginIsolated}, sharedArrayBuffer=${runtime.sharedArrayBuffer}`,
-    `Loader: loaded=${Boolean(ffmpegInstance?.loaded)}, loading=${Boolean(loading)}, startupTimeoutMs=${coreStartupTimeoutMs}`,
-    "Class worker: bundled @ffmpeg/ffmpeg worker",
-    `Single-thread base: ${singleThreadBase}`,
-    `Multithread base: ${multiThreadBase}`,
-    ...loadDebugEvents.map((event) => `Load event: ${event}`),
-  ];
+  log.info("ffmpeg", "FFmpeg state snapshot", {
+    coreVersion,
+    mode: runtime.coreMode,
+    crossOriginIsolated: runtime.crossOriginIsolated,
+    sharedArrayBuffer: runtime.sharedArrayBuffer,
+    loaded: Boolean(ffmpegInstance?.loaded),
+    loading: Boolean(loading),
+    startupTimeoutMs: coreStartupTimeoutMs,
+    singleThreadBase,
+    multiThreadBase,
+  });
 }
 
 export async function probeWithFfmpeg(
@@ -317,6 +330,13 @@ export async function runFfmpegCommand(
   try {
     await ffmpeg.writeFile(inputName, await fetchFile(request.file));
     const args = normalizeArgs(request.args, inputName, outputName);
+    log.info("ffmpeg", "Run started", {
+      args,
+      coreMode,
+      inputName,
+      inputSize: request.file.size,
+      outputName,
+    });
     exitCode = await ffmpeg.exec(args, request.timeoutMs ?? 120_000);
 
     if (exitCode === 0) {
@@ -329,6 +349,16 @@ export async function runFfmpegCommand(
         type: mimeTypeForOutput(outputName),
       });
     }
+    log[exitCode === 0 ? "info" : "warn"](
+      "ffmpeg",
+      `Run finished with exit code ${exitCode}`,
+      {
+        exitCode,
+        elapsedMs: Math.round(performance.now() - started),
+        outputBytes: outputBlob?.size ?? 0,
+        outputName,
+      },
+    );
 
     return {
       exitCode,
@@ -337,6 +367,13 @@ export async function runFfmpegCommand(
       logs,
       elapsedMs: performance.now() - started,
     };
+  } catch (error) {
+    log.error("ffmpeg", "Run threw before completing", {
+      error: errorMessage(error),
+      inputName,
+      outputName,
+    });
+    throw error;
   } finally {
     cleanupEvents();
     await cleanupFiles(ffmpeg, [inputName, outputName]);
@@ -434,7 +471,10 @@ function attachFfmpegEvents(
   onLog?: FfmpegLogHandler,
   onProgress?: FfmpegProgressHandler,
 ): () => void {
-  const logCallback = ({ message }: { message: string }) => onLog?.(message);
+  const logCallback = ({ message }: { message: string }) => {
+    log.info("ffmpeg", message);
+    onLog?.(message);
+  };
   const progressCallback = ({
     progress,
     time,
@@ -455,10 +495,9 @@ function attachFfmpegEvents(
 function recordLoadDebug(
   message: string,
   details?: Record<string, unknown>,
+  level: LogLevel = "info",
 ): void {
-  const detail = details ? ` ${JSON.stringify(details)}` : "";
-  loadDebugEvents.push(`${new Date().toISOString()} ${message}${detail}`);
-  loadDebugEvents.splice(0, Math.max(0, loadDebugEvents.length - 80));
+  log[level]("ffmpeg", message, details);
 }
 
 async function withTimeout<T>(

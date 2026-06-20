@@ -10,6 +10,7 @@ import {
 } from "./command";
 import type { MediaMetadata } from "./media";
 import { ffmpegDocChunks, type FfmpegDocChunk } from "./ffmpegDocs";
+import { log, type LogLevel } from "./log";
 
 export interface PlanRequest {
   prompt: string;
@@ -71,7 +72,6 @@ let loadingModelId: string | null = null;
 let lastModelError: string | null = null;
 let lastModelProgress: InitProgressReport | null = null;
 let lastWebGpuStatus: WebGpuStatus | null = null;
-const modelDebugEvents: string[] = [];
 
 export interface WebGpuStatus {
   /** navigator.gpu exists. True does NOT mean a GPU is usable. */
@@ -137,9 +137,14 @@ export async function planCommand(request: PlanRequest): Promise<PlanResult> {
       return fromModel;
     } catch (error) {
       lastModelError = errorMessage(error);
-      recordModelDebug("Local model planning failed; using fallback", {
-        error: lastModelError,
-      });
+      recordModelDebug(
+        "Local model planning failed; using fallback",
+        {
+          error: lastModelError,
+          stack: error instanceof Error ? error.stack : undefined,
+        },
+        "error",
+      );
       const fallback = fallbackPlan(request.prompt, request.file, docsUsed);
       return {
         ...fallback,
@@ -217,10 +222,15 @@ export async function ensureLocalModel(
       lastModelError = errorMessage(error);
       loadedModelId = null;
       enginePromise = null;
-      recordModelDebug("WebLLM engine creation failed", {
-        error: lastModelError,
-        modelId,
-      });
+      recordModelDebug(
+        "WebLLM engine creation failed",
+        {
+          error: lastModelError,
+          modelId,
+          stack: error instanceof Error ? error.stack : undefined,
+        },
+        "error",
+      );
       throw error;
     } finally {
       loadingModelId = null;
@@ -230,26 +240,54 @@ export async function ensureLocalModel(
   return enginePromise;
 }
 
-export function getModelDebugSnapshot(): string[] {
+/**
+ * Whether the model's weights are already in the browser cache, so it can be
+ * loaded without a network download. Used to decide auto-load on startup.
+ */
+export async function isModelCached(
+  modelId = defaultModelId,
+): Promise<boolean> {
+  try {
+    const { hasModelInCache, prebuiltAppConfig } =
+      await import("@mlc-ai/web-llm");
+    const appConfig = getModelAppConfig(modelId, prebuiltAppConfig);
+    return await hasModelInCache(modelId, appConfig);
+  } catch (error) {
+    recordModelDebug(
+      "Model cache check failed",
+      { error: errorMessage(error), modelId },
+      "warn",
+    );
+    return false;
+  }
+}
+
+/** Emits a point-in-time model/runtime state summary into the model log. */
+export function logModelState(): void {
   const progress = lastModelProgress
     ? `${Math.round(lastModelProgress.progress * 1000) / 10}% ${lastModelProgress.text}`
     : "none";
-  return [
-    `Model debug snapshot at ${new Date().toISOString()}`,
-    `Default model: ${defaultModelId}`,
-    `Loaded model: ${loadedModelId ?? "none"}`,
-    `Loading model: ${loadingModelId ?? "none"}`,
-    `Engine promise active: ${Boolean(enginePromise)}`,
-    `Model plan limits: stall ${Math.round(modelPlanStallTimeoutMs / 1000)}s, hard cap ${Math.round(modelPlanHardCapMs / 1000)}s, max tokens ${maxPlanTokens}`,
-    `Last progress: ${progress}`,
-    `Last model error: ${lastModelError ?? "none"}`,
-    `Runtime: webGpu=${hasWebGpu()}, cacheApi=${hasCacheApi()}, indexedDb=${hasIndexedDb()}, crossOriginIsolated=${Boolean(globalThis.crossOriginIsolated)}`,
-    `WebGPU probe: ${webGpuProbeSummary()}`,
-    `Presets: ${modelPresets
-      .map((preset) => `${preset.id} (${preset.summary})`)
-      .join("; ")}`,
-    ...modelDebugEvents.map((event) => `Model event: ${event}`),
-  ];
+  log.info("model", "Model state snapshot", {
+    defaultModel: defaultModelId,
+    loadedModel: loadedModelId ?? "none",
+    loadingModel: loadingModelId ?? "none",
+    enginePromiseActive: Boolean(enginePromise),
+    limits: {
+      stallSeconds: Math.round(modelPlanStallTimeoutMs / 1000),
+      hardCapSeconds: Math.round(modelPlanHardCapMs / 1000),
+      maxTokens: maxPlanTokens,
+    },
+    lastProgress: progress,
+    lastModelError: lastModelError ?? "none",
+    runtime: {
+      webGpu: hasWebGpu(),
+      cacheApi: hasCacheApi(),
+      indexedDb: hasIndexedDb(),
+      crossOriginIsolated: Boolean(globalThis.crossOriginIsolated),
+    },
+    webGpuProbe: webGpuProbeSummary(),
+    crossOriginIsolated: Boolean(globalThis.crossOriginIsolated),
+  });
 }
 
 function getModelAppConfig(
@@ -319,6 +357,8 @@ export async function probeWebGpu(): Promise<WebGpuStatus> {
       };
       recordModelDebug(
         "WebGPU probe: no adapter (requestAdapter returned null)",
+        undefined,
+        "warn",
       );
       return lastWebGpuStatus;
     }
@@ -350,7 +390,11 @@ export async function probeWebGpu(): Promise<WebGpuStatus> {
       error: `WebGPU adapter probe threw: ${errorMessage(error)}`,
       checkedAt,
     };
-    recordModelDebug("WebGPU probe: threw", { error: errorMessage(error) });
+    recordModelDebug(
+      "WebGPU probe: threw",
+      { error: errorMessage(error) },
+      "error",
+    );
     return lastWebGpuStatus;
   }
 }
@@ -436,6 +480,7 @@ async function planWithWebLLM(
     stream: true,
   });
 
+  recordModelDebug("Generation started (streaming)", { modelId });
   request.onPlanStatus?.("Planning locally…");
   const { raw, tokenCount, finishReason, abortReason } =
     await consumePlanStream(stream, engine, completionStarted, (count) =>
@@ -445,14 +490,23 @@ async function planWithWebLLM(
   const elapsedMs = Math.round(performance.now() - completionStarted);
   const tokensPerSecond =
     elapsedMs > 0 ? Math.round((tokenCount / elapsedMs) * 10000) / 10 : 0;
-  recordModelDebug("WebLLM streaming finished", {
-    abortReason,
-    elapsedMs,
-    finishReason,
-    modelId,
-    rawLength: raw.length,
-    tokenCount,
-    tokensPerSecond,
+  recordModelDebug(
+    "WebLLM streaming finished",
+    {
+      abortReason,
+      elapsedMs,
+      finishReason,
+      modelId,
+      rawLength: raw.length,
+      tokenCount,
+      tokensPerSecond,
+    },
+    abortReason ? "warn" : "info",
+  );
+  // Always record what the model actually produced (truncated) so parse
+  // failures are diagnosable from the log alone.
+  recordModelDebug("WebLLM raw output", {
+    raw: raw.length > 4000 ? `${raw.slice(0, 4000)}…[truncated]` : raw,
   });
 
   if (abortReason && !raw.trim()) {
@@ -467,10 +521,15 @@ async function planWithWebLLM(
     : { ok: true, errors: [] };
 
   if (!validation.ok) {
-    recordModelDebug("WebLLM command validation failed", {
-      errors: validation.errors,
-      modelId,
-    });
+    recordModelDebug(
+      "WebLLM command validation failed",
+      {
+        args: parsed.args,
+        errors: validation.errors,
+        modelId,
+      },
+      "warn",
+    );
     throw new Error(
       `Model returned an invalid FFmpeg command: ${validation.errors.join(" ")}`,
     );
@@ -565,6 +624,11 @@ async function consumePlanStream(
       const choice = result.value.choices[0];
       const delta = choice?.delta?.content ?? "";
       if (delta) {
+        if (tokenCount === 0) {
+          recordModelDebug("First token received", {
+            firstTokenMs: Math.round(performance.now() - startedAt),
+          });
+        }
         raw += delta;
         tokenCount += 1;
         onToken(tokenCount);
@@ -575,6 +639,15 @@ async function consumePlanStream(
     }
   } finally {
     if (abortReason) {
+      recordModelDebug(
+        "Interrupting WebLLM generation",
+        {
+          abortReason,
+          elapsedMs: Math.round(performance.now() - startedAt),
+          tokenCount,
+        },
+        "warn",
+      );
       try {
         engine.interruptGenerate();
       } catch {
@@ -593,10 +666,9 @@ async function consumePlanStream(
 function recordModelDebug(
   message: string,
   details?: Record<string, unknown>,
+  level: LogLevel = "info",
 ): void {
-  const detail = details ? ` ${JSON.stringify(details)}` : "";
-  modelDebugEvents.push(`${new Date().toISOString()} ${message}${detail}`);
-  modelDebugEvents.splice(0, Math.max(0, modelDebugEvents.length - 120));
+  log[level]("model", message, details);
 }
 
 function buildSystemPrompt(
@@ -625,11 +697,69 @@ function buildSystemPrompt(
   ].join("\n\n");
 }
 
+/**
+ * Returns the first complete top-level `{…}` object in `text`, accounting for
+ * braces inside strings and escapes. Tolerant of prose before/after and of a
+ * second object trailing the first.
+ */
+function extractFirstJsonObject(text: string): string | null {
+  const start = text.indexOf("{");
+  if (start === -1) {
+    return null;
+  }
+
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+  for (let i = start; i < text.length; i++) {
+    const char = text[i];
+    if (inString) {
+      if (escaped) {
+        escaped = false;
+      } else if (char === "\\") {
+        escaped = true;
+      } else if (char === '"') {
+        inString = false;
+      }
+      continue;
+    }
+    if (char === '"') {
+      inString = true;
+    } else if (char === "{") {
+      depth += 1;
+    } else if (char === "}") {
+      depth -= 1;
+      if (depth === 0) {
+        return text.slice(start, i + 1);
+      }
+    }
+  }
+  return null;
+}
+
 function parseModelPlan(raw: string, file?: File): PlannedCommand {
   // Reasoning is suppressed at the engine level (extra_body.enable_thinking),
-  // so the answer is plain text; extract the JSON object from it.
-  const jsonText = raw.match(/\{[\s\S]*\}/)?.[0] ?? raw;
-  const value = JSON.parse(jsonText) as Partial<PlannedCommand> | string[];
+  // so the answer is plain text. Extract the first complete JSON object via a
+  // balanced-brace scan (tolerant of leading/trailing prose or a trailing
+  // second object), rather than a greedy regex that breaks on extra content.
+  const jsonText = extractFirstJsonObject(raw) ?? raw;
+  let value: Partial<PlannedCommand> | string[];
+  try {
+    value = JSON.parse(jsonText) as Partial<PlannedCommand> | string[];
+  } catch (error) {
+    recordModelDebug(
+      "Failed to parse model JSON",
+      {
+        error: errorMessage(error),
+        extracted: jsonText.slice(0, 1000),
+        raw: raw.slice(0, 2000),
+      },
+      "error",
+    );
+    throw new Error(
+      `Could not parse model output as JSON: ${errorMessage(error)}`,
+    );
+  }
   const args = Array.isArray(value) ? value : value.args;
 
   if (!Array.isArray(args) || !args.every((arg) => typeof arg === "string")) {

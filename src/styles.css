@@ -369,6 +369,35 @@ h2 {
 }
 
 /* Chat Bubble (Planner) */
+.planner {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.planner-meta {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.mode-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-full);
+  font-size: 0.75rem;
+  font-weight: 500;
+  border: 1px solid var(--line);
+  color: var(--muted);
+}
+
+.mode-badge.mode-model {
+  color: var(--accent);
+  border-color: color-mix(in oklch, var(--accent) 40%, var(--line));
+  background: color-mix(in oklch, var(--accent) 8%, transparent);
+}
+
 .planner-bubble {
   width: 100%;
   min-width: 0;
@@ -513,6 +542,51 @@ select.input-select {
 .btn-copy:hover {
   background: var(--bg);
   color: var(--ink);
+}
+
+.log-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+
+.log-tab {
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--muted);
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-full);
+  font-size: 0.75rem;
+  min-height: 32px;
+  transition:
+    background 0.2s,
+    color 0.2s,
+    border-color 0.2s;
+}
+
+.log-tab:hover {
+  color: var(--ink);
+}
+
+.log-tab.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--button-ink);
+}
+
+.log-line {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  padding: 1px 0;
+}
+
+.log-line.log-warn {
+  color: oklch(0.85 0.13 90);
+}
+
+.log-line.log-error {
+  color: oklch(0.78 0.16 25);
 }
 
 .empty-logs {

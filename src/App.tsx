@@ -3,6 +3,7 @@ import {
   Check,
   ChevronLeft,
   Copy,
+  Cpu,
   Database,
   Download,
   FileAudio,
@@ -16,7 +17,14 @@ import {
   Upload,
   Wand2,
 } from "lucide-react";
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import {
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import {
   argsToCommand,
   commandToChips,
@@ -26,25 +34,43 @@ import {
 } from "./lib/command";
 import {
   ensureFfmpeg,
-  getFfmpegDebugSnapshot,
   getFfmpegRuntimeStatus,
   getMediaElementMetadata,
+  logFfmpegState,
   runFfmpegCommand,
   type MediaMetadata,
 } from "./lib/media";
 import {
   defaultModelId,
   ensureLocalModel,
-  getModelDebugSnapshot,
+  isModelCached,
+  logModelState,
   modelPresets,
   planCommand,
   probeWebGpu,
   type WebGpuStatus,
 } from "./lib/planner";
+import {
+  formatEvent,
+  formatEvents,
+  getLog,
+  getLogVersion,
+  log,
+  logCategories,
+  subscribe,
+  type LogCategory,
+} from "./lib/log";
 import { hasOPFSSupport, saveOutput } from "./lib/storage";
 
 const starterPrompt =
   "Compress for sharing, keep broad compatibility, and preserve reasonable quality.";
+
+const categoryLabels: Record<LogCategory, string> = {
+  app: "App flow",
+  model: "Model",
+  ffmpeg: "FFmpeg",
+  sw: "Service worker",
+};
 
 export function App() {
   const [isFlipped, setIsFlipped] = useState(false);
@@ -72,7 +98,6 @@ export function App() {
   const [modelId, setModelId] = useState(defaultModelId);
   const [modelStatus, setModelStatus] = useState("Not loaded");
   const [busy, setBusy] = useState<string | null>(null);
-  const [logs, setLogs] = useState<string[]>([]);
   const [progress, setProgress] = useState(0);
   const [outputUrl, setOutputUrl] = useState<string | null>(null);
   const [outputName, setOutputName] = useState<string | null>(null);
@@ -81,15 +106,23 @@ export function App() {
   );
   const [runtimeStatus, setRuntimeStatus] = useState(getFfmpegRuntimeStatus());
   const [webGpu, setWebGpu] = useState<WebGpuStatus | null>(null);
+  const [logCategory, setLogCategory] = useState<LogCategory>("app");
   const [logsCopied, setLogsCopied] = useState(false);
   const activeFileRef = useRef<File | null>(null);
   const promptRef = useRef<HTMLTextAreaElement | null>(null);
+  const logRef = useRef<HTMLDivElement | null>(null);
+
+  // Live view of the unified event log.
+  const logVersion = useSyncExternalStore(subscribe, getLogVersion);
+  const events = useMemo(() => getLog(logCategory), [logCategory, logVersion]);
+  const ffmpegLogCount = useMemo(() => getLog("ffmpeg").length, [logVersion]);
 
   const chips = useMemo(() => commandToChips(args), [args]);
   const fileKind = getFileKind(file);
   const selectedModelPreset =
     modelPresets.find((preset) => preset.id === modelId) ?? modelPresets[0];
   const webGpuLabel = describeWebGpu(webGpu);
+  const planning = !!busy && busy.includes("Planning");
   const validation = useMemo(
     () => (file ? validateCommandArgs(args, file.name) : null),
     [args, file],
@@ -106,13 +139,53 @@ export function App() {
     return () => window.clearInterval(interval);
   }, []);
 
+  // On startup: probe WebGPU and, if the model is already cached AND a GPU
+  // adapter is available, auto-load + enable it (never triggers a download).
   useEffect(() => {
     let active = true;
-    probeWebGpu()
-      .then((status) => {
-        if (active) setWebGpu(status);
-      })
-      .catch(() => {});
+    (async () => {
+      log.info("app", "App started", { userAgent: navigator.userAgent });
+      const gpu = await probeWebGpu();
+      if (!active) return;
+      setWebGpu(gpu);
+      if (!gpu.adapterAvailable) return;
+
+      const cached = await isModelCached(defaultModelId).catch(() => false);
+      if (!active || !cached) {
+        if (active && !cached) {
+          log.info("app", "Model not cached; skipping auto-load", {
+            modelId: defaultModelId,
+          });
+        }
+        return;
+      }
+
+      log.info("app", "Cached model detected; auto-loading", {
+        modelId: defaultModelId,
+      });
+      setModelStatus("Auto-loading cached model…");
+      try {
+        await ensureLocalModel(defaultModelId, (report) => {
+          if (active) {
+            setModelStatus(
+              `${Math.round(report.progress * 100)}% ${report.text}`,
+            );
+          }
+        });
+        if (!active) return;
+        setUseModel(true);
+        setModelStatus("Local model ready (auto-loaded from cache)");
+        log.info("app", "Cached model auto-loaded", {
+          modelId: defaultModelId,
+        });
+      } catch (error) {
+        if (!active) return;
+        setModelStatus(`Auto-load failed: ${errorMessage(error)}`);
+        log.error("app", "Cached model auto-load failed", {
+          error: errorMessage(error),
+        });
+      }
+    })();
     return () => {
       active = false;
     };
@@ -125,6 +198,14 @@ export function App() {
     promptInput.style.height = "auto";
     promptInput.style.height = `${promptInput.scrollHeight}px`;
   }, [prompt]);
+
+  // Keep the log view pinned to the newest entries.
+  useEffect(() => {
+    const el = logRef.current;
+    if (el) {
+      el.scrollTop = el.scrollHeight;
+    }
+  }, [logVersion, logCategory, isFlipped]);
 
   function addFfmpegEvent(message: string) {
     setFfmpegStatus(message);
@@ -139,13 +220,13 @@ export function App() {
     setModelStatus(
       `${preset.name} selected. Load it to plan with the local model.`,
     );
+    log.info("app", "Model preset changed", { modelId: preset.id });
   }
 
   async function handleFile(nextFile: File | null) {
     activeFileRef.current = nextFile;
     setFile(nextFile);
     setMetadata(null);
-    setLogs([]);
     setOutputUrl(null);
     setOutputName(null);
 
@@ -153,19 +234,26 @@ export function App() {
       return;
     }
 
+    log.info("app", "File selected", {
+      name: nextFile.name,
+      size: nextFile.size,
+      type: nextFile.type,
+    });
     setArgs(defaultArgsForFile(nextFile));
     setBusy("Reading metadata");
     try {
       const data = await getMediaElementMetadata(nextFile);
       if (activeFileRef.current === nextFile) {
         setMetadata(data);
+        log.info("app", "Metadata read", {
+          duration: data.duration,
+          height: data.height,
+          width: data.width,
+        });
       }
     } catch (e) {
       if (activeFileRef.current === nextFile) {
-        setLogs((existing) => [
-          ...existing,
-          `Metadata error: ${errorMessage(e)}`,
-        ]);
+        log.error("app", "Metadata read failed", { error: errorMessage(e) });
       }
     } finally {
       if (activeFileRef.current === nextFile) {
@@ -178,6 +266,11 @@ export function App() {
     const activePrompt = promptOverride ?? prompt;
     if (!activePrompt.trim()) return;
 
+    log.info("app", "Plan requested", {
+      modelId,
+      promptLength: activePrompt.length,
+      useModel,
+    });
     setBusy(
       useModel ? "Planning with local model" : "Planning with local docs",
     );
@@ -197,24 +290,28 @@ export function App() {
       });
       setArgs(result.args);
       setPrompt("");
+      log.info("app", "Plan ready", {
+        args: result.args,
+        commandLine: result.commandLine,
+        source: result.source,
+      });
       if (result.warning) {
-        setLogs((existing) => [
-          ...existing,
-          `Model Warning: ${result.warning}`,
-        ]);
+        log.warn("app", result.warning);
       }
     } catch (error) {
-      setLogs((existing) => [
-        ...existing,
-        `Planner Error: ${errorMessage(error)}`,
-      ]);
-      setIsFlipped(true); // Flip to show error log
+      log.error("app", "Planning failed", {
+        error: errorMessage(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      });
+      setLogCategory("model");
+      setIsFlipped(true);
     } finally {
       setBusy(null);
     }
   }
 
   async function handleLoadModel() {
+    log.info("app", "Load local model requested", { modelId });
     setBusy("Checking WebGPU");
     setModelStatus("Checking WebGPU support…");
     const gpu = await probeWebGpu();
@@ -224,14 +321,13 @@ export function App() {
       setBusy(null);
       const detail = gpu.error ?? "WebGPU is not usable in this browser.";
       setModelStatus(`Cannot load model: ${detail}`);
-      setLogs((existing) => [...existing, `WebGPU: ${detail}`]);
+      log.error("app", "Cannot load model: WebGPU unusable", { detail });
       return;
     }
     if (!gpu.shaderF16) {
-      setLogs((existing) => [
-        ...existing,
-        `WebGPU Warning: ${gpu.error ?? "Adapter is missing the shader-f16 feature; loading may fail."}`,
-      ]);
+      log.warn("app", "GPU adapter missing shader-f16; load may fail", {
+        detail: gpu.error,
+      });
     }
 
     setBusy("Loading local model");
@@ -242,66 +338,53 @@ export function App() {
       });
       setUseModel(true);
       setModelStatus("Local model ready");
+      log.info("app", "Local model loaded", { modelId });
     } catch (error) {
       setModelStatus(`Model load failed: ${errorMessage(error)}`);
-      setLogs((existing) => [
-        ...existing,
-        `Model Error: ${errorMessage(error)}`,
-      ]);
+      log.error("app", "Local model load failed", {
+        error: errorMessage(error),
+      });
     } finally {
       setBusy(null);
     }
   }
 
   async function handleLoadFfmpeg() {
+    log.info("app", "Load FFmpeg requested");
     setBusy("Loading FFmpeg core");
-    setLogs([]);
     try {
       await ensureFfmpeg(addFfmpegEvent);
       setRuntimeStatus(getFfmpegRuntimeStatus());
     } catch (error) {
       setRuntimeStatus(getFfmpegRuntimeStatus());
-      setLogs((existing) => [
-        ...existing,
-        `FFmpeg Error: ${errorMessage(error)}`,
-      ]);
+      log.error("app", "FFmpeg load failed", { error: errorMessage(error) });
     } finally {
       setBusy(null);
     }
   }
 
-  async function handleAddDebugSnapshot() {
-    const nextRuntimeStatus = getFfmpegRuntimeStatus();
-    const nextBrowserStatus = getBrowserRuntimeStatus();
+  async function handleSnapshotState() {
+    const gpu = await probeWebGpu();
+    setWebGpu(gpu);
+    logModelState();
+    logFfmpegState();
     const serviceWorkerStatus = await getServiceWorkerDebugStatus();
-    setRuntimeStatus(nextRuntimeStatus);
-    setLogs((existing) => [
-      ...existing,
-      "",
-      ...getFfmpegDebugSnapshot(),
-      `Browser: secureContext=${nextBrowserStatus.secureContext}, webGpu=${nextBrowserStatus.webGpu}, cacheApi=${nextBrowserStatus.cacheApi}, indexedDb=${nextBrowserStatus.indexedDb}`,
-      `Service worker: ${serviceWorkerStatus}`,
-      `User agent: ${navigator.userAgent}`,
-    ]);
-  }
-
-  async function handleAddModelDebugSnapshot() {
-    const nextBrowserStatus = getBrowserRuntimeStatus();
-    const serviceWorkerStatus = await getServiceWorkerDebugStatus();
-    setWebGpu(await probeWebGpu());
-    setLogs((existing) => [
-      ...existing,
-      "",
-      ...getModelDebugSnapshot(),
-      `UI model: selected=${modelId}, preset=${selectedModelPreset.name}, useModel=${useModel}, status=${modelStatus}`,
-      `Browser: secureContext=${nextBrowserStatus.secureContext}, webGpu=${nextBrowserStatus.webGpu}, cacheApi=${nextBrowserStatus.cacheApi}, indexedDb=${nextBrowserStatus.indexedDb}`,
-      `Service worker: ${serviceWorkerStatus}`,
-      `User agent: ${navigator.userAgent}`,
-    ]);
+    log.info("app", "Environment snapshot", {
+      browser: getBrowserRuntimeStatus(),
+      serviceWorker: serviceWorkerStatus,
+      ui: {
+        ffmpegStatus,
+        modelStatus,
+        preset: selectedModelPreset.name,
+        selectedModel: modelId,
+        useModel,
+      },
+      userAgent: navigator.userAgent,
+    });
   }
 
   async function handleCopyLogs() {
-    const text = logs.join("\n");
+    const text = formatEvents(getLog(logCategory));
     if (!text) return;
     try {
       await navigator.clipboard.writeText(text);
@@ -325,16 +408,17 @@ export function App() {
 
   async function handleRun() {
     if (!file) return;
+    log.info("app", "Run requested", { args });
     setBusy("Running FFmpeg");
-    setLogs([]);
     setProgress(0);
     setOutputUrl(null);
     setOutputName(null);
+    setLogCategory("ffmpeg");
 
     try {
       const result = await runFfmpegCommand(
         { file, args },
-        (message) => setLogs((existing) => [...existing.slice(-120), message]),
+        undefined,
         (nextProgress) => setProgress(Math.max(0, Math.min(1, nextProgress))),
         addFfmpegEvent,
       );
@@ -355,16 +439,22 @@ export function App() {
       if (result.outputBlob && hasOPFSSupport()) {
         try {
           await saveOutput(result.outputName, result.outputBlob);
+          log.info("app", "Output saved to OPFS", {
+            outputName: result.outputName,
+          });
         } catch (error) {
-          setLogs((existing) => [
-            ...existing,
-            `Storage Warning: Output download is ready, but OPFS save failed: ${errorMessage(error)}`,
-          ]);
+          log.warn("app", "OPFS save failed (download still available)", {
+            error: errorMessage(error),
+          });
         }
       }
     } catch (error) {
       setRuntimeStatus(getFfmpegRuntimeStatus());
       addFfmpegEvent(`FFmpeg run failed: ${errorMessage(error)}`);
+      log.error("app", "FFmpeg run failed", {
+        error: errorMessage(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      });
       setIsFlipped(true);
     } finally {
       setBusy(null);
@@ -372,7 +462,7 @@ export function App() {
   }
 
   async function handleSelfCorrect() {
-    const failure = logs.slice(-20).join("\n");
+    const failure = formatEvents(getLog("ffmpeg").slice(-20));
     const correctionPrompt = `The FFmpeg command failed. Current command: ${argsToCommand(args)}\nError log:\n${failure}\nReturn a corrected command.`;
     setPrompt(correctionPrompt);
     setIsFlipped(false);
@@ -535,37 +625,60 @@ export function App() {
             )}
 
             {/* Chat Bubble / Planner */}
-            <div className="planner-bubble">
-              <textarea
-                ref={promptRef}
-                placeholder="Describe the output you want, for example: compress to 720p"
-                value={prompt}
-                onChange={(e) => setPrompt(e.target.value)}
-                onFocus={() => {
-                  if (prompt === starterPrompt) {
-                    setPrompt("");
+            <div className="planner">
+              <div className="planner-meta">
+                <span
+                  className={`mode-badge ${useModel ? "mode-model" : "mode-builtin"}`}
+                  title={
+                    useModel
+                      ? `Planning with the local model (${modelStatus})`
+                      : "Planning with the built-in deterministic planner"
                   }
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
-                    e.preventDefault();
-                    handlePlan();
-                  }
-                }}
-                disabled={!!busy}
-              />
-              <button
-                className="btn-send"
-                onClick={() => handlePlan()}
-                disabled={!!busy || !prompt.trim()}
-                title="Plan FFmpeg args"
-              >
-                {busy && busy.includes("Planning") ? (
-                  <LoaderCircle className="spin" size={16} />
-                ) : (
-                  <ArrowUp size={16} strokeWidth={3} />
-                )}
-              </button>
+                >
+                  {planning ? (
+                    <LoaderCircle className="spin" size={12} />
+                  ) : (
+                    <Cpu size={12} />
+                  )}
+                  {planning
+                    ? "Planning…"
+                    : useModel
+                      ? `Local model · ${selectedModelPreset.name}`
+                      : "Built-in planner"}
+                </span>
+              </div>
+              <div className="planner-bubble">
+                <textarea
+                  ref={promptRef}
+                  placeholder="Describe the output you want, for example: compress to 720p"
+                  value={prompt}
+                  onChange={(e) => setPrompt(e.target.value)}
+                  onFocus={() => {
+                    if (prompt === starterPrompt) {
+                      setPrompt("");
+                    }
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      handlePlan();
+                    }
+                  }}
+                  disabled={!!busy}
+                />
+                <button
+                  className="btn-send"
+                  onClick={() => handlePlan()}
+                  disabled={!!busy || !prompt.trim()}
+                  title="Plan FFmpeg args"
+                >
+                  {planning ? (
+                    <LoaderCircle className="spin" size={16} />
+                  ) : (
+                    <ArrowUp size={16} strokeWidth={3} />
+                  )}
+                </button>
+              </div>
             </div>
           </div>
 
@@ -669,41 +782,52 @@ export function App() {
 
               <div className="setting-group">
                 <div className="logs-header">
-                  <label>Run logs</label>
-                  {logs.length > 0 && (
-                    <button
-                      className="btn-ghost btn-copy"
-                      onClick={handleCopyLogs}
-                      title="Copy logs to clipboard"
-                    >
-                      {logsCopied ? <Check size={14} /> : <Copy size={14} />}
-                      {logsCopied ? "Copied" : "Copy logs"}
-                    </button>
-                  )}
+                  <label>Logs</label>
+                  <button
+                    className="btn-ghost btn-copy"
+                    onClick={handleCopyLogs}
+                    disabled={events.length === 0}
+                    title={`Copy ${categoryLabels[logCategory]} logs to clipboard`}
+                  >
+                    {logsCopied ? <Check size={14} /> : <Copy size={14} />}
+                    {logsCopied ? "Copied" : "Copy"}
+                  </button>
                 </div>
-                <div className="logs-container">
-                  {logs.length > 0 ? (
-                    logs.join("\n")
+                <div className="log-tabs">
+                  {logCategories.map((category) => (
+                    <button
+                      key={category}
+                      className={`log-tab ${category === logCategory ? "active" : ""}`}
+                      onClick={() => setLogCategory(category)}
+                    >
+                      {categoryLabels[category]}
+                    </button>
+                  ))}
+                </div>
+                <div className="logs-container" ref={logRef}>
+                  {events.length > 0 ? (
+                    events.map((event) => (
+                      <div
+                        key={event.id}
+                        className={`log-line log-${event.level}`}
+                      >
+                        {formatEvent(event)}
+                      </div>
+                    ))
                   ) : (
                     <div className="empty-logs">
-                      No logs yet. Run a command to see FFmpeg output here.
+                      No {categoryLabels[logCategory]} logs yet.
                     </div>
                   )}
                 </div>
                 <div className="log-actions">
                   <button
                     className="btn-primary btn-setting"
-                    onClick={handleAddDebugSnapshot}
+                    onClick={handleSnapshotState}
                   >
-                    <TerminalSquare size={16} /> Add FFmpeg snapshot
+                    <TerminalSquare size={16} /> Snapshot state
                   </button>
-                  <button
-                    className="btn-primary btn-setting"
-                    onClick={handleAddModelDebugSnapshot}
-                  >
-                    <Database size={16} /> Add model snapshot
-                  </button>
-                  {logs.length > 0 && (
+                  {ffmpegLogCount > 0 && (
                     <button
                       className="btn-primary btn-setting"
                       disabled={!!busy}

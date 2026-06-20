@@ -8,7 +8,27 @@ const cacheableHosts = new Set([
   "cdn-lfs.huggingface.co",
 ]);
 
+// Broadcast SW lifecycle/errors to all clients so the app can surface them in
+// its log viewer (the "Service worker" tab).
+async function swLog(level, message, data) {
+  try {
+    const clients = await self.clients.matchAll({ includeUncontrolled: true });
+    for (const client of clients) {
+      client.postMessage({
+        __coiLog: true,
+        level,
+        message,
+        data,
+        time: new Date().toISOString(),
+      });
+    }
+  } catch {
+    // best effort
+  }
+}
+
 self.addEventListener("install", (event) => {
+  swLog("info", "Service worker installing");
   event.waitUntil(
     caches
       .open(runtimeCacheName)
@@ -16,12 +36,16 @@ self.addEventListener("install", (event) => {
   );
   self.skipWaiting();
 });
-self.addEventListener("activate", (event) =>
-  event.waitUntil(self.clients.claim()),
-);
+self.addEventListener("activate", (event) => {
+  swLog("info", "Service worker activated; claiming clients", {
+    coep: coepCredentialless ? "credentialless" : "require-corp",
+  });
+  event.waitUntil(self.clients.claim());
+});
 
 self.addEventListener("message", (event) => {
   if (event.data === "deregister") {
+    swLog("warn", "Service worker deregister requested");
     self.registration
       .unregister()
       .then(() => self.clients.matchAll())
@@ -62,9 +86,17 @@ async function handleRequest(request) {
     return isolated;
   } catch (error) {
     if (cached) {
+      swLog("warn", "Fetch failed; served stale cache", {
+        url: request.url,
+        error: String(error),
+      });
       return addIsolationHeaders(cached);
     }
 
+    swLog("error", "Fetch failed with no cache fallback", {
+      url: request.url,
+      error: String(error),
+    });
     console.error("[coi-serviceworker] fetch failed", error);
     throw error;
   }

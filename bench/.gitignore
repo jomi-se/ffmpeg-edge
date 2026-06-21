@@ -1,0 +1,14 @@
+# Raw HTML is large and reproducible via scripts/fetch_docs.sh — keep out of git.
+corpus/raw/
+
+# Build/runtime artifacts (embeddings, indexes, caches) — regenerated, not source.
+embeddings/
+indexes/
+artifacts/
+*.npz
+*.bin
+
+# Local toolchains
+.venv/
+__pycache__/
+node_modules/

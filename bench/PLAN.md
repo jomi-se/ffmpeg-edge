@@ -153,9 +153,22 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done
 **Phase 0 COMPLETE.** ✅ Floor established (BM25 + full-dump). See run log for findings.
 
 ### Phase 1 — Architecture decision (cheap, paired chunking)
+
+> **DECISION (2026-06-21): embed in JS, not Python.** The shipped query encoder
+> runs in the browser, so build-time embedding uses **Node + transformers.js**
+> (same ONNX model + same JS tokenizer at build via `onnxruntime-node` and at
+> runtime via `onnxruntime-web`). This makes build↔runtime parity nearly free and
+> demotes the parity test-suite from load-bearing to a sanity check. Python is
+> kept ONLY for the language-agnostic data prep (parse/chunk/eval/BM25 floor —
+> zero parity stakes). Static/POTION, if not natively loadable, gets a ~30-line JS
+> encoder (lookup+mean-pool) — the same code that ships.
+
+- [x] Node + transformers.js embedding harness (`scripts/embed_bench.mjs`) — dense retrieval, recall@k + CIs, embedding cache. First model: `bge-small` (anchor).
 - [ ] Freeze BM25 config (done as floor — lock it before hybrids) ← carry forward
-- [ ] static-alone vs static+BM25 vs one tiny transformer (solo + hybrid) on `all`
-- [ ] Per-style recall breakdown (the eval's payoff: does static survive typo/wrong_terms vs BM25/transformer) ← **NEXT, do first in Phase 1**
+- [ ] RRF hybrid (dense + BM25) in the JS harness ← **NEXT (the crux)**
+- [ ] static POTION (alone + hybrid) — likely needs ~30-line JS lookup encoder
+- [ ] dense on `micro` profile (note: all/micro = 21K chunks, ~11× embed cost)
+- [ ] Per-style recall breakdown (the eval's payoff: does static survive typo/wrong_terms vs BM25/transformer)
 - [ ] Anchor × both chunk profiles control
 - [ ] Decide winning *tier* on the Pareto front; kill losing tiers
 - NB target to beat on `all`: BM25 recall@5=0.22 / recall@20=0.32 (macro), 0.16 / 0.43 (micro)
@@ -177,6 +190,14 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done
 
 ## Run log (newest first)
 
+- 2026-06-21 — **Phase 1 dense (bge-small fp32, JS/transformers.js):** all/macro
+  recall@5/@20 = **0.30/0.41** (vs BM25 0.22/0.32) — dense beats lexical but
+  modestly, CIs overlap, and both sit far below the 1.00 ceiling (ffmpeg filter
+  docs are terse/hard). cli/bge = 0.22/0.27 → hits the 0.27 ceiling like BM25
+  (corpus is the wall, not the method). Notable: **BM25-micro@20=0.43 ≈ dense-
+  macro@20=0.41** → chunking interacts as strongly as model choice. no_answer
+  top-1 cosine median ~0.60 (need answerable top-1 to set an abstain threshold).
+  Crux is the hybrid. Switched build to JS (parity ≈ free) — see decision above.
 - 2026-06-21 — **Phase 0 done.** Harness + floor results (37 real / 3 no_answer):
   - `cli`: coverage **0.27** and BM25 already hits it (0.27) → retrieval isn't the
     limit, the corpus is. Even full-dump of cli (20.7K tok, fits a generous window)

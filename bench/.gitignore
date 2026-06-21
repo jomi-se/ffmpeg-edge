@@ -15,3 +15,7 @@ artifacts/
 .venv/
 __pycache__/
 node_modules/
+
+# transformers.js model cache + embedding artifacts
+.cache/
+package-lock.json

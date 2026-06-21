@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ffmpeg-edge/bench/manifest.schema.json",
+  "title": "Edge RAG index manifest",
+  "description": "Records exactly how an index was built so a future swap is a rebuild, not a rewrite, and incompatible cached assets are never silently mixed. One manifest per built index (corpus x profile x embedding model x quantization x fusion).",
+  "type": "object",
+  "required": [
+    "manifest_version", "built_utc", "corpus", "chunking", "embedding"
+  ],
+  "properties": {
+    "manifest_version": { "type": "string", "const": "1" },
+    "built_utc": { "type": "string", "format": "date-time" },
+    "corpus": {
+      "type": "object",
+      "required": ["id", "source_url", "fetched_utc", "raw_sha256", "n_units"],
+      "properties": {
+        "id": { "enum": ["cli", "all"] },
+        "source_url": { "type": "string" },
+        "fetched_utc": { "type": "string", "format": "date-time" },
+        "raw_sha256": { "type": "string" },
+        "docs_note": { "type": "string", "description": "ffmpeg.org serves git-trunk docs; fetch date is the version anchor." },
+        "n_units": { "type": "integer" }
+      }
+    },
+    "chunking": {
+      "type": "object",
+      "required": ["chunker_version", "profile", "n_chunks"],
+      "properties": {
+        "chunker_version": { "type": "string" },
+        "profile": { "enum": ["macro", "micro"] },
+        "max_words": { "type": "integer" },
+        "breadcrumb_prefix": { "type": "boolean", "description": "heading path prepended to each chunk's embedded text" },
+        "n_chunks": { "type": "integer" }
+      }
+    },
+    "embedding": {
+      "type": "object",
+      "required": ["model", "revision", "dim", "normalized", "prefix_scheme", "quantization"],
+      "properties": {
+        "model": { "type": "string" },
+        "revision": { "type": "string", "description": "pinned model revision/commit" },
+        "dim": { "type": "integer" },
+        "mrl_dim": { "type": ["integer", "null"], "description": "truncated Matryoshka dim if used" },
+        "normalized": { "type": "boolean" },
+        "prefix_scheme": {
+          "type": "object",
+          "description": "asymmetric query/doc prefixes, e.g. nomic search_query:/search_document:, BGE query instruction",
+          "properties": {
+            "query": { "type": "string" },
+            "document": { "type": "string" }
+          }
+        },
+        "quantization": { "enum": ["fp32", "fp16", "int8", "q4"] },
+        "runtime_backend": { "enum": ["wasm", "webgpu", "python"], "description": "backend the artifact was validated on" }
+      }
+    },
+    "fusion": {
+      "type": "object",
+      "properties": {
+        "method": { "enum": ["none", "rrf", "linear_minmax"] },
+        "lexical": { "type": "string", "description": "frozen code-aware BM25/MiniSearch/FlexSearch config id" },
+        "rrf_k": { "type": ["integer", "null"] },
+        "weights": { "type": ["object", "null"] }
+      }
+    }
+  }
+}

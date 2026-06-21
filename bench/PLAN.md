@@ -138,9 +138,9 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done
 - [x] Create `bench/` structure + this plan
 - [x] Fetch `ffmpeg.html` (cli) and `ffmpeg-all.html` (all) → `corpus/raw/` (reproducible via `scripts/fetch_docs.sh`, provenance + sha256 in `corpus/PROVENANCE.txt`)
 - [x] Parse HTML → section-anchored units (breadcrumb + body) → `corpus/parsed/` (`scripts/parse_docs.py`; cli=41 units/~25.6K tok, all=1590 units/~305K tok)
-- [ ] Index manifest format (`bench/manifest.schema.json` + per-build manifest)
-- [ ] Chunking strategies (micro / macro) over parsed units
-- [ ] Stratified graded-light eval set scaffold (`eval/queries.jsonl`) + buckets
+- [x] Index manifest format (`bench/manifest.schema.json` — full contract; per-build manifest emitted in Phase 1 once an embedding model is chosen)
+- [x] Chunking strategies (micro / macro) over parsed units (`scripts/chunk_docs.py`, breadcrumb-prefixed; chunked output gitignored, regenerable)
+- [ ] Stratified graded-light eval set scaffold (`eval/queries.jsonl`) + buckets ← **NEXT** (needs domain queries; can seed from the app's real conversions)
 - [ ] Reusable harness: `(config) → recall@k (two budgets) + nDCG + bootstrap CIs`
 - [ ] Full-dump floor wired as row zero
 
@@ -166,6 +166,10 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done
 
 ## Run log (newest first)
 
+- 2026-06-21 — Built chunkers (macro/micro) + manifest contract. Chunk counts:
+  cli/macro=83, cli/micro=1454, all/macro=1863, **all/micro=21,177** (the last is
+  a real in-RAM index-size signal for static models — log as a payload constraint).
+  Each chunk's embedded text is breadcrumb-prefixed. **Next: eval set scaffold.**
 - 2026-06-21 — Parsed both corpora into section-anchored units. **Early coverage
   finding:** `cli` (41 units, ~25.6K tok — small enough to dump into a big window)
   has the command *mechanics* but **lacks filter/encoder reference detail** —

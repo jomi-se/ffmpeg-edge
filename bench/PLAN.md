@@ -165,10 +165,10 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done
 
 - [x] Node + transformers.js embedding harness (`scripts/embed_bench.mjs`) — dense retrieval, recall@k + CIs, embedding cache. First model: `bge-small` (anchor).
 - [ ] Freeze BM25 config (done as floor — lock it before hybrids) ← carry forward
-- [ ] RRF hybrid (dense + BM25) in the JS harness ← **NEXT (the crux)**
+- [x] RRF hybrid (dense + BM25) in the JS harness — **best config so far: all/macro recall@20 = 0.51** (vs 0.41 dense, 0.32 BM25)
+- [ ] Per-style recall breakdown (the eval's payoff: does dense survive typo/wrong_terms vs BM25) ← **NEXT (free, no new embeddings)**
 - [ ] static POTION (alone + hybrid) — likely needs ~30-line JS lookup encoder
-- [ ] dense on `micro` profile (note: all/micro = 21K chunks, ~11× embed cost)
-- [ ] Per-style recall breakdown (the eval's payoff: does static survive typo/wrong_terms vs BM25/transformer)
+- [ ] dense on `micro` profile (note: all/micro = 21K chunks, ~11× embed cost; BM25-micro@20=0.43 was strong, worth the dense+hybrid run)
 - [ ] Anchor × both chunk profiles control
 - [ ] Decide winning *tier* on the Pareto front; kill losing tiers
 - NB target to beat on `all`: BM25 recall@5=0.22 / recall@20=0.32 (macro), 0.16 / 0.43 (micro)
@@ -190,6 +190,12 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done
 
 ## Run log (newest first)
 
+- 2026-06-21 — **Phase 1 hybrid (RRF, bge-small+BM25):** all/macro recall@5/@20 =
+  **0.30/0.51** — clearly beats dense (0.41) and BM25 (0.32) at generous-k; best
+  config yet. cli still capped at 0.27 (hybrid can't beat coverage). Abstain
+  threshold looks unreliable: answerable cos median 0.66 vs no_answer 0.60 (too
+  close; only 3 no_answer queries though). Still ~half the answers missed at @20 →
+  try micro chunks + static, and break down by style to see WHERE it fails.
 - 2026-06-21 — **Phase 1 dense (bge-small fp32, JS/transformers.js):** all/macro
   recall@5/@20 = **0.30/0.41** (vs BM25 0.22/0.32) — dense beats lexical but
   modestly, CIs overlap, and both sit far below the 1.00 ceiling (ffmpeg filter

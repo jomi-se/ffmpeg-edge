@@ -168,7 +168,9 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done
 - [x] RRF hybrid (dense + BM25) in the JS harness — **best config so far: all/macro recall@20 = 0.51** (vs 0.41 dense, 0.32 BM25)
 - [x] Per-style recall breakdown — **wrong_terms: BM25=0.00, dense=0.38** (the case for embeddings in one cell). Hybrid *hurts* on wrong_terms (0.25<0.38: RRF dilutes with BM25's zero signal). terse favors lexical, verbose favors dense.
 - [x] static POTION (alone + hybrid) — JS lookup encoder (safetensors + bge tokenizer). all/macro: potion 0.19/0.35, potion+bm25 0.19/**0.41** — trails bge+bm25 (0.51). Captures wrong_terms semantics (0.38, =bge). **Payload caveat: potion fp32 = 124 MB, NOT smaller than bge fp32; static's edge is runtime, separable only after quantization.**
-- [ ] dense on `micro` profile (all/micro = 21K chunks, ~11× embed cost; BM25-micro@20=0.43 was strong) ← **DECIDE #4 next**
+- [x] **Examples-glued corpus (`all-glued`)** — merge each filter's Examples into its parent (`scripts/glue_examples.py`, 257 merged). **Biggest lever yet:** bge+bm25 recall@5/@20 = **0.46/0.70** (was 0.30/0.51 on `all`). Every style rose; hybrid-hurts-wrong_terms bug healed. **New leader. Make `all-glued` the default corpus.**
+- [ ] dense on `micro` profile (now lower priority — content beat chunk-size; revisit on glued if needed)
+- [ ] which intents still miss on glued? (encoders/compress have no Examples — likely the residual gap)
 - [ ] Anchor × both chunk profiles control
 - [ ] Decide winning *tier* on the Pareto front; kill losing tiers
 - NB target to beat on `all`: BM25 recall@5=0.22 / recall@20=0.32 (macro), 0.16 / 0.43 (micro)
@@ -190,6 +192,16 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done
 
 ## Run log (newest first)
 
+- 2026-06-21 — **Examples-glued = biggest win yet.** Merging each filter's
+  Examples subsection into its parent chunk (surfacing the runnable recipes +
+  goal vocab like "gif"/"output.gif") lifted bge+bm25 recall@5/@20 from 0.30/0.51
+  (`all`) to **0.46/0.70** (`all-glued`). bm25 alone 0.32/0.51; bge alone 0.46/0.68.
+  Per-style all up (neutral 0.40→0.80, verbose 0.50→0.83, wrong_terms 0.38→0.50);
+  the RRF-hurts-wrong_terms problem healed (BM25 no longer zero-signal). terse
+  still stuck at 0.57 (short queries starve retrieval — orthogonal problem).
+  Conclusion: **chunk CONTENT > model choice or chunk SIZE.** Confirms the
+  hard-ceiling was largely self-inflicted; recipes exist in ffmpeg Examples.
+  Caveat: encoders (libx264/compress) have no Examples → likely the residual miss.
 - 2026-06-21 — **Hard-ceiling investigation (3 subagent "BMO" reviews + spot
   checks).** Verdict on whether ffmpeg docs can ANSWER user goals:
   - Main reference pages are pure reference, NOT goal-oriented. "make a gif" = NO

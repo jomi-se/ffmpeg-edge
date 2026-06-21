@@ -291,6 +291,6 @@ for (const corpus of corpora) {
 
 const outDir = path.join(BENCH, "results");
 fs.mkdirSync(outDir, { recursive: true });
-fs.writeFileSync(path.join(outDir, `phase1_${modelKey}_${dtype}.json`),
+fs.writeFileSync(path.join(outDir, `phase1_${modelKey}_${dtype}_${onlyCorpus || "multi"}.json`),
   JSON.stringify({ model: m.id, dtype, kT, kG, rows, styleAgg }, null, 2));
-console.log(`\n-> results/phase1_${modelKey}_${dtype}.json`);
+console.log(`\n-> results/phase1_${modelKey}_${dtype}_${onlyCorpus || "multi"}.json`);

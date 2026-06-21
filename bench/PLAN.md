@@ -166,8 +166,8 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done
 - [x] Node + transformers.js embedding harness (`scripts/embed_bench.mjs`) — dense retrieval, recall@k + CIs, embedding cache. First model: `bge-small` (anchor).
 - [ ] Freeze BM25 config (done as floor — lock it before hybrids) ← carry forward
 - [x] RRF hybrid (dense + BM25) in the JS harness — **best config so far: all/macro recall@20 = 0.51** (vs 0.41 dense, 0.32 BM25)
-- [ ] Per-style recall breakdown (the eval's payoff: does dense survive typo/wrong_terms vs BM25) ← **NEXT (free, no new embeddings)**
-- [ ] static POTION (alone + hybrid) — likely needs ~30-line JS lookup encoder
+- [x] Per-style recall breakdown — **wrong_terms: BM25=0.00, dense=0.38** (the case for embeddings in one cell). Hybrid *hurts* on wrong_terms (0.25<0.38: RRF dilutes with BM25's zero signal). terse favors lexical, verbose favors dense.
+- [ ] static POTION (alone + hybrid) — needs ~30-line JS lookup encoder (safetensors + tokenizer) ← **NEXT**
 - [ ] dense on `micro` profile (note: all/micro = 21K chunks, ~11× embed cost; BM25-micro@20=0.43 was strong, worth the dense+hybrid run)
 - [ ] Anchor × both chunk profiles control
 - [ ] Decide winning *tier* on the Pareto front; kill losing tiers
@@ -190,6 +190,13 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done
 
 ## Run log (newest first)
 
+- 2026-06-21 — **Per-style breakdown (recall@20, all/macro):** the eval design
+  pays off. wrong_terms: bm25 **0.00** / bge 0.38 / hybrid 0.25 — pure lexical
+  collapses on layperson vocabulary; dense rescues it; **but RRF hybrid HURTS here**
+  (dilutes dense with BM25's zero signal) → naive fusion isn't always safe. terse
+  favors lexical (0.43>0.29, short queries starve the encoder); verbose favors
+  dense (0.50>0.17). Implication: fusion may need to be query-adaptive, or we lean
+  dense for this product. Small n/style → qualitative, but bm25=0.00 is stark.
 - 2026-06-21 — **Phase 1 hybrid (RRF, bge-small+BM25):** all/macro recall@5/@20 =
   **0.30/0.51** — clearly beats dense (0.41) and BM25 (0.32) at generous-k; best
   config yet. cli still capped at 0.27 (hybrid can't beat coverage). Abstain

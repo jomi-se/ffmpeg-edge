@@ -170,7 +170,9 @@ const med = (a) => { const s = [...a].sort((x, y) => x - y); return s[s.length >
 const corpora = onlyCorpus ? [onlyCorpus] : ["cli", "all"];
 const profiles = onlyProfile ? [onlyProfile] : ["macro"];
 const rrfK = +arg("rrf-k", 60);
+const STYLES = [...new Set(real.map((q) => q.style))];
 const rows = [];
+const styleAgg = []; // {corpus, method, perStyle:{style:[recall,n]}}
 for (const corpus of corpora) {
   const aset = anchorSet(corpus);
   const covered = real.filter((q) => q.targets.some((t) => aset.has(t)));
@@ -211,6 +213,14 @@ for (const corpus of corpora) {
         naNote: name.startsWith(modelKey) && !name.includes("bm25")
           ? `na_cos_med=${naDense.toFixed(2)} ans_cos_med=${ansDense.toFixed(2)}` : "",
       });
+      // per-style recall@generous (the eval's payoff: where does it leak?)
+      const perStyle = {};
+      for (const s of STYLES) {
+        const idx = real.map((q, i) => [q, i]).filter(([q]) => q.style === s).map(([, i]) => i);
+        const hits = idx.map((i) => recallAt(ranks[i], new Set(real[i].targets), kG));
+        perStyle[s] = [hits.reduce((a, b) => a + b, 0) / hits.length, idx.length];
+      }
+      styleAgg.push({ corpus, method: name, perStyle });
     }
   }
 }
@@ -222,8 +232,22 @@ console.log(hdr); console.log("-".repeat(hdr.length));
 for (const r of rows) {
   console.log(`${r.config.padEnd(28)} ${fmt(r.rt).padEnd(20)} ${fmt(r.rg).padEnd(20)} ${r.nd.toFixed(2).padEnd(6)} ${r.coverage.toFixed(2).padEnd(5)} ${r.nChunks}ch ${r.naNote}`);
 }
+// ---- per-style breakdown (recall@generous) ----
+for (const corpus of corpora) {
+  const ms = styleAgg.filter((s) => s.corpus === corpus);
+  if (!ms.length) continue;
+  console.log(`\nper-style recall@${kG}  [${corpus}]   (n per style in parens)`);
+  const sh = `${"style".padEnd(13)}${ms.map((s) => s.method.split(" / ").pop().padStart(22)).join("")}`;
+  console.log(sh); console.log("-".repeat(sh.length));
+  for (const st of STYLES) {
+    const n = ms[0].perStyle[st][1];
+    const cells = ms.map((s) => `${s.perStyle[st][0].toFixed(2)}`.padStart(22)).join("");
+    console.log(`${`${st}(${n})`.padEnd(13)}${cells}`);
+  }
+}
+
 const outDir = path.join(BENCH, "results");
 fs.mkdirSync(outDir, { recursive: true });
 fs.writeFileSync(path.join(outDir, `phase1_${modelKey}_${dtype}.json`),
-  JSON.stringify({ model: m.id, dtype, kT, kG, rows }, null, 2));
+  JSON.stringify({ model: m.id, dtype, kT, kG, rows, styleAgg }, null, 2));
 console.log(`\n-> results/phase1_${modelKey}_${dtype}.json`);

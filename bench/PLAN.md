@@ -190,6 +190,24 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done
 
 ## Run log (newest first)
 
+- 2026-06-21 — **Hard-ceiling investigation (3 subagent "BMO" reviews + spot
+  checks).** Verdict on whether ffmpeg docs can ANSWER user goals:
+  - Main reference pages are pure reference, NOT goal-oriented. "make a gif" = NO
+    (ingredients named, but no split/-filter_complex/[labels]/scale syntax/recipe);
+    "compress" = NO (**`-crf` never even mentioned** on the libx264 page); "trim a
+    section" = YES, but only because Main options *contains worked examples*.
+  - **KEY FINDING:** the answers DO exist — in each filter's **Examples
+    subsection** (e.g. `Examples-152` palettegen, `Examples-153` paletteuse:
+    "encode a GIF", `Examples-175` thumbnail: a complete recipe). Our chunker split
+    these into separate units and the eval targets the MAIN page, not the Examples.
+    So the ≤0.51 recall ceiling is partly self-inflicted by mis-targeting.
+  - **Implication / next levers (bigger than model choice):** (a) glue each
+    filter's Examples onto its parent chunk; (b) add `Examples-*` anchors as valid
+    eval targets. Caveats: gif Examples are 2-pass/no-resize (suboptimal), and
+    encoders (libx264) have NO Examples → "compress" may stay genuinely hard.
+    This reframes Phase 1: chunking/targeting may matter more than the embedder.
+
+
 - 2026-06-21 — **Phase 1 static (POTION, model2vec, JS lookup encoder):** all/macro
   potion 0.19/0.35, potion+bm25 0.19/**0.41** — trails bge+bm25 (0.51). Static
   captures the wrong_terms semantic rescue (0.38 = bge) so it's not lexical-dumb,

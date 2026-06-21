@@ -1,0 +1,126 @@
+{
+  "args": {
+    "k_tight": 5,
+    "k_generous": 20,
+    "bootstrap": 2000,
+    "seed": 0
+  },
+  "results": [
+    {
+      "config": "cli / full_dump",
+      "corpus": "cli",
+      "method": "full_dump",
+      "recall_tight": [
+        0.2702702702702703,
+        0.2702702702702703,
+        0.2702702702702703
+      ],
+      "recall_gen": [
+        0.2702702702702703,
+        0.2702702702702703,
+        0.2702702702702703
+      ],
+      "ndcg_tight": 0.2702702702702703,
+      "coverage": 0.2702702702702703,
+      "note": "20,736 tok; fits_tight=False fits_generous=True"
+    },
+    {
+      "config": "cli / bm25 / macro",
+      "corpus": "cli",
+      "method": "bm25",
+      "profile": "macro",
+      "recall_tight": [
+        0.2702702702702703,
+        0.13513513513513514,
+        0.43243243243243246
+      ],
+      "recall_gen": [
+        0.2702702702702703,
+        0.13513513513513514,
+        0.43243243243243246
+      ],
+      "ndcg_tight": 0.13290855218286454,
+      "coverage": 0.2702702702702703,
+      "n_chunks": 83,
+      "na_top1_med": 5.541320247732704
+    },
+    {
+      "config": "cli / bm25 / micro",
+      "corpus": "cli",
+      "method": "bm25",
+      "profile": "micro",
+      "recall_tight": [
+        0.2702702702702703,
+        0.13513513513513514,
+        0.40540540540540543
+      ],
+      "recall_gen": [
+        0.2702702702702703,
+        0.13513513513513514,
+        0.43243243243243246
+      ],
+      "ndcg_tight": 0.12341699485145963,
+      "coverage": 0.2702702702702703,
+      "n_chunks": 1454,
+      "na_top1_med": 7.770836315199314
+    },
+    {
+      "config": "all / full_dump",
+      "corpus": "all",
+      "method": "full_dump",
+      "recall_tight": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "recall_gen": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "ndcg_tight": 1.0,
+      "coverage": 1.0,
+      "note": "252,543 tok; fits_tight=False fits_generous=False"
+    },
+    {
+      "config": "all / bm25 / macro",
+      "corpus": "all",
+      "method": "bm25",
+      "profile": "macro",
+      "recall_tight": [
+        0.21621621621621623,
+        0.08108108108108109,
+        0.35135135135135137
+      ],
+      "recall_gen": [
+        0.32432432432432434,
+        0.1891891891891892,
+        0.4864864864864865
+      ],
+      "ndcg_tight": 0.06646221061865133,
+      "coverage": 1.0,
+      "n_chunks": 1863,
+      "na_top1_med": 12.030879650688071
+    },
+    {
+      "config": "all / bm25 / micro",
+      "corpus": "all",
+      "method": "bm25",
+      "profile": "micro",
+      "recall_tight": [
+        0.16216216216216217,
+        0.05405405405405406,
+        0.2972972972972973
+      ],
+      "recall_gen": [
+        0.43243243243243246,
+        0.2702702702702703,
+        0.5945945945945946
+      ],
+      "ndcg_tight": 0.04173723821369586,
+      "coverage": 1.0,
+      "n_chunks": 21177,
+      "na_top1_med": 12.787213497050903
+    }
+  ]
+}

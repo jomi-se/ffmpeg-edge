@@ -167,8 +167,8 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done
 - [ ] Freeze BM25 config (done as floor — lock it before hybrids) ← carry forward
 - [x] RRF hybrid (dense + BM25) in the JS harness — **best config so far: all/macro recall@20 = 0.51** (vs 0.41 dense, 0.32 BM25)
 - [x] Per-style recall breakdown — **wrong_terms: BM25=0.00, dense=0.38** (the case for embeddings in one cell). Hybrid *hurts* on wrong_terms (0.25<0.38: RRF dilutes with BM25's zero signal). terse favors lexical, verbose favors dense.
-- [ ] static POTION (alone + hybrid) — needs ~30-line JS lookup encoder (safetensors + tokenizer) ← **NEXT**
-- [ ] dense on `micro` profile (note: all/micro = 21K chunks, ~11× embed cost; BM25-micro@20=0.43 was strong, worth the dense+hybrid run)
+- [x] static POTION (alone + hybrid) — JS lookup encoder (safetensors + bge tokenizer). all/macro: potion 0.19/0.35, potion+bm25 0.19/**0.41** — trails bge+bm25 (0.51). Captures wrong_terms semantics (0.38, =bge). **Payload caveat: potion fp32 = 124 MB, NOT smaller than bge fp32; static's edge is runtime, separable only after quantization.**
+- [ ] dense on `micro` profile (all/micro = 21K chunks, ~11× embed cost; BM25-micro@20=0.43 was strong) ← **DECIDE #4 next**
 - [ ] Anchor × both chunk profiles control
 - [ ] Decide winning *tier* on the Pareto front; kill losing tiers
 - NB target to beat on `all`: BM25 recall@5=0.22 / recall@20=0.32 (macro), 0.16 / 0.43 (micro)
@@ -190,6 +190,14 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done
 
 ## Run log (newest first)
 
+- 2026-06-21 — **Phase 1 static (POTION, model2vec, JS lookup encoder):** all/macro
+  potion 0.19/0.35, potion+bm25 0.19/**0.41** — trails bge+bm25 (0.51). Static
+  captures the wrong_terms semantic rescue (0.38 = bge) so it's not lexical-dumb,
+  but lower ceiling overall. **Reality check: potion-retrieval-32M fp32 = 124 MB,
+  ~same as bge-small fp32** — static's advantage is RUNTIME (instant table-lookup,
+  no GPU/forward pass), separable only after quantization (Phase 2). Current
+  leader: **bge-small + BM25 hybrid, 0.51@20.** Static earns its slot only if
+  Phase 3 cold-start/runtime wins justify ~10 recall points.
 - 2026-06-21 — **Per-style breakdown (recall@20, all/macro):** the eval design
   pays off. wrong_terms: bm25 **0.00** / bge 0.38 / hybrid 0.25 — pure lexical
   collapses on layperson vocabulary; dense rescues it; **but RRF hybrid HURTS here**

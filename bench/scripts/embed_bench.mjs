@@ -8,7 +8,7 @@
 //        [--dtype fp32|q8] [--k-tight 5] [--k-generous 20] [--bootstrap 2000]
 // Chunk embeddings are cached under .cache/emb/ keyed by model+dtype+corpus+profile.
 
-import { pipeline, env } from "@huggingface/transformers";
+import { pipeline, AutoTokenizer, env } from "@huggingface/transformers";
 import fs from "node:fs";
 import path from "node:path";
 import url from "node:url";
@@ -27,6 +27,12 @@ const MODELS = {
   },
   "minilm": { id: "Xenova/all-MiniLM-L6-v2", query: "", doc: "" },
   "gte-small": { id: "Xenova/gte-small", query: "", doc: "" },
+  // Model2Vec static: tokenize -> mean-pool token rows -> normalize (zipf/PCA
+  // baked into the table). Same code path as the shippable browser encoder.
+  "potion": {
+    id: "minishlab/potion-retrieval-32M", static: true, query: "", doc: "",
+    weights: path.join(BENCH, ".cache", "potion", "model.safetensors"),
+  },
 };
 
 // ---- args ----
@@ -54,22 +60,59 @@ const noAns = queries.filter((q) => q.no_answer);
 const anchorSet = (corpus) =>
   new Set(readJsonl(path.join(BENCH, "corpus", "parsed", `${corpus}.jsonl`)).map((u) => u.anchor));
 
-// ---- embedding (cached) ----
-let extractor = null;
-async function getExtractor() {
-  if (!extractor) {
+// ---- embedding (cached); supports transformer pipeline OR Model2Vec static ----
+let enc = null;
+function loadStaticTable(file) {
+  const buf = fs.readFileSync(file);
+  const n = Number(new DataView(buf.buffer, buf.byteOffset, 8).getBigUint64(0, true));
+  const hdr = JSON.parse(buf.subarray(8, 8 + n).toString("utf8"));
+  const t = hdr["embeddings"];
+  const [V, D] = t.shape;
+  const start = buf.byteOffset + 8 + n + t.data_offsets[0];
+  // copy to a fresh (aligned) buffer so Float32Array view is valid
+  const emb = new Float32Array(buf.buffer.slice(start, start + V * D * 4));
+  return { emb, V, D };
+}
+async function getEncoder() {
+  if (enc) return enc;
+  if (m.static) {
+    process.stderr.write(`loading static ${m.id}…\n`);
+    const tok = await AutoTokenizer.from_pretrained(m.id);
+    enc = { static: true, tok, ...loadStaticTable(m.weights) };
+  } else {
     process.stderr.write(`loading ${m.id} (${dtype})…\n`);
-    extractor = await pipeline("feature-extraction", m.id, { dtype });
+    enc = { static: false, ex: await pipeline("feature-extraction", m.id, { dtype }) };
   }
-  return extractor;
+  return enc;
+}
+function staticVec(e, ids) {
+  const { emb, D } = e;
+  const v = new Float32Array(D);
+  for (const id of ids) { const base = id * D; for (let d = 0; d < D; d++) v[d] += emb[base + d]; }
+  const k = ids.length || 1;
+  let norm = 0;
+  for (let d = 0; d < D; d++) { v[d] /= k; norm += v[d] * v[d]; }
+  norm = Math.sqrt(norm) || 1;
+  for (let d = 0; d < D; d++) v[d] /= norm;
+  return Array.from(v);
 }
 async function embed(texts, prefix) {
-  const ex = await getExtractor();
+  const e = await getEncoder();
   const out = [];
+  if (e.static) {
+    for (let i = 0; i < texts.length; i++) {
+      const r = await e.tok(prefix + texts[i], { add_special_tokens: false });
+      let ids = r.input_ids.tolist();
+      ids = (Array.isArray(ids[0]) ? ids[0] : ids).map(Number);
+      out.push(staticVec(e, ids));
+      if (i % 2048 === 0) process.stderr.write(`  embedded ${i}/${texts.length}\r`);
+    }
+    return out;
+  }
   const BATCH = 64;
   for (let i = 0; i < texts.length; i += BATCH) {
     const batch = texts.slice(i, i + BATCH).map((t) => prefix + t);
-    const res = await ex(batch, { pooling: "mean", normalize: true });
+    const res = await e.ex(batch, { pooling: "mean", normalize: true });
     out.push(...res.tolist());
     if (i % 1024 === 0) process.stderr.write(`  embedded ${i}/${texts.length}\r`);
   }

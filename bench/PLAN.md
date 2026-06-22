@@ -201,6 +201,23 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done
 
 ## Run log (newest first)
 
+- 2026-06-22 — **Prompt v3 (lighter coaching) + rate-limit hardening.** User
+  rewrote the coached prompt: kept the doc taxonomy + decomposition hint, DROPPED
+  the prescriptive rules (2-4 searches / don't-repeat / technical-not-casual).
+  Hypothesis: the explicit how-to-search rules were doing more harm than good.
+  **Confirmed.** Tool correct (mean of repeats): **14b v3 = 89/89/89% (stable!)**
+  vs v2 62% and v1fair 76% — v3 ties RAG-level (92%). **8b v3 = 78/86/84% (mean 83)**
+  ≈ v1fair (~86) ≈ RAG (89), i.e. v3 neither helps nor hurts 8b (the 78 was a low
+  outlier). **3b v3 = 70%**, same plateau across every prompt and mode. v3 also
+  cheaper than v2 (14b 7.2k vs 10.9k tok/q). Takeaways: (1) light-touch coaching
+  >> prescriptive; over-specifying search tactics derails the model. (2) 14b is the
+  size where good-prompt tool-use becomes viable (stable 89%, self-correcting).
+  (3) RAG still ≥ tool everywhere but the gap is now small for 14b (92 vs 89).
+  (4) prompt engineering cannot lift 3b off ~70%. Also hardened callWithRetry
+  (honors Retry-After, exp backoff+jitter, 6 tries over SDK's 4) and dropped
+  default concurrency to 2 for free-tier keys — the v3 runs dropped 0 cells (vs
+  the 2 lost 14b to_mp4 cells at concurrency 5).
+
 - 2026-06-22 — **Tool coaching (v2) + fairness fix + tokens + variance check.**
   Found the tool returned 5 chunks truncated to 700 chars while RAG sent 8 FULL
   chunks (median chunk 738c, p90 2075c → ~half were clipped, often the glued

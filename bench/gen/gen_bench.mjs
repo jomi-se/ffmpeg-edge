@@ -104,7 +104,38 @@ Rules:
   summarizing the *content* of a video), do NOT output a command. Say it is out of
   scope for ffmpeg and stop.`;
 
-const systemFor = () => (mode === "tool" && variant === "v2" ? SYSTEM_TOOL_V2 : SYSTEM);
+// v3 (user-authored): keeps the doc taxonomy + decomposition, but drops the
+// prescriptive search-count / "don't repeat" / "technical not casual" rules —
+// testing whether the explicit how-to-search/build rules were doing more harm than good.
+const SYSTEM_TOOL_V3 = `You are an ffmpeg expert assistant helping people unfamiliar with its options so they can use it effectively.
+The user describes, in plain language, what they want to do with a media file.
+Your job: figure out how to build the right ffmpeg command that will do what the user wants.
+
+You have a tool to search the ffmpeg full official docs. How the search tool works (use this to search well):
+- It does hybrid keyword+semantic search over the real ffmpeg manual and returns
+  the most relevant sections, each with its title in [brackets].
+- The manual is organized into: command-line Options (e.g. -ss, -t, -an, -b:v),
+  Encoders (codecs like the names after -c:v / -c:a), Muxers (output containers /
+  file extensions), and Filters (audio & video transforms used in -vf / -af / -filter_complex).
+
+How to search effectively:
+- First, decompose the task into the pieces an ffmpeg command needs. Most tasks need
+  one or more of: (a) a FILTER for a transform, (b) an ENCODER for the target format,
+  (c) a MUXER/container for the output extension, (d) plain Options for trimming or
+  stream selection. A format conversion almost always needs BOTH the right encoder
+  AND the right container. The docs for these might be separate and need multiple searches.
+- Before using any flag/encoder/filter, confirm its name and syntax with the docs.
+
+Rules:
+- Use input.ext / output.ext as placeholder filenames.
+- Reply with a single fenced bash code block containing exactly one ffmpeg command,
+  then one short plain-language line explaining what it does.
+- If the request is something ffmpeg fundamentally cannot do (e.g. understanding or
+  summarizing the *content* of a video), do NOT output a command. Say it is out of
+  scope for ffmpeg and stop.`;
+
+const TOOL_PROMPTS = { v2: SYSTEM_TOOL_V2, v3: SYSTEM_TOOL_V3 };
+const systemFor = () => (mode === "tool" && TOOL_PROMPTS[variant]) || SYSTEM;
 
 const fmtDocs = (docs) =>
   docs.map((d, i) => `### Doc ${i + 1}: ${d.path}\n${d.text}`).join("\n\n");
@@ -131,15 +162,27 @@ const makeSearchTool = (localLog) => tool({
   },
 });
 
-async function callWithRetry(opts, tries = 4) {
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+// Read a Retry-After hint (seconds, or *-ms) from whichever layer carries headers.
+function retryAfterMs(e) {
+  const h = e?.responseHeaders || e?.cause?.responseHeaders || e?.data?.responseHeaders;
+  if (!h) return null;
+  if (h["retry-after-ms"]) return Number(h["retry-after-ms"]) || null;
+  if (h["retry-after"]) { const n = Number(h["retry-after"]); return Number.isFinite(n) ? n * 1000 : null; }
+  return null;
+}
+// Outer safety net on top of the SDK's own retries: honor Retry-After, else
+// exponential backoff with jitter. Gentle enough for a free-tier key.
+async function callWithRetry(opts, tries = 6) {
   for (let attempt = 1; ; attempt++) {
-    try { return await generateText(opts); }
+    try { return await generateText({ maxRetries: 4, ...opts }); }
     catch (e) {
-      const retryable = /429|rate|capacity|timeout|503|500|overloaded/i.test(String(e?.message || e));
+      const is429 = e?.statusCode === 429 || /429|rate|capacity|quota/i.test(String(e?.message || e));
+      const retryable = is429 || /timeout|503|500|overloaded|ECONNRESET|fetch failed/i.test(String(e?.message || e));
       if (!retryable || attempt >= tries) throw e;
-      const wait = 1500 * attempt;
-      process.stderr.write(`  retry ${attempt} after ${wait}ms (${e.message?.slice(0, 60)})\n`);
-      await new Promise((r) => setTimeout(r, wait));
+      const wait = retryAfterMs(e) ?? Math.min(30000, 2000 * 2 ** (attempt - 1)) + Math.floor(Math.random() * 500);
+      process.stderr.write(`  retry ${attempt}/${tries} after ${wait}ms (${String(e.message).slice(0, 50)})\n`);
+      await sleep(wait);
     }
   }
 }
@@ -178,7 +221,7 @@ async function runOne(q) {
   };
 }
 
-const CONC = +arg("concurrency", 5); // requests in flight; callWithRetry handles 429s
+const CONC = +arg("concurrency", 2); // requests in flight; keep low for free-tier keys
 console.log(`\nmodel=${modelKey} (${MODELS[modelKey]})  mode=${mode}  variant=${variant}  k=${K}  conc=${CONC}  queries=${queries.length}`);
 const records = new Array(queries.length);
 let next = 0;

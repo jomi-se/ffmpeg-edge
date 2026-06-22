@@ -543,8 +543,8 @@ export function App() {
                     </div>
                     <p className="text-muted text-sm">
                       Paste that into Mistral, ChatGPT, Claude, a local
-                      open-source model (Llama, Qwen, …), or any AI and then paste
-                      its reply back here.
+                      open-source model (Llama, Qwen, …), or any AI and then
+                      paste its reply back here.
                     </p>
                     <textarea
                       className="ai-input"

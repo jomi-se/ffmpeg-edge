@@ -169,8 +169,11 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done
 - [x] Per-style recall breakdown — **wrong_terms: BM25=0.00, dense=0.38** (the case for embeddings in one cell). Hybrid *hurts* on wrong_terms (0.25<0.38: RRF dilutes with BM25's zero signal). terse favors lexical, verbose favors dense.
 - [x] static POTION (alone + hybrid) — JS lookup encoder (safetensors + bge tokenizer). all/macro: potion 0.19/0.35, potion+bm25 0.19/**0.41** — trails bge+bm25 (0.51). Captures wrong_terms semantics (0.38, =bge). **Payload caveat: potion fp32 = 124 MB, NOT smaller than bge fp32; static's edge is runtime, separable only after quantization.**
 - [x] **Examples-glued corpus (`all-glued`)** — merge each filter's Examples into its parent (`scripts/glue_examples.py`, 257 merged). **Biggest lever yet:** bge+bm25 recall@5/@20 = **0.46/0.70** (was 0.30/0.51 on `all`). Every style rose; hybrid-hurts-wrong_terms bug healed. **New leader. Make `all-glued` the default corpus.**
-- [ ] dense on `micro` profile (now lower priority — content beat chunk-size; revisit on glued if needed)
-- [ ] which intents still miss on glued? (encoders/compress have no Examples — likely the residual gap)
+- [x] Miss analysis on glued (per-intent + miss list). Residual gaps are TWO things, not "encoders": (a) **to_mp4 = 0.00** (doc has no "make an mp4" recipe AND eval target was mislabeled to the demuxer `mov_002fmp4_002f3gp` — FIX the label), (b) **terse/short queries** dominate the rest (query-side starvation → needs query expansion). gif & thumb_video = 1.00; compress = 0.60 (not the zero predicted).
+- [x] POTION on glued: 0.41/0.57 (revived from 0.19/0.35 but still trails bge 0.46/0.68). **Hybrid barely helps on glued** (bge 0.68→0.70; potion+bm25 0.54 < potion 0.57). **POTION abstains better** (na/ans cos gap 0.30/0.42 vs bge 0.61/0.65).
+- [ ] FIX eval label: to_mp4 target (use the mp4 *muxer*, not demuxer) + re-check
+- [ ] dense on `micro` profile (low priority — content beat chunk-size)
+- [ ] query expansion for terse/short queries (the other residual gap)
 - [ ] Anchor × both chunk profiles control
 - [ ] Decide winning *tier* on the Pareto front; kill losing tiers
 - NB target to beat on `all`: BM25 recall@5=0.22 / recall@20=0.32 (macro), 0.16 / 0.43 (micro)
@@ -192,6 +195,16 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done
 
 ## Run log (newest first)
 
+- 2026-06-22 — **Miss analysis + POTION on glued.** Per-intent recall@20 (hybrid):
+  gif 1.00, thumb_video 1.00, mp3 0.80, crop 0.75, trim/mute/speed 0.67, compress
+  0.60, thumb_image 0.50, **to_mp4 0.00**. Residual gaps are (a) to_mp4 (no
+  "make mp4" recipe + Bmo's eval target was the demuxer, not muxer — needs fixing)
+  and (b) terse/short queries (query-side). POTION/glued = 0.41/0.57 (revived but
+  still < bge 0.46/0.68). **Hybrid's value shrank on glued** (rich chunks do the
+  work; potion+bm25 even < potion). **POTION separates no_answer better** (cos gap
+  0.12 vs bge 0.04) → static is the better abstain encoder. Phase-1 leaning:
+  bge-small dense on Examples-glued (~0.70@20); BM25 now optional; static is the
+  cheaper/abstain-friendlier alternative pending Phase-3 payload.
 - 2026-06-21 — **Examples-glued = biggest win yet.** Merging each filter's
   Examples subsection into its parent chunk (surfacing the runnable recipes +
   goal vocab like "gif"/"output.gif") lifted bge+bm25 recall@5/@20 from 0.30/0.51

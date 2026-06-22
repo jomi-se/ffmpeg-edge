@@ -214,8 +214,11 @@ const corpora = onlyCorpus ? [onlyCorpus] : ["cli", "all"];
 const profiles = onlyProfile ? [onlyProfile] : ["macro"];
 const rrfK = +arg("rrf-k", 60);
 const STYLES = [...new Set(real.map((q) => q.style))];
+const INTENTS = [...new Set(real.map((q) => q.intent))];
 const rows = [];
 const styleAgg = []; // {corpus, method, perStyle:{style:[recall,n]}}
+const intentAgg = []; // {corpus, method, perIntent:{intent:[recall,n]}}
+const misses = []; // queries the hybrid still misses at generous-k
 for (const corpus of corpora) {
   const aset = anchorSet(corpus);
   const covered = real.filter((q) => q.targets.some((t) => aset.has(t)));
@@ -264,6 +267,19 @@ for (const corpus of corpora) {
         perStyle[s] = [hits.reduce((a, b) => a + b, 0) / hits.length, idx.length];
       }
       styleAgg.push({ corpus, method: name, perStyle });
+      const perIntent = {};
+      for (const it of INTENTS) {
+        const idx = real.map((q, i) => [q, i]).filter(([q]) => q.intent === it).map(([, i]) => i);
+        const hits = idx.map((i) => recallAt(ranks[i], new Set(real[i].targets), kG));
+        perIntent[it] = [hits.reduce((a, b) => a + b, 0) / hits.length, idx.length];
+      }
+      intentAgg.push({ corpus, method: name, perIntent });
+      if (name.includes(modelKey) && name.includes("bm25")) { // the hybrid
+        real.forEach((q, i) => {
+          if (!recallAt(ranks[i], new Set(q.targets), kG))
+            misses.push(`${corpus}  ${q.intent}/${q.style}: "${q.text}"`);
+        });
+      }
     }
   }
 }
@@ -287,6 +303,24 @@ for (const corpus of corpora) {
     const cells = ms.map((s) => `${s.perStyle[st][0].toFixed(2)}`.padStart(22)).join("");
     console.log(`${`${st}(${n})`.padEnd(13)}${cells}`);
   }
+}
+
+// ---- per-intent breakdown (recall@generous) ----
+for (const corpus of corpora) {
+  const ms = intentAgg.filter((s) => s.corpus === corpus);
+  if (!ms.length) continue;
+  console.log(`\nper-intent recall@${kG}  [${corpus}]   (n in parens)`);
+  const sh = `${"intent".padEnd(16)}${ms.map((s) => s.method.split(" / ").pop().padStart(22)).join("")}`;
+  console.log(sh); console.log("-".repeat(sh.length));
+  for (const it of INTENTS) {
+    const n = ms[0].perIntent[it][1];
+    const cells = ms.map((s) => `${s.perIntent[it][0].toFixed(2)}`.padStart(22)).join("");
+    console.log(`${`${it}(${n})`.padEnd(16)}${cells}`);
+  }
+}
+if (misses.length) {
+  console.log(`\nhybrid still MISSES at recall@${kG} (${misses.length}):`);
+  for (const mss of misses) console.log(`  ${mss}`);
 }
 
 const outDir = path.join(BENCH, "results");

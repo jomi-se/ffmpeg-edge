@@ -6,6 +6,7 @@ import {
   FileAudio,
   FileImage,
   FileVideo,
+  Github,
   LoaderCircle,
   Play,
   Settings2,
@@ -327,7 +328,7 @@ export function App() {
         <h1>Local Media Converter</h1>
         <p>
           Convert audio, video, and images in your browser with FFmpeg. Your
-          files stay on your device.
+          files aren't uploaded anywhere.
         </p>
       </header>
 
@@ -422,8 +423,8 @@ export function App() {
 
             {file && recipes.length === 0 && (
               <p className="text-muted text-sm">
-                No built-in recipes for this file type. Use “Ask an AI” below to
-                describe what you want.
+                No built-in recipes for this file type — read the docs or ask
+                your AI of choice below.
               </p>
             )}
 
@@ -490,18 +491,35 @@ export function App() {
               </div>
             )}
 
-            {/* Ask an AI (progressive disclosure) */}
+            {/* Stuck? two escape hatches: the docs, or your own AI */}
             {file && (
               <div className="ai-assist">
+                <p className="text-muted text-sm">
+                  Stuck?{" "}
+                  <a
+                    className="docs-link"
+                    href="https://ffmpeg.org/ffmpeg.html"
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Try your luck reading the docs
+                  </a>
+                  .
+                </p>
                 <button
                   className="ai-toggle"
                   onClick={() => setAiOpen((open) => !open)}
                 >
                   <Sparkles size={14} />
-                  Not sure what to do? Ask an AI
+                  Or ask your AI of choice
                 </button>
                 {aiOpen && (
                   <div className="ai-body">
+                    <p className="text-muted text-sm">
+                      Even small, cheap models are pretty good at FFmpeg option
+                      wrangling. Describe what you want, copy the prompt, then
+                      paste the reply back.
+                    </p>
                     <textarea
                       ref={aiRequestRef}
                       className="ai-input"
@@ -524,8 +542,9 @@ export function App() {
                       </button>
                     </div>
                     <p className="text-muted text-sm">
-                      Paste that into ChatGPT, Claude, or any AI, then paste its
-                      reply back here.
+                      Paste that into Mistral, ChatGPT, Claude, a local
+                      open-source model (Llama, Qwen, …), or any AI and then paste
+                      its reply back here.
                     </p>
                     <textarea
                       className="ai-input"
@@ -658,6 +677,17 @@ export function App() {
           </div>
         </div>
       </div>
+
+      <footer className="desk-footer">
+        <a
+          className="repo-link"
+          href="https://github.com/jomi-se/ffmpeg-edge"
+          target="_blank"
+          rel="noreferrer"
+        >
+          <Github size={14} /> View source on GitHub
+        </a>
+      </footer>
     </main>
   );
 }

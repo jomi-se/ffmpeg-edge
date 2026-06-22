@@ -171,7 +171,10 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done
 - [x] **Examples-glued corpus (`all-glued`)** — merge each filter's Examples into its parent (`scripts/glue_examples.py`, 257 merged). **Biggest lever yet:** bge+bm25 recall@5/@20 = **0.46/0.70** (was 0.30/0.51 on `all`). Every style rose; hybrid-hurts-wrong_terms bug healed. **New leader. Make `all-glued` the default corpus.**
 - [x] Miss analysis on glued (per-intent + miss list). Residual gaps are TWO things, not "encoders": (a) **to_mp4 = 0.00** (doc has no "make an mp4" recipe AND eval target was mislabeled to the demuxer `mov_002fmp4_002f3gp` — FIX the label), (b) **terse/short queries** dominate the rest (query-side starvation → needs query expansion). gif & thumb_video = 1.00; compress = 0.60 (not the zero predicted).
 - [x] POTION on glued: 0.41/0.57 (revived from 0.19/0.35 but still trails bge 0.46/0.68). **Hybrid barely helps on glued** (bge 0.68→0.70; potion+bm25 0.54 < potion 0.57). **POTION abstains better** (na/ans cos gap 0.30/0.42 vs bge 0.61/0.65).
-- [ ] FIX eval label: to_mp4 target (use the mp4 *muxer*, not demuxer) + re-check
+- [x] FIXED eval label: to_mp4 now targets the mp4 **muxer** (`MOV_002fMPEG_002d4_002fISOMBFF-muxers`). Effect: to_mp4 0.00→1.00 (bm25/hybrid; bge-solo still 0.00 — "convert to mp4" doesn't match the muxer page semantically, **BM25 carries it**). **Leader: bge+bm25 = 0.49/0.78** (was 0.46/0.70). Correction: BM25 is NOT redundant — it rescues to_mp4.
+- [x] INT8 quantization: **POTION int8 = zero collapse** (0.43/0.59 = fp32). **bge int8 costs ~8 pts @20** (0.78→0.70; not collapse — fp16 likely better). Even so, **bge+bm25 int8 (0.70) > POTION+bm25 int8 (0.59) at the same ~32 MB** → static's payload edge evaporates once quantized.
+
+**PHASE 1 VERDICT:** winner = **bge-small + BM25 (RRF) on Examples-glued macro** — ~0.78@20 fp32, ~0.70@20 int8. BM25 stays (rescues to_mp4). POTION is the fallback only if runtime/no-GPU/abstain matters more than ~11 recall points.
 - [ ] dense on `micro` profile (low priority — content beat chunk-size)
 - [ ] query expansion for terse/short queries (the other residual gap)
 - [ ] Anchor × both chunk profiles control
@@ -195,6 +198,13 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done
 
 ## Run log (newest first)
 
+- 2026-06-22 — **Label fix + INT8.** Fixed to_mp4 target (demuxer→muxer): to_mp4
+  0.00→1.00 (bm25/hybrid; bge-solo still 0.00 — BM25 carries it), lifting the
+  leader bge+bm25 to **0.49/0.78** and confirming BM25 is NOT redundant. INT8:
+  POTION lossless (0.43/0.59), bge loses ~8 pts @20 (0.78→0.70, fp16 likely
+  better). At equal ~32 MB int8 payload, bge+bm25 (0.70) > potion+bm25 (0.59).
+  **Phase 1 winner: bge-small + BM25 (RRF) on Examples-glued.** Static stays a
+  fallback (no-GPU runtime + better abstain separation, ~11 pts cheaper on recall).
 - 2026-06-22 — **Miss analysis + POTION on glued.** Per-intent recall@20 (hybrid):
   gif 1.00, thumb_video 1.00, mp3 0.80, crop 0.75, trim/mute/speed 0.67, compress
   0.60, thumb_image 0.50, **to_mp4 0.00**. Residual gaps are (a) to_mp4 (no

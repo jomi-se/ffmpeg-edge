@@ -53,8 +53,8 @@ INTENTS = {
         gloss="remove audio (-an) — mechanics, in cli"),
     "to_mp4": dict(
         media="video", answerable_in_cli=False,
-        targets=["libx264_002c-libx264rgb", "aac", "mov_002fmp4_002f3gp"],
-        gloss="-> universal MP4 (h264+aac in mp4)"),
+        targets=["libx264_002c-libx264rgb", "aac", "MOV_002fMPEG_002d4_002fISOMBFF-muxers"],
+        gloss="-> universal MP4 (h264+aac in the mov/mp4 muxer; was mislabeled to the demuxer)"),
     "speed_video": dict(
         media="video", answerable_in_cli=False,
         targets=["setpts_002c-asetpts", "atempo"],

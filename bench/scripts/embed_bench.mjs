@@ -73,12 +73,27 @@ function loadStaticTable(file) {
   const emb = new Float32Array(buf.buffer.slice(start, start + V * D * 4));
   return { emb, V, D };
 }
+// Simulate int8 storage of the static table (per-row symmetric) by round-tripping
+// values through int8 precision. Tests vector-collapse risk; payload would be
+// V*D bytes (~32 MB at 63091×512) vs ~124 MB fp32.
+function quantizeInt8(emb, V, D) {
+  for (let r = 0; r < V; r++) {
+    const base = r * D;
+    let max = 0;
+    for (let d = 0; d < D; d++) max = Math.max(max, Math.abs(emb[base + d]));
+    if (max === 0) continue;
+    const scale = max / 127;
+    for (let d = 0; d < D; d++) emb[base + d] = Math.round(emb[base + d] / scale) * scale;
+  }
+}
 async function getEncoder() {
   if (enc) return enc;
   if (m.static) {
-    process.stderr.write(`loading static ${m.id}…\n`);
+    process.stderr.write(`loading static ${m.id} (${dtype})…\n`);
     const tok = await AutoTokenizer.from_pretrained(m.id);
-    enc = { static: true, tok, ...loadStaticTable(m.weights) };
+    const tbl = loadStaticTable(m.weights);
+    if (dtype === "q8") quantizeInt8(tbl.emb, tbl.V, tbl.D);
+    enc = { static: true, tok, ...tbl };
   } else {
     process.stderr.write(`loading ${m.id} (${dtype})…\n`);
     enc = { static: false, ex: await pipeline("feature-extraction", m.id, { dtype }) };

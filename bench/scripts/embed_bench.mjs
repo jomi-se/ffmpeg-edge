@@ -234,6 +234,22 @@ const rows = [];
 const styleAgg = []; // {corpus, method, perStyle:{style:[recall,n]}}
 const intentAgg = []; // {corpus, method, perIntent:{intent:[recall,n]}}
 const misses = []; // queries the hybrid still misses at generous-k
+const doSpeed = argv.includes("--speed");
+const speed = { loadMs: null, qMsPerText: null, chunkMsPerText: null };
+const payload = { dim: null, modelBytes: null, indexBytesFp32: null };
+// model file size on disk for the active dtype (download cost proxy)
+function modelBytes() {
+  try {
+    if (m.static) return dtype === "q8" ? enc.V * enc.D : fs.statSync(m.weights).size;
+    const dir = path.join(env.cacheDir, ...m.id.split("/"), "onnx");
+    if (!fs.existsSync(dir)) return null;
+    const files = fs.readdirSync(dir).filter((f) => f.endsWith(".onnx"));
+    const pref = { fp32: "model.onnx", fp16: "model_fp16.onnx", q8: "model_quantized.onnx", q4: "model_q4.onnx" }[dtype];
+    const f = files.find((x) => x === pref) || files.find((x) => x.includes(dtype)) || files[0];
+    return f ? fs.statSync(path.join(dir, f)).size : null;
+  } catch { return null; }
+}
+{ const t = performance.now(); await getEncoder(); speed.loadMs = performance.now() - t; }
 for (const corpus of corpora) {
   const aset = anchorSet(corpus);
   const covered = real.filter((q) => q.targets.some((t) => aset.has(t)));
@@ -241,8 +257,18 @@ for (const corpus of corpora) {
   for (const profile of profiles) {
     const chunks = readJsonl(path.join(BENCH, "corpus", "chunked", `${corpus}.${profile}.jsonl`));
     const dvs = await chunkEmbeddings(corpus, profile, chunks);
-    const qvs = await embed(real.map((q) => q.text), m.query);
+    let qvs;
+    { const t = performance.now(); qvs = await embed(real.map((q) => q.text), m.query);
+      speed.qMsPerText = (performance.now() - t) / real.length; }
     const naqvs = await embed(noAns.map((q) => q.text), m.query);
+    payload.dim = dvs[0]?.length ?? null;
+    payload.indexBytesFp32 = chunks.length * (payload.dim || 0) * 4;
+    payload.modelBytes = modelBytes();
+    if (doSpeed) { // fresh (uncached) embed of a 200-chunk sample for throughput
+      const s = chunks.slice(0, 200).map((c) => c.text);
+      const t = performance.now(); await embed(s, m.doc);
+      speed.chunkMsPerText = (performance.now() - t) / s.length;
+    }
     const bm25 = new BM25(chunks);
 
     // per method: ranked anchor list per query
@@ -338,8 +364,21 @@ if (misses.length) {
   for (const mss of misses) console.log(`  ${mss}`);
 }
 
+if (speed.loadMs != null)
+  console.log(`\nspeed: load=${speed.loadMs.toFixed(0)}ms  query=${speed.qMsPerText?.toFixed(2)}ms/text` +
+    (speed.chunkMsPerText != null ? `  manual=${speed.chunkMsPerText.toFixed(2)}ms/chunk` : "") +
+    `  model=${payload.modelBytes ? (payload.modelBytes / 1e6).toFixed(0) + "MB" : "?"}  dim=${payload.dim}`);
+
 const outDir = path.join(BENCH, "results");
 fs.mkdirSync(outDir, { recursive: true });
-fs.writeFileSync(path.join(outDir, `phase1_${modelKey}_${dtype}_${onlyCorpus || "multi"}.json`),
-  JSON.stringify({ model: m.id, dtype, kT, kG, rows, styleAgg }, null, 2));
-console.log(`\n-> results/phase1_${modelKey}_${dtype}_${onlyCorpus || "multi"}.json`);
+// Merge this run into the consolidated report the HTML reads.
+const reportPath = path.join(outDir, "report.json");
+const report = fs.existsSync(reportPath)
+  ? JSON.parse(fs.readFileSync(reportPath, "utf8")) : { meta: {}, configs: {} };
+report.meta = { kT, kG, B, real: real.length, noAns: noAns.length, styles: STYLES, intents: INTENTS, updated: new Date().toISOString() };
+report.configs[`${onlyCorpus || "multi"}__${modelKey}__${dtype}`] = {
+  corpus: onlyCorpus, model: modelKey, modelId: m.id, dtype,
+  rows, styleAgg, intentAgg, misses, speed, payload,
+};
+fs.writeFileSync(reportPath, JSON.stringify(report, null, 2));
+console.log(`-> results/report.json (${Object.keys(report.configs).length} configs)`);

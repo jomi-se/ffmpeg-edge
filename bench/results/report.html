@@ -1,0 +1,118 @@
+<!doctype html><html lang=en><head><meta charset=utf-8>
+<meta name=viewport content="width=device-width,initial-scale=1">
+<title>Edge RAG Benchmark — ffmpeg-edge</title><style>
+:root{--bg:#0f1720;--card:#162230;--ink:#e7eef5;--mut:#90a4b8;--line:#243444;
+--teal:#13a89e;--amber:#e8a33d;--red:#e2566b;--grn:#4cc38a}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+font:16px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+-webkit-text-size-adjust:100%}
+.wrap{max-width:760px;margin:0 auto;padding:18px 14px 60px}
+h1{font-size:24px;margin:.2em 0 .1em;letter-spacing:-.5px}
+h2{font-size:19px;margin:1.6em 0 .5em;padding-top:.4em;border-top:1px solid var(--line)}
+h3{font-size:15px;margin:1.2em 0 .4em;color:var(--mut);text-transform:uppercase;letter-spacing:.5px;font-weight:600}
+p,li{color:var(--ink)} .mut{color:var(--mut)}
+.sub{color:var(--mut);font-size:14px;margin-top:0}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 16px;margin:12px 0}
+.verdict{border-left:4px solid var(--teal)}
+.kpi{font-size:30px;font-weight:700;color:var(--teal);letter-spacing:-1px}
+.scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -16px;padding:0 16px}
+table{border-collapse:collapse;width:100%;font-size:14px;min-width:520px}
+th,td{padding:8px 9px;text-align:left;border-bottom:1px solid var(--line);white-space:nowrap}
+th{color:var(--mut);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.4px}
+td.name{white-space:normal;font-weight:600}
+tr.win td{background:rgba(19,168,158,.10)}
+.barwrap{position:relative;height:20px;background:#0c121a;border-radius:5px;min-width:120px;width:140px}
+.bar{position:absolute;left:0;top:0;bottom:0;border-radius:5px;opacity:.85}
+.ci{position:absolute;top:4px;height:12px;border-left:2px solid #fff6;border-right:2px solid #fff6}
+.barlbl{position:absolute;right:6px;top:0;line-height:20px;font-size:12px;font-weight:700}
+.tag{display:inline-block;font-size:11px;padding:1px 7px;border-radius:20px;border:1px solid var(--line);color:var(--mut);margin-left:5px}
+.pill{display:inline-block;font-size:12px;font-weight:700;padding:2px 8px;border-radius:6px}
+.good{background:rgba(76,195,138,.16);color:var(--grn)}
+.mid{background:rgba(232,163,61,.16);color:var(--amber)}
+.bad{background:rgba(226,86,107,.16);color:var(--red)}
+dl{margin:0} dt{font-weight:700;margin-top:10px;color:var(--ink)} dd{margin:2px 0 0;color:var(--mut);font-size:14px}
+.face{font-size:13px;color:var(--teal)}
+ul{padding-left:18px} li{margin:4px 0}
+code{background:#0c121a;padding:1px 5px;border-radius:4px;font-size:13px}
+.foot{color:var(--mut);font-size:12px;margin-top:30px;text-align:center}
+</style></head><body><div class=wrap>
+<h1>Edge&nbsp;RAG Retrieval Benchmark <span class=face>·BMO·</span></h1>
+<p class=sub>In-browser ffmpeg command planner — which docs-retrieval config best feeds an LLM.
+Updated 2026-06-22 05:34 · 37 real queries + 3 no-answer ·
+bootstrap 2000× 95% CI.</p>
+<div class="card verdict">
+<h3 style="margin-top:0">Verdict</h3>
+<div class=kpi>78% <span style="font-size:15px;color:var(--mut);font-weight:500">recall@20</span></div>
+<p style="margin:.3em 0 0"><b>bge-small + BM25 (RRF)</b> on the
+<b>Examples-glued</b> corpus. The biggest lever was <b>chunk content</b> (gluing each
+ffmpeg filter's <i>Examples</i> into its page), not the embedding model. POTION (static)
+is ~30–80× faster to encode but trails on recall; BM25 alone collapses on
+re-worded queries.</p></div>
+<h2>How to read this</h2><div class=card><dl>
+<dt>Corpus</dt><dd><code>cli</code> = the ffmpeg CLI page (41 sections). <code>all</code> = the full manual (1590). <code>all-glued</code> = full manual with each filter's <i>Examples</i> merged into its page (1333) — the winning corpus.</dd>
+<dt>Config</dt><dd>model × precision × fusion, on a corpus. The unit we rank.</dd>
+<dt>recall@k — the boss metric</dt><dd>A query <b>passes</b> at k if ≥1 of its hand-labeled target doc sections is in the top-k retrieved (any-of). recall@k = fraction passing. <b>k=5</b> = tight (small in-browser reader budget); <b>k=20</b> = generous (big external reader). Retrieval feeds an LLM, which tolerates extra/misordered context — it just needs the right doc <i>present</i>. No human reads a ranked list, so rank order matters little.</dd>
+<dt>Coverage</dt><dd>fraction of queries whose target even <i>exists</i> in that corpus — the ceiling recall can't beat. <code>cli</code> coverage is only 27%, which is why it can't work no matter the model.</dd>
+<dt>RRF hybrid</dt><dd>fuse the dense (embedding cosine) and BM25 (keyword) rankings by reciprocal rank. Scale-free and robust on a small eval set.</dd>
+<dt>nDCG@5</dt><dd>a rank-quality tiebreaker (rewards ranking the right doc higher). Not the optimization target.</dd>
+<dt>95% CI</dt><dd>we resample the 37 queries 2000× to show uncertainty. With so few queries, treat differences inside overlapping CIs as ties.</dd>
+<dt>Speed</dt><dd><b>query ms/text</b> = runtime cost per user query (what users feel). <b>manual ms/chunk</b> = build-time only (corpus is embedded once and shipped pre-computed). <b>load</b> = model init.</dd>
+<dt>Size</dt><dd>model download at the listed precision (int8 ≈ ¼ of fp32) + the vector index.</dd>
+</dl></div>
+<h2>Results — corpus <code>all-glued</code></h2>
+<p class=sub>Hybrid = model + BM25 (RRF). Bar = recall point estimate; faint marks = 95% CI.</p>
+<div class=scroll><table><thead><tr><th>config</th><th>recall@5</th><th>recall@20</th><th>nDCG</th><th>query</th><th>size</th></tr></thead><tbody>
+<tr><td class=name>BM25 only <span class=tag>lexical floor</span></td><td><div class="barwrap"><div class="bar" style="width:35%;background:#7a8aa0"></div><span class="ci" style="left:19%;right:49%"></span><span class="barlbl">35%</span></div></td><td><div class="barwrap"><div class="bar" style="width:59%;background:#7a8aa0"></div><span class="ci" style="left:43%;right:27%"></span><span class="barlbl">59%</span></div></td><td>0.15</td><td>~0 ms</td><td>built at runtime</td></tr>
+<tr><td class=name>POTION static</td><td><div class="barwrap"><div class="bar" style="width:38%;background:#e8a33d"></div><span class="ci" style="left:22%;right:46%"></span><span class="barlbl">38%</span></div></td><td><div class="barwrap"><div class="bar" style="width:59%;background:#e8a33d"></div><span class="ci" style="left:43%;right:24%"></span><span class="barlbl">59%</span></div></td><td>0.17</td><td>0.4 ms</td><td>32 MB</td></tr>
+<tr><td class=name>POTION + BM25 <span class=tag>int8</span></td><td><div class="barwrap"><div class="bar" style="width:43%;background:#e8a33d"></div><span class="ci" style="left:27%;right:41%"></span><span class="barlbl">43%</span></div></td><td><div class="barwrap"><div class="bar" style="width:59%;background:#e8a33d"></div><span class="ci" style="left:43%;right:24%"></span><span class="barlbl">59%</span></div></td><td>0.19</td><td>0.4 ms</td><td>32 MB</td></tr>
+<tr><td class=name>bge-small</td><td><div class="barwrap"><div class="bar" style="width:46%;background:#13a89e"></div><span class="ci" style="left:30%;right:38%"></span><span class="barlbl">46%</span></div></td><td><div class="barwrap"><div class="bar" style="width:68%;background:#13a89e"></div><span class="ci" style="left:51%;right:19%"></span><span class="barlbl">68%</span></div></td><td>0.22</td><td>44.0 ms</td><td>133 MB</td></tr>
+<tr class=win><td class=name>bge-small + BM25 <span class=tag>fp32</span></td><td><div class="barwrap"><div class="bar" style="width:49%;background:#13a89e"></div><span class="ci" style="left:32%;right:35%"></span><span class="barlbl">49%</span></div></td><td><div class="barwrap"><div class="bar" style="width:78%;background:#13a89e"></div><span class="ci" style="left:65%;right:11%"></span><span class="barlbl">78%</span></div></td><td>0.24</td><td>44.0 ms</td><td>133 MB</td></tr>
+<tr><td class=name>bge-small + BM25 <span class=tag>int8</span></td><td><div class="barwrap"><div class="bar" style="width:49%;background:#13a89e"></div><span class="ci" style="left:32%;right:35%"></span><span class="barlbl">49%</span></div></td><td><div class="barwrap"><div class="bar" style="width:70%;background:#13a89e"></div><span class="ci" style="left:54%;right:16%"></span><span class="barlbl">70%</span></div></td><td>0.24</td><td>17.0 ms</td><td>34 MB</td></tr>
+<tr><td class=name>bge-small + BM25 <span class=tag>q4</span></td><td><div class="barwrap"><div class="bar" style="width:49%;background:#13a89e"></div><span class="ci" style="left:32%;right:35%"></span><span class="barlbl">49%</span></div></td><td><div class="barwrap"><div class="bar" style="width:70%;background:#13a89e"></div><span class="ci" style="left:54%;right:16%"></span><span class="barlbl">70%</span></div></td><td>0.24</td><td>42.9 ms</td><td>61 MB</td></tr>
+</tbody></table></div>
+<h2>The biggest lever: gluing Examples</h2><div class=card>
+<p>Same model & method (bge-small + BM25, fp32). Merging each filter's <i>Examples</i> recipe into its chunk lifted recall more than any model swap.</p>
+<div class=scroll><table><thead><tr><th>corpus</th><th>recall@5</th><th>recall@20</th></tr></thead><tbody>
+<tr><td class=name>all <span class=tag>raw manual</span></td><td><div class="barwrap"><div class="bar" style="width:32%;background:#7a8aa0"></div><span class="barlbl">32%</span></div></td><td><div class="barwrap"><div class="bar" style="width:54%;background:#7a8aa0"></div><span class="barlbl">54%</span></div></td></tr>
+<tr class=win><td class=name>all-glued <span class=tag>+Examples</span></td><td><div class="barwrap"><div class="bar" style="width:49%;background:#13a89e"></div><span class="barlbl">49%</span></div></td><td><div class="barwrap"><div class="bar" style="width:78%;background:#13a89e"></div><span class="barlbl">78%</span></div></td></tr>
+</tbody></table></div></div>
+<h2>Quality × Speed × Size</h2>
+<p class=sub>The real trade-off. Query speed is the only runtime cost; manual-embed is build-time (shipped pre-computed).</p>
+<div class=scroll><table><thead><tr><th>model</th><th>recall@20</th><th>query ms</th><th>build ms/chunk</th><th>size (int8)</th></tr></thead><tbody>
+<tr><td class=name>bge-small (fp32)</td><td><span class='pill good'>78%</span></td><td>44.0</td><td>626.7</td><td>133 MB</td></tr>
+<tr><td class=name>bge-small (int8)</td><td><span class='pill good'>70%</span></td><td>17.0</td><td>369.1</td><td>34 MB</td></tr>
+<tr><td class=name>POTION (int8)</td><td><span class='pill mid'>59%</span></td><td>0.4</td><td>1.2</td><td>32 MB</td></tr>
+</tbody></table></div>
+<h2>Where it leaks — by phrasing style</h2>
+<p class=sub>Leader config, recall@20. Users never type flags, so we vary wording style instead.</p><div class=card>
+<div style="margin:9px 0"><div style="display:flex;justify-content:space-between;font-size:14px"><span><b>neutral</b> <span class=mut>(n=10)</span></span></div><div class="barwrap"><div class="bar" style="width:100%;background:#13a89e"></div><span class="barlbl">100%</span></div></div>
+<div style="margin:9px 0"><div style="display:flex;justify-content:space-between;font-size:14px"><span><b>verbose</b> <span class=mut>(n=6)</span></span></div><div class="barwrap"><div class="bar" style="width:100%;background:#13a89e"></div><span class="barlbl">100%</span></div></div>
+<div style="margin:9px 0"><div style="display:flex;justify-content:space-between;font-size:14px"><span><b>terse</b> <span class=mut>(n=7)</span></span></div><div class="barwrap"><div class="bar" style="width:57%;background:#e8a33d"></div><span class="barlbl">57%</span></div></div>
+<div style="margin:9px 0"><div style="display:flex;justify-content:space-between;font-size:14px"><span><b>typo</b> <span class=mut>(n=6)</span></span></div><div class="barwrap"><div class="bar" style="width:83%;background:#13a89e"></div><span class="barlbl">83%</span></div></div>
+<div style="margin:9px 0"><div style="display:flex;justify-content:space-between;font-size:14px"><span><b>wrong_terms</b> <span class=mut>(n=8)</span></span></div><div class="barwrap"><div class="bar" style="width:50%;background:#e8a33d"></div><span class="barlbl">50%</span></div></div>
+</div>
+<h2>Where it leaks — by task</h2><div class=card>
+<div style="margin:9px 0"><div style="font-size:14px"><b>gif</b> <span class=mut>(n=5)</span></div><div class="barwrap"><div class="bar" style="width:100%;background:#13a89e"></div><span class="barlbl">100%</span></div></div>
+<div style="margin:9px 0"><div style="font-size:14px"><b>thumb_video</b> <span class=mut>(n=4)</span></div><div class="barwrap"><div class="bar" style="width:100%;background:#13a89e"></div><span class="barlbl">100%</span></div></div>
+<div style="margin:9px 0"><div style="font-size:14px"><b>to_mp4</b> <span class=mut>(n=3)</span></div><div class="barwrap"><div class="bar" style="width:100%;background:#13a89e"></div><span class="barlbl">100%</span></div></div>
+<div style="margin:9px 0"><div style="font-size:14px"><b>mp3</b> <span class=mut>(n=5)</span></div><div class="barwrap"><div class="bar" style="width:80%;background:#13a89e"></div><span class="barlbl">80%</span></div></div>
+<div style="margin:9px 0"><div style="font-size:14px"><b>crop_img</b> <span class=mut>(n=4)</span></div><div class="barwrap"><div class="bar" style="width:75%;background:#13a89e"></div><span class="barlbl">75%</span></div></div>
+<div style="margin:9px 0"><div style="font-size:14px"><b>trim_audio</b> <span class=mut>(n=3)</span></div><div class="barwrap"><div class="bar" style="width:67%;background:#13a89e"></div><span class="barlbl">67%</span></div></div>
+<div style="margin:9px 0"><div style="font-size:14px"><b>mute_video</b> <span class=mut>(n=3)</span></div><div class="barwrap"><div class="bar" style="width:67%;background:#13a89e"></div><span class="barlbl">67%</span></div></div>
+<div style="margin:9px 0"><div style="font-size:14px"><b>speed_video</b> <span class=mut>(n=3)</span></div><div class="barwrap"><div class="bar" style="width:67%;background:#13a89e"></div><span class="barlbl">67%</span></div></div>
+<div style="margin:9px 0"><div style="font-size:14px"><b>compress_video</b> <span class=mut>(n=5)</span></div><div class="barwrap"><div class="bar" style="width:60%;background:#13a89e"></div><span class="barlbl">60%</span></div></div>
+<div style="margin:9px 0"><div style="font-size:14px"><b>thumb_image</b> <span class=mut>(n=2)</span></div><div class="barwrap"><div class="bar" style="width:50%;background:#e8a33d"></div><span class="barlbl">50%</span></div></div>
+</div>
+<h2>Still missed (8)</h2><div class=card><ul>
+<li><span class=mut>mp3/wrong_terms</span> — &quot;rip the sound out of this and save it as a normal music file&quot;</li>
+<li><span class=mut>crop_img/wrong_terms</span> — &quot;trim the edges off this picture&quot;</li>
+<li><span class=mut>trim_audio/terse</span> — &quot;cut 30s-1m of this audio&quot;</li>
+<li><span class=mut>compress_video/terse</span> — &quot;shrink this video&quot;</li>
+<li><span class=mut>compress_video/typo</span> — &quot;comrpess this video so its much smaler&quot;</li>
+<li><span class=mut>mute_video/terse</span> — &quot;mute this clip&quot;</li>
+<li><span class=mut>speed_video/wrong_terms</span> — &quot;make this clip go in fast forward&quot;</li>
+<li><span class=mut>thumb_image/wrong_terms</span> — &quot;extract thumbnails out of this image&quot;</li>
+</ul><p class=sub>Two clusters: <b>terse</b> 2-word queries (starve retrieval → needs query expansion) and a few re-worded edge cases.</p></div>
+<p class=foot>ffmpeg-edge · edge-rag-benchmark · generated by BMO 🤖</p>
+</div></body></html>

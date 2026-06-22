@@ -175,6 +175,9 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done
 - [x] INT8 quantization: **POTION int8 = zero collapse** (0.43/0.59 = fp32). **bge int8 costs ~8 pts @20** (0.78→0.70; not collapse — fp16 likely better). Even so, **bge+bm25 int8 (0.70) > POTION+bm25 int8 (0.59) at the same ~32 MB** → static's payload edge evaporates once quantized.
 
 **PHASE 1 VERDICT:** winner = **bge-small + BM25 (RRF) on Examples-glued macro** — ~0.78@20 fp32, ~0.70@20 int8. BM25 stays (rescues to_mp4). POTION is the fallback only if runtime/no-GPU/abstain matters more than ~11 recall points.
+- [x] Speed + payload now measured (load, query ms/text [runtime], manual ms/chunk [build-time], model size). **POTION query-encode ~0.5ms vs bge 17–44ms (~30–80×); manual ~1ms vs ~400–600ms/chunk (~300×)** — but manual is build-time (shipped precomputed), so static's edge is mostly offline; runtime query cost is "instant vs fine".
+- [x] **Q4 tested: not worth it.** bge q4 = same recall as q8 (0.49/0.70) but BIGGER (61MB vs 34) and SLOWER (43ms vs 17ms) — transformers.js q4 dequant overhead. **int8 strictly dominates q4.**
+- [x] HTML report (`scripts/make_report.py` → `results/report.html`): mobile-first, self-contained, methods glossary + all tables/breakdowns.
 - [ ] dense on `micro` profile (low priority — content beat chunk-size)
 - [ ] query expansion for terse/short queries (the other residual gap)
 - [ ] Anchor × both chunk profiles control

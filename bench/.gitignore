@@ -19,3 +19,5 @@ node_modules/
 # transformers.js model cache + embedding artifacts
 .cache/
 package-lock.json
+results/report_preview.png
+results/*.png

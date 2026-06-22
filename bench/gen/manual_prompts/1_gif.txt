@@ -1,0 +1,166 @@
+# Paste everything below into the chat. (System instructions first, then the request + retrieved docs.)
+# Query id: gif-neutral-1  |  intent: gif  |  RAG, retrieved k=8 (bge-small + BM25 RRF, all-glued)
+# Doc sections retrieved: gif-2, data, GIF, paletteuse, gif-1, removegrain, format-1, Options-27
+# ============================================================================
+
+You are an ffmpeg expert helping non-technical people.
+The user describes, in plain language, what they want to do with a media file.
+Your job: produce ONE ffmpeg command that accomplishes it.
+
+Rules:
+- Use only real ffmpeg flags, encoders and filters. Do not invent options.
+- Use input.ext / output.ext as placeholder filenames.
+- Reply with a single fenced bash code block containing exactly one ffmpeg command,
+  then one short plain-language line explaining what it does.
+- If the request is something ffmpeg fundamentally cannot do (e.g. understanding or
+  summarizing the *content* of a video), do NOT output a command. Say it is out of
+  scope for ffmpeg and stop.
+
+User request: "convert this video to a small gif"
+
+Relevant ffmpeg documentation:
+
+### Doc 1: ffmpeg Documentation > Muxers > gif
+ffmpeg Documentation > Muxers > gif
+
+Animated GIF muxer.
+
+Note that the GIF format has a very large time base: the delay between two frames can
+therefore not be smaller than one centisecond.
+
+Examples:
+Encode a gif looping 10 times, with a 5 seconds delay between
+the loops:
+
+ffmpeg -i INPUT -loop 10 -final_delay 500 out.gif
+
+Note 1: if you wish to extract the frames into separate GIF files, you need to
+force the image2 muxer:
+
+ffmpeg -i INPUT -c:v gif -f image2 "out%d.gif"
+
+### Doc 2: ffmpeg Documentation > Protocols > data
+ffmpeg Documentation > Protocols > data
+
+Data in-line in the URI. See http://en.wikipedia.org/wiki/Data_URI_scheme.
+
+For example, to convert a GIF file given inline with ffmpeg:
+
+ffmpeg -i "data:image/gif;base64,R0lGODdhCAAIAMIEAAAAAAAA//8AAP//AP///////////////ywAAAAACAAIAAADF0gEDLojDgdGiJdJqUX02iB4E8Q9jUMkADs=" smiley.png
+
+### Doc 3: ffmpeg Documentation > Video Encoders > GIF
+ffmpeg Documentation > Video Encoders > GIF
+
+GIF image/animation encoder.
+
+### Doc 4: ffmpeg Documentation > Video Filters > paletteuse
+ffmpeg Documentation > Video Filters > paletteuse
+
+Use a palette (generated for example with palettegen) to encode a GIF using ffmpeg: ffmpeg -i input.mkv -i palette.png -lavfi paletteuse output.gif
+
+### Doc 5: ffmpeg Documentation > Demuxers > gif
+ffmpeg Documentation > Demuxers > gif
+
+Animated GIF demuxer.
+
+It accepts the following options:
+
+min_delay
+Set the minimum valid delay between frames in hundredths of seconds.
+Range is 0 to 6000. Default value is 2.
+
+max_gif_delay
+Set the maximum valid delay between frames in hundredth of seconds.
+Range is 0 to 65535. Default value is 65535 (nearly eleven minutes),
+the maximum value allowed by the specification.
+
+default_delay
+Set the default delay between frames in hundredths of seconds.
+Range is 0 to 6000. Default value is 10.
+
+ignore_loop
+GIF files can contain information to loop a certain number of times (or
+infinitely). If ignore_loop is set to 1, then the loop setting
+from the input will be ignored and looping will not occur. If set to 0,
+then looping will occur and will cycle the number of times according to
+the GIF. Default value is 1.
+
+For example, with the overlay filter, place an infinitely looping GIF
+over another video:
+
+ffmpeg -i input.mp4 -ignore_loop 0 -i input.gif -filter_complex overlay=shortest=1 out.mkv
+
+Note that in the above example the shortest option for overlay filter is
+used to end the output video at the length of the shortest input file,
+which in this case is input.mp4 as the GIF in this example loops
+infinitely.
+
+### Doc 6: ffmpeg Documentation > Video Filters > removegrain
+ffmpeg Documentation > Video Filters > removegrain
+
+23 Small edge and halo removal, but reputed useless. 24 Similar as 23.
+
+### Doc 7: ffmpeg Documentation > Video Filters > format
+ffmpeg Documentation > Video Filters > format
+
+Convert the input video to one of the specified pixel formats.
+Libavfilter will try to pick one that is suitable as input to
+the next filter.
+
+It accepts the following parameters:
+
+pix_fmts
+A ’|’-separated list of pixel format names, such as
+"pix_fmts=yuv420p|monow|rgb24".
+
+color_spaces
+A ’|’-separated list of color space names, such as
+"color_spaces=bt709|bt470bg|bt2020nc".
+
+color_ranges
+A ’|’-separated list of color range names, such as
+"color_ranges=tv|pc".
+
+alpha_modes
+A ’|’-separated list of color range names, such as
+"alpha_modes=straight|premultiplied".
+
+Examples:
+Convert the input video to the yuv420p format
+
+format=pix_fmts=yuv420p
+
+Convert the input video to any of the formats in the list
+
+format=pix_fmts=yuv420p|yuv444p|yuv410p
+
+### Doc 8: ffmpeg Documentation > Video Encoders > GIF > Options
+ffmpeg Documentation > Video Encoders > GIF > Options
+
+gifflags integer
+Sets the flags used for GIF encoding.
+
+offsetting
+Enables picture offsetting.
+
+Default is enabled.
+
+transdiff
+Enables transparency detection between frames.
+
+Default is enabled.
+
+gifimage integer
+Enables encoding one full GIF image per frame, rather than an animated GIF.
+
+Default value is 0.
+
+global_palette integer
+Writes a palette to the global GIF header where feasible.
+
+If disabled, every frame will always have a palette written, even if there
+is a global palette supplied.
+
+Default value is 1.
+
+Now give the single ffmpeg command.

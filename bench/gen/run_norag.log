@@ -1,0 +1,172 @@
+=== ministral-3b NORAG ===
+
+model=ministral-3b (ministral-3b-latest)  mode=norag  variant=v1  k=8  conc=2  queries=40
+  ✓ gif-verbose-1              pass                   ffmpeg -i input.ext -vf "fps=10,scale=-2:100:flags=lanczos" -c:v libgi
+  ✓ gif-neutral-1              good                   ffmpeg -i input.ext -vf "fps=10,scale=-2:100:flags=lanczos,split[s0][s
+  ✓ gif-typo-1                 pass                   ffmpeg -i input.mp4 -vf "fps=10,scale=-2:100:flags=lanczos" -q:v 9 out
+  ✓ gif-terse-1                pass                   ffmpeg -i input.ext -vf "fps=10,scale=-2:min(100,iw/100)" -q:v 20 outp
+  ✓ mp3-neutral-1              good                   ffmpeg -i input.ext -vn -c:a libmp3lame -q:a 2 output.mp3
+  ✓ mp3-verbose-1              good                   ffmpeg -i input.ext -vn -c:a libmp3lame -q:a 2 output.mp3
+  ✓ gif-wrong_terms-1          good                   ffmpeg -i input.ext -vf "fps=1,scale=1280:-1:flags=lanczos,split[s0][s
+  ✓ mp3-terse-1                good                   ffmpeg -i input.ext -c:v copy -c:a libmp3lame -q:a 2 output.mp3
+  ✓ mp3-typo-1                 good                   ffmpeg -i input.ext -vn -c:a libmp3lame -q:a 2 output.mp3
+  ✗ mp3-wrong_terms-1          fail                   ffmpeg -i input.ext -vn -c:a copy output.ext
+  ✓ crop_img-neutral-1         good                   ffmpeg -i input.ext -vf "crop=w=i:h=i" output.ext
+  ✓ crop_img-verbose-1         good                   ffmpeg -i input.ext -vf "crop=w=max(w,h):h=max(w,h):x=(W-w)/2:y=(H-h)/
+  ✗ crop_img-typo-1            fail                   ffmpeg -i input.ext -vf "scale=-1:min(h,i)" output.ext
+  ✓ crop_img-wrong_terms-1     good                   ffmpeg -i input.ext -vf "crop=in_w-100:in_h-100" output.ext
+  ✓ trim_audio-neutral-1       good                   ffmpeg -i input.mp3 -ss 00:03:00 -to 00:05:00 -c copy output.mp3
+  ✓ trim_audio-terse-1         good                   ffmpeg -i input.ext -ss 00:00:30 -to 00:01:00 -c copy output.ext
+  ✓ trim_audio-wrong_terms-1   good                   ffmpeg -i input.wav -ss 00:00:30 -to 00:00:60 -c copy output.wav
+  ✓ compress_video-neutral-1   good                   ffmpeg -i input.ext -c:v libx265 -crf 28 -c:a aac -b:a 128k output.ext
+  ✓ compress_video-verbose-1   good                   ffmpeg -i input.ext -c:v libx264 -crf 28 -preset slow -c:a aac -b:a 12
+  ✓ compress_video-terse-1     good                   ffmpeg -i input.ext -vf "scale=-2:720" -c:v libx264 -crf 23 output.ext
+  ✓ compress_video-typo-1      good                   ffmpeg -i input.ext -c:v libx264 -crf 28 -preset ultrafast -c:a aac -b
+  ✓ compress_video-wrong_terms-1 good                   ffmpeg -i input.ext -vf "scale=-1:720,format=yuv420p" -c:v libx264 -cr
+  ✓ thumb_video-neutral-1      good                   ffmpeg -i input.ext -vf "select='not(n=0)',fps=1" -vframes 1 -q:v 2 -y
+  ✓ thumb_video-verbose-1      good                   ffmpeg -i input.mp4 -vf "fps=1,select='between(t,0,10)'[select];[selec
+  ✓ thumb_video-typo-1         pass                   ffmpeg -i input.ext -vframes 1 -q:v 2 output.jpg
+  ✓ thumb_video-terse-1        good                   ffmpeg -i input.ext -vf "select='not(n==main_stream)'+select='eq(n,mai
+  ✓ mute_video-neutral-1       good                   ffmpeg -i input.ext -c:v copy -an output.ext
+  ✗ mute_video-terse-1         fail                   ffmpeg -i input.ext -af "volume=0" output.ext
+  ✓ mute_video-wrong_terms-1   good                   ffmpeg -i input.ext -an output.ext
+  ✓ to_mp4-neutral-1           good                   ffmpeg -i input.ext -c:v libx264 -crf 23 -preset medium -c:a aac -b:a 
+  ✓ to_mp4-verbose-1           good                   ffmpeg -i input.mp4 -c:v libx264 -crf 23 -c:a aac -b:a 128k -movflags 
+  ✓ to_mp4-typo-1              good                   ffmpeg -i input.ext -c:v libx264 -c:a aac -strict experimental output.
+  ✓ speed_video-neutral-1      good                   ffmpeg -i input.mp4 -vf "setpts=2.0*PTS" output.mp4
+  ✓ speed_video-terse-1        good                   ffmpeg -i input.ext -filter:v "setpts=0.5*PTS" -filter:a "atempo=2" ou
+  ✓ speed_video-wrong_terms-1  good                   ffmpeg -i input.ext -filter_complex "[0:v]setpts=0.5*PTS[v];[0:a]atemp
+  ✗ thumb_image-neutral-1      fail                   ffmpeg -i input.ext -vframes 1 -q:v 2 output.jpg
+  ✗ thumb_image-wrong_terms-1  fail                   This is out of scope for ffmpeg—it cannot extract thumbnails from an i
+  ✓ theme-neutral-1            abstain_ok             
+  ✓ theme-verbose-1            abstain_ok             
+  ✓ summarize-neutral-1        abstain_ok             
+
+── ministral-3b / norag / v1 ──
+correct command: 32/37 (86%)   of which high-quality: 28
+abstained on no-answer: 3/3
+tokens: total=10292  in=7285  out=3007  (~257/query)
+
+per-style correct:
+  neutral       90% (10)
+  verbose       100% (6)
+  terse         86% (7)
+  typo          83% (6)
+  wrong_terms   75% (8)
+
+-> gen/results.json (32 runs)
+=== ministral-8b NORAG ===
+
+model=ministral-8b (ministral-8b-latest)  mode=norag  variant=v1  k=8  conc=2  queries=40
+  ✓ gif-neutral-1              good                   ffmpeg -i input.mp4 -vf "fps=10,scale=640:-1:flags=lanczos,split[s0][s
+  ✓ gif-verbose-1              good                   ffmpeg -i input.mp4 -vf "fps=10,scale=640:-1:flags=lanczos,split[s0][s
+  ✓ gif-terse-1                good                   ffmpeg -i input.ext -vf "fps=10,scale=640:-1:flags=lanczos,split[s0][s
+  ✓ gif-typo-1                 good                   ffmpeg -i input.mp4 -vf "fps=10,scale=640:-1:flags=lanczos,split[s0][s
+  ✓ mp3-neutral-1              good                   ffmpeg -i input.ext -vn -c:a libmp3lame -q:a 2 output.mp3
+  ✓ mp3-verbose-1              good                   ffmpeg -i input.mp4 -vn -c:a libmp3lame -q:a 2 output.mp3
+  ✓ gif-wrong_terms-1          good                   ffmpeg -i input.mp4 -vf "fps=10,scale=320:-1:flags=lanczos,split[s0][s
+  ✓ mp3-terse-1                good                   ffmpeg -i input.ext -vn -c:a libmp3lame -q:a 2 output.mp3
+  ✓ mp3-wrong_terms-1          good                   ffmpeg -i input.ext -vn -c:a libmp3lame -q:a 2 output.mp3
+  ✓ crop_img-neutral-1         good                   ffmpeg -i input.jpg -vf "crop=w=h:min(w,h):x=(w-w/2):y=(h-h/2)" output
+  ✓ crop_img-verbose-1         good                   ffmpeg -i input.jpg -vf "crop=w=iw/2:h=ih/2:x=(iw-iw/2)/2:y=(ih-ih/2)/
+  ✓ crop_img-typo-1            good                   ffmpeg -i input.jpg -vf "crop=w=i/h:h=h:x=(w-w/h)/2:y=h/2" output.jpg
+  ✓ mp3-typo-1                 pass                   ffmpeg -i input.ext -q:a 2 output.mp3
+  ✓ crop_img-wrong_terms-1     good                   ffmpeg -i input.jpg -vf "crop=w=iw-20:h=ih-20:x=10:y=10" output.jpg
+  ✓ trim_audio-neutral-1       good                   ffmpeg -i input.ext -ss 00:30 -to 01:00 -c copy output.ext
+  ✓ trim_audio-terse-1         good                   ffmpeg -i input.ext -ss 00:00:30 -to 00:01:00 -c copy output.ext
+  ✓ compress_video-neutral-1   good                   ffmpeg -i input.mp4 -vcodec libx264 -crf 28 -preset fast -acodec aac -
+  ✓ compress_video-verbose-1   pass                   ffmpeg -i input.mp4 -vf "scale=-2:720,minterpolate='fps=30:n=4:mi_mode
+  ✗ compress_video-terse-1     fail                   ffmpeg -i input.mp4 -vf "scale=-2:720" -c:a copy output.mp4
+  ✓ compress_video-typo-1      good                   ffmpeg -i input.mp4 -vcodec libx264 -crf 28 -preset fast -acodec aac -
+  ✓ compress_video-wrong_terms-1 good                   ffmpeg -i input.mp4 -vcodec libx264 -crf 28 -preset medium -acodec aac
+  ✓ thumb_video-neutral-1      pass                   ffmpeg -i input.mp4 -vf "select='eq(n\,100)'[sel];[sel]scale=1280:720[
+  ✓ trim_audio-wrong_terms-1   good                   ffmpeg -i input.mp3 -ss 00:00:30 -to 00:01:00 -c copy output.mp3
+  ✓ thumb_video-verbose-1      good                   ffmpeg -i input.mp4 -vf "select='eq(n,0)'[0];select='eq(n,100)'[1];sel
+  ✓ thumb_video-terse-1        good                   ffmpeg -i input.mp4 -vf "fps=1,scale=1280:-1:flags=lanczos,split[s0][s
+  ✓ mute_video-neutral-1       good                   ffmpeg -i input.ext -c:v copy -an output.ext
+  ✓ thumb_video-typo-1         good                   ffmpeg -i input.ext -vf "fps=1,scale=1280:720:force_original_aspect_ra
+  ✗ mute_video-terse-1         fail                   ffmpeg -i input.ext -af "volume=0" -c:a copy output.ext
+  ✓ mute_video-wrong_terms-1   good                   ffmpeg -i input.ext -an -c:v copy output.ext
+  ✓ to_mp4-neutral-1           good                   ffmpeg -i input.ext -c:v libx264 -preset fast -c:a aac -movflags +fast
+  ✓ to_mp4-verbose-1           good                   ffmpeg -i input.ext -c:v libx264 -preset slow -crf 22 -c:a aac -b:a 19
+  ✓ to_mp4-typo-1              good                   ffmpeg -i input.ext -c:v libx264 -c:a aac -movflags +faststart output.
+  ✓ speed_video-neutral-1      good                   ffmpeg -i input.ext -filter:v "setpts=2.0*PTS" -r 30 output.ext
+  ✓ speed_video-terse-1        good                   ffmpeg -i input.ext -filter:v "setpts=0.5*PTS" -filter:a "atempo=2.0" 
+  ✓ speed_video-wrong_terms-1  good                   ffmpeg -i input.ext -filter_complex "[0:v]setpts=0.5*PTS[v];[0:a]atemp
+  ✓ thumb_image-neutral-1      good                   ffmpeg -i input.jpg -vf "scale=256:-1,pad=256:256:(ow-iw)/2:(oh-ih)/2"
+  ✓ theme-neutral-1            abstain_ok             
+  ✗ thumb_image-wrong_terms-1  fail                   ffmpeg -i input.ext -vf "select=not(eq(n\,0))" -vframes 1 output_%03d.
+  ✓ summarize-neutral-1        abstain_ok             
+  ✓ theme-verbose-1            abstain_ok             
+
+── ministral-8b / norag / v1 ──
+correct command: 34/37 (92%)   of which high-quality: 31
+abstained on no-answer: 3/3
+tokens: total=10699  in=7285  out=3414  (~267/query)
+
+per-style correct:
+  neutral       100% (10)
+  verbose       100% (6)
+  terse         71% (7)
+  typo          100% (6)
+  wrong_terms   88% (8)
+
+-> gen/results.json (33 runs)
+=== ministral-14b NORAG ===
+
+model=ministral-14b (ministral-14b-latest)  mode=norag  variant=v1  k=8  conc=2  queries=40
+  ✓ gif-neutral-1              good                   ffmpeg -i input.ext -vf "fps=10,scale=640:-1:flags=lanczos,split[s0][s
+  ✓ gif-verbose-1              good                   ffmpeg -i input.mp4 -vf "fps=10,scale=640:-1:flags=lanczos,split[s0][s
+  ✓ gif-terse-1                good                   ffmpeg -i input.ext -vf "fps=15,scale=640:-1:flags=lanczos,split[s0][s
+  ✓ gif-typo-1                 good                   ffmpeg -i input.ext -vf "fps=10,scale=640:-1:flags=lanczos,split[s0][s
+  ✓ mp3-neutral-1              good                   ffmpeg -i input.ext -c:a libmp3lame -q:a 2 output.mp3
+  ✓ mp3-verbose-1              good                   ffmpeg -i input.ext -vn -c:a libmp3lame -q:a 2 output.mp3
+  ✓ mp3-terse-1                good                   ffmpeg -i input.ext -vn -c:a libmp3lame -q:a 2 output.mp3
+  ✓ mp3-typo-1                 good                   ffmpeg -i input.ext -c:a libmp3lame -q:a 2 output.mp3
+  ✓ mp3-wrong_terms-1          good                   ffmpeg -i input.ext -vn -c:a libmp3lame -q:a 2 output.mp3
+  ✓ crop_img-neutral-1         good                   ffmpeg -i input.ext -vf "crop=min(iw,ih):min(iw,ih)" -c:v libpng outpu
+  ✓ gif-wrong_terms-1          good                   ffmpeg -i input.ext -vf "fps=15,scale=640:-1:flags=lanczos,split[s0][s
+  ✓ crop_img-verbose-1         good                   ffmpeg -i input.ext -vf "crop=in_w/2:in_h/2:in_w/4:in_h/4" -c:a copy o
+  ✓ crop_img-typo-1            good                   ffmpeg -i input.ext -vf "crop=min(iw,ih):min(iw,ih)" -c:a copy output.
+  ✓ crop_img-wrong_terms-1     good                   ffmpeg -i input.ext -vf "crop=in_w-10:in_h-10" output.ext
+  ✓ trim_audio-neutral-1       good                   ffmpeg -i input.ext -ss 00:00:30 -to 00:01:00 -c copy output.ext
+  ✓ trim_audio-terse-1         good                   ffmpeg -i input.ext -ss 00:00:30 -to 00:01:00 -c copy output.ext
+  ✓ trim_audio-wrong_terms-1   good                   ffmpeg -i input.ext -ss 00:00:30 -to 00:01:00 -c copy output.ext
+  ✓ compress_video-neutral-1   good                   ffmpeg -i input.ext -c:v libx264 -crf 28 -preset fast -c:a aac -b:a 12
+  ✗ compress_video-terse-1     fail                   ffmpeg -i input.ext -vf "scale=-2:720" -c:a copy -movflags +faststart 
+  ✓ compress_video-verbose-1   good                   ffmpeg -i input.ext -vcodec libx264 -crf 28 -preset fast -b:v 0 -maxra
+  ✓ compress_video-typo-1      good                   ffmpeg -i input.ext -c:v libx264 -crf 28 -preset fast -c:a aac -b:a 12
+  ✓ compress_video-wrong_terms-1 good                   ffmpeg -i input.ext -vcodec libx264 -crf 28 -preset fast -acodec aac -
+  ✓ thumb_video-neutral-1      pass                   ffmpeg -i input.ext -vf "select='not(mod(n\,10))',scale=640:-1:flags=l
+  ✓ thumb_video-verbose-1      pass                   ffmpeg -i input.ext -vf "select=not(mod(n\,50)),scale=1280:720:force_o
+  ✓ thumb_video-terse-1        good                   ffmpeg -i input.ext -vf "fps=1,scale=640:-1:flags=lanczos,format=yuv42
+  ✓ mute_video-neutral-1       good                   ffmpeg -i input.ext -c:v copy -an output.ext
+  ✓ thumb_video-typo-1         pass                   ffmpeg -i input.ext -vf "select=eq(n\,5),scale=640:-1:flags=lanczos,se
+  ✗ mute_video-terse-1         fail                   ffmpeg -i input.ext -af "volume=0" -c:v copy output.ext
+  ✓ mute_video-wrong_terms-1   good                   ffmpeg -i input.ext -c:v copy -an output.ext
+  ✓ to_mp4-neutral-1           good                   ffmpeg -i input.ext -c:v libx264 -crf 23 -preset medium -c:a aac -b:a 
+  ✓ to_mp4-verbose-1           good                   ffmpeg -i input.ext -c:v libx264 -crf 23 -preset medium -c:a aac -b:a 
+  ✓ speed_video-neutral-1      good                   ffmpeg -i input.ext -vf "setpts=2.0*PTS" -af "atempo=0.5" output.ext
+  ✓ to_mp4-typo-1              good                   ffmpeg -i input.ext -c:v libx264 -crf 23 -preset medium -c:a aac -b:a 
+  ✓ speed_video-terse-1        good                   ffmpeg -i input.ext -filter:a "atempo=0.5" -filter:v "setpts=0.5*PTS" 
+  ✓ speed_video-wrong_terms-1  good                   ffmpeg -i input.ext -filter:v "setpts=PTS/2" -filter:a "atempo=2x" -c:
+  ✓ thumb_image-neutral-1      good                   ffmpeg -i input.ext -vf "scale=320:-1,format=yuv420p" -frames:v 1 outp
+  ✗ thumb_image-wrong_terms-1  fail                   This is out of scope for ffmpeg. FFmpeg cannot extract thumbnails from
+  ✓ theme-neutral-1            abstain_ok             
+  ✓ summarize-neutral-1        abstain_ok             
+  ✓ theme-verbose-1            abstain_ok             
+
+── ministral-14b / norag / v1 ──
+correct command: 34/37 (92%)   of which high-quality: 31
+abstained on no-answer: 3/3
+tokens: total=10433  in=7285  out=3148  (~261/query)
+
+per-style correct:
+  neutral       100% (10)
+  verbose       100% (6)
+  terse         71% (7)
+  typo          100% (6)
+  wrong_terms   88% (8)
+
+-> gen/results.json (34 runs)
+=== DONE ===

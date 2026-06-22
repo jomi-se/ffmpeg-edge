@@ -1,6 +1,0 @@
-fetched_utc: 2026-06-21T11:53:16Z
-cli_url:     https://ffmpeg.org/ffmpeg.html
-all_url:     https://ffmpeg.org/ffmpeg-all.html
-cli_sha256:  fbeee2a3005f549460de2d3b7a6ed22da81db87b4759b1b2b95f19d31310a238
-all_sha256:  88c03f64cbab07d0d1edebf1306d771d21447fea1f1609321b065693befe6948
-note:        ffmpeg.org serves git-trunk docs; fetch date is the version anchor.

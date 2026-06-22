@@ -1,0 +1,140 @@
+# Paste everything below into the chat. (System instructions first, then the request + retrieved docs.)
+# Query id: compress_video-terse-1  |  intent: compress_video  |  RAG, retrieved k=8 (bge-small + BM25 RRF, all-glued)
+# Doc sections retrieved: untile-1, reverse, Options-124, scale_005fnpp-1, Video-Options, alphaextract, xstack_005fqsv, limitdiff
+# ============================================================================
+
+You are an ffmpeg expert helping non-technical people.
+The user describes, in plain language, what they want to do with a media file.
+Your job: produce ONE ffmpeg command that accomplishes it.
+
+Rules:
+- Use only real ffmpeg flags, encoders and filters. Do not invent options.
+- Use input.ext / output.ext as placeholder filenames.
+- Reply with a single fenced bash code block containing exactly one ffmpeg command,
+  then one short plain-language line explaining what it does.
+- If the request is something ffmpeg fundamentally cannot do (e.g. understanding or
+  summarizing the *content* of a video), do NOT output a command. Say it is out of
+  scope for ffmpeg and stop.
+
+User request: "shrink this video"
+
+Relevant ffmpeg documentation:
+
+### Doc 1: ffmpeg Documentation > Video Filters > untile
+ffmpeg Documentation > Video Filters > untile
+
+Decompose a video made of tiled images into the individual images.
+
+The frame rate of the output video is the frame rate of the input video
+multiplied by the number of tiles.
+
+This filter does the reverse of tile.
+
+The filter accepts the following options:
+
+layout
+Set the grid size (i.e. the number of lines and columns). For the syntax of
+this option, check the
+(ffmpeg-utils)"Video size" section in the ffmpeg-utils manual.
+
+Examples:
+Produce a 1-second video from a still image file made of 25 frames stacked
+vertically, like an analogic film reel:
+
+ffmpeg -r 1 -i image.jpg -vf untile=1x25 movie.mkv
+
+### Doc 2: ffmpeg Documentation > Video Filters > reverse
+ffmpeg Documentation > Video Filters > reverse
+
+Reverse a video clip.
+
+Warning: This filter requires memory to buffer the entire clip, so trimming
+is suggested.
+
+Examples:
+Take the first 5 seconds of a clip, and reverse it.
+
+trim=end=5,reverse
+
+### Doc 3: ffmpeg Documentation > Video Filters > scale > Options
+ffmpeg Documentation > Video Filters > scale > Options
+
+One useful instance of this option is that when you know a specific device’s maximum allowed resolution, you can use this to limit the output video to that, while retaining the aspect ratio. For example, device A allows 1280x720 playback, and your video is 1920x800. Using this option (set it to decrease) and specifying 1280x720 to the command line makes the output 1280x533. Please note that this is a different thing than specifying -1 for w or h, you still need to specify the output resolution for this option to work. force_divisible_by Ensures that both the output dimensions, width and height, are divisible by the given integer when used together with force_original_aspect_ratio. This works similar to using -n in the w and h options. This option respects the value set for force_original_aspect_ratio, increasing or decreasing the resolution accordingly. The video’s aspect ratio may be slightly modified. This option can be handy if you need to have a video fit within or exceed a defined resolution using force_original_aspect_ratio but also have encoder restrictions on width or height divisibility. reset_sar Enabling this option leads to the output SAR being reset to 1. Additionally, if the user requests proportional scaling either through the width or height expressions, e.g. w=-4:h=360 or w=iw/2:h=-1 or by enabling force_original_aspect_ratio, then the input DAR is taken into account and the output is scaled to produce square pixels. Default is false. The values of the w and h options are expressions containing the following constants: in_w in_h The input width and height iw ih These are the same as in_w and in_h. out_w out_h The output (scaled) width and height ow oh These are the same as out_w and out_h a The same as iw / ih sar input sample aspect ratio dar The input display aspect ratio. Calculated from (iw / ih) * sar. hsub vsub horizontal and vertical input chroma subsample values. For example for the
+
+### Doc 4: ffmpeg Documentation > CUDA Video Filters > CUDA NPP > scale_npp
+ffmpeg Documentation > CUDA Video Filters > CUDA NPP > scale_npp
+
+Use the NVIDIA Performance Primitives (libnpp) to perform scaling and/or pixel format conversion on CUDA video frames. Setting the output width and height works in the same way as for the scale filter. The following additional options are accepted: format The pixel format of the output CUDA frames. If set to the string "same" (the default), the input format will be kept. Note that automatic format negotiation and conversion is not yet supported for hardware frames interp_algo The interpolation algorithm used for resizing. One of the following: nn Nearest neighbour. linear cubic cubic2p_bspline 2-parameter cubic (B=1, C=0) cubic2p_catmullrom 2-parameter cubic (B=0, C=1/2) cubic2p_b05c03 2-parameter cubic (B=1/2, C=3/10) super Supersampling lanczos force_original_aspect_ratio Enable decreasing or increasing output video width or height if necessary to keep the original aspect ratio. Possible values: ‘disable’ Scale the video as specified and disable this feature. ‘decrease’ The output video dimensions will automatically be decreased if needed. ‘increase’ The output video dimensions will automatically be increased if needed. One useful instance of this option is that when you know a specific device’s maximum allowed resolution, you can use this to limit the output video to that, while retaining the aspect ratio. For example, device A allows 1280x720 playback, and your video is 1920x800. Using this option (set it to decrease) and specifying 1280x720 to the command line makes the output 1280x533. Please note that this is a different thing than specifying -1 for w or h, you still need to specify the output resolution for this option to work. force_divisible_by Ensures that both the output dimensions, width and height, are divisible by the given integer when used together with force_original_aspect_ratio. This works similar to using -n in the w and h options. This option respects the value set for force_original_aspect_ratio, increasing or decreasing the resolution accordingly. The video’s aspect ratio may be slightly modified.
+
+### Doc 5: ffmpeg Documentation > Options > Video Options
+ffmpeg Documentation > Options > Video Options
+
+-vframes number (output) Set the number of video frames to output. This is an obsolete alias for -frames:v, which you should use instead. -r[:stream_specifier] fps (input/output,per-stream) Set frame rate (Hz value, fraction or abbreviation). As an input option, ignore any timestamps stored in the file and instead generate timestamps assuming constant frame rate fps. This is not the same as the -framerate option used for some input formats like image2 or v4l2 (it used to be the same in older versions of FFmpeg). If in doubt use -framerate instead of the input option -r. As an output option: video encoding Duplicate or drop frames right before encoding them to achieve constant output frame rate fps. video streamcopy Indicate to the muxer that fps is the stream frame rate. No data is dropped or duplicated in this case. This may produce invalid files if fps does not match the actual stream frame rate as determined by packet timestamps. See also the setts bitstream filter. -fpsmax[:stream_specifier] fps (output,per-stream) Set maximum frame rate (Hz value, fraction or abbreviation). Clamps output frame rate when output framerate is auto-set and is higher than this value. Useful in batch processing or when input framerate is wrongly detected as very high. It cannot be set together with -r. It is ignored during streamcopy. -s[:stream_specifier] size (input/output,per-stream) Set frame size. As an input option, this is a shortcut for the video_size private option, recognized by some demuxers for which the frame size is either not stored in the file or is configurable – e.g. raw video or video grabbers. As an output option, this inserts the scale video filter to the end of the corresponding filtergraph. Please use the scale filter directly to insert it at the beginning or some other place. The format is ‘wxh’ (default - same as source). -aspect[:stream_specifier] aspect (output,per-stream) Set the video display aspect ratio specified by aspect.
+
+### Doc 6: ffmpeg Documentation > Video Filters > alphaextract
+ffmpeg Documentation > Video Filters > alphaextract
+
+Extract the alpha component from the input as a grayscale video. This
+is especially useful with the alphamerge filter.
+
+### Doc 7: ffmpeg Documentation > QSV Video Filters > xstack_qsv
+ffmpeg Documentation > QSV Video Filters > xstack_qsv
+
+Stack video inputs into custom layout.
+
+This is the QSV variant of the xstack filter.
+
+It accepts the following options:
+
+inputs
+See xstack.
+
+shortest
+See xstack.
+
+layout
+See xstack.
+Moreover, this permits the user to supply output size for each input stream.
+
+xstack_qsv=inputs=4:layout=0_0_1920x1080|0_h0_1920x1080|w0_0_1920x1080|w0_h0_1920x1080
+
+grid
+See xstack.
+
+grid_tile_size
+Set output size for each input stream when grid is set. If this option
+is not set, this filter will set output size by default to the size of the
+first input stream. For the syntax of this option, check the
+(ffmpeg-utils)"Video size" section in the ffmpeg-utils manual.
+
+fill
+See xstack.
+
+### Doc 8: ffmpeg Documentation > Video Filters > limitdiff
+ffmpeg Documentation > Video Filters > limitdiff
+
+Apply limited difference filter using second and optionally third video stream.
+
+The filter accepts the following options:
+
+threshold
+Set the threshold to use when allowing certain differences between video streams.
+Any absolute difference value lower or exact than this threshold will pick pixel components from
+first video stream.
+
+elasticity
+Set the elasticity of soft thresholding when processing video streams.
+This value multiplied with first one sets second threshold.
+Any absolute difference value greater or exact than second threshold will pick pixel components
+from second video stream. For values between those two threshold
+linear interpolation between first and second video stream will be used.
+
+reference
+Enable the reference (third) video stream processing. By default is disabled.
+If set, this video stream will be used for calculating absolute difference with first video
+stream.
+
+planes
+Specify which planes will be processed. Defaults to all available.
+
+Now give the single ffmpeg command.

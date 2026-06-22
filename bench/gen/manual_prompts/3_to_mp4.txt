@@ -1,0 +1,221 @@
+# Paste everything below into the chat. (System instructions first, then the request + retrieved docs.)
+# Query id: to_mp4-verbose-1  |  intent: to_mp4  |  RAG, retrieved k=8 (bge-small + BM25 RRF, all-glued)
+# Doc sections retrieved: kmsgrab, MediaCodec, MOV_002fMPEG_002d4_002fISOMBFF-muxers, decklink-1, hevc_005fmp4toannexb, ddagrab, h264_005fmp4toannexb, mjpeg2jpeg
+# ============================================================================
+
+You are an ffmpeg expert helping non-technical people.
+The user describes, in plain language, what they want to do with a media file.
+Your job: produce ONE ffmpeg command that accomplishes it.
+
+Rules:
+- Use only real ffmpeg flags, encoders and filters. Do not invent options.
+- Use input.ext / output.ext as placeholder filenames.
+- Reply with a single fenced bash code block containing exactly one ffmpeg command,
+  then one short plain-language line explaining what it does.
+- If the request is something ffmpeg fundamentally cannot do (e.g. understanding or
+  summarizing the *content* of a video), do NOT output a command. Say it is out of
+  scope for ffmpeg and stop.
+
+User request: "this video won't play on my phone, can you convert it into a standard mp4 that works on anything"
+
+Relevant ffmpeg documentation:
+
+### Doc 1: ffmpeg Documentation > Input Devices > kmsgrab
+ffmpeg Documentation > Input Devices > kmsgrab
+
+KMS video input device.
+
+Captures the KMS scanout framebuffer associated with a specified CRTC or plane as a
+DRM object that can be passed to other hardware functions.
+
+Requires either DRM master or CAP_SYS_ADMIN to run.
+
+If you don’t understand what all of that means, you probably don’t want this. Look at
+x11grab instead.
+
+Examples:
+Capture from the first active plane, download the result to normal frames and encode.
+This will only work if the framebuffer is both linear and mappable - if not, the result
+may be scrambled or fail to download.
+
+ffmpeg -f kmsgrab -i - -vf 'hwdownload,format=bgr0' output.mp4
+
+ Capture from CRTC ID 42 at 60fps, map the result to VAAPI, convert to NV12 and encode as H.264.
+
+ffmpeg -crtc_id 42 -framerate 60 -f kmsgrab -i - -vf 'hwmap=derive_device=vaapi,scale_vaapi=w=1920:h=1080:format=nv12' -c:v h264_vaapi output.mp4
+
+ To capture only part of a plane the output can be cropped - this can be used to capture
+a single window, as long as it has a known absolute position and size. For example, to
+capture and encode the middle quarter of a 1920x1080 plane:
+
+ffmpeg -f kmsgrab -i - -vf 'hwmap=derive_device=vaapi,crop=960:540:480:270,scale_vaapi=960:540:nv12' -c:v h264_vaapi output.mp4
+
+### Doc 2: ffmpeg Documentation > Video Encoders > MediaCodec
+ffmpeg Documentation > Video Encoders > MediaCodec
+
+MediaCodec encoder wrapper enables hardware-accelerated video encoding on Android device. It supports H.264, H.265 (HEVC), VP8, VP9, MPEG-4, and AV1 encoding (whether works or not is device dependent). Android provides two sets of APIs: Java MediaCodec and NDK MediaCodec. The MediaCodec encoder wrapper supports both. Note that the NDK MediaCodec API operates without requiring JVM, but may fail to function outside the JVM environment due to dependencies on system framework services, particularly after Android 15. ndk_codec boolean Use the NDK-based MediaCodec API instead of the Java API. Enabled by default if av_jni_get_java_vm() return NULL. ndk_async boolean Use NDK MediaCodec in async mode. Async mode has less overhead than poll in a loop in sync mode. The drawback of async mode is AV_CODEC_FLAG_GLOBAL_HEADER doesn’t work (use extract_extradata bsf when necessary). It doesn’t work and will be disabled automatically on devices below Android 8.0. codec_name string A codec type can have multiple implementations on a single device, this option specify which backend to use (via MediaCodec createCodecByName API). It’s NULL by default, and encoder is created by createEncoderByType. bitrate_mode integer Possible values: ‘cq’ Constant quality mode ‘vbr’ Variable bitrate mode ‘cbr’ Constant bitrate mode ‘cbr_fd’ Constant bitrate mode with frame drops pts_as_dts boolean Use PTS as DTS. This is a workaround since MediaCodec API doesn’t provide decoding timestamp. It is enabled automatically if B frame is 0. operating_rate integer The desired operating rate that the codec will need to operate at, zero for unspecified. This is used for cases like high-speed/slow-motion video capture, where the video encoder format contains the target playback rate (e.g. 30fps), but the component must be able to handle the high operating capture rate (e.g. 240fps). This rate will be used by codec for resource planning and setting the operating points. qp_i_min integer Minimum quantization parameter for I frame. qp_p_min integer Minimum quantization parameter for P frame. qp_b_min integer Minimum quantization parameter for B frame. qp_i_max integer
+
+### Doc 3: ffmpeg Documentation > Muxers > MOV/MPEG-4/ISOMBFF muxers
+ffmpeg Documentation > Muxers > MOV/MPEG-4/ISOMBFF muxers
+
+This section covers formats belonging to the QuickTime / MOV family,
+including the MPEG-4 Part 14 format and ISO base media file format
+(ISOBMFF). These formats share a common structure based on the ISO
+base media file format (ISOBMFF).
+
+The MOV format was originally developed for use with Apple QuickTime.
+It was later used as the basis for the MPEG-4 Part 1 (later Part 14)
+format, also known as ISO/IEC 14496-1. That format was then
+generalized into ISOBMFF, also named MPEG-4 Part 12 format, ISO/IEC
+14496-12, or ISO/IEC 15444-12.
+
+It comprises the following muxers.
+
+‘3gp’
+Third Generation Partnership Project (3GPP) format for 3G UMTS
+multimedia services
+
+‘3g2’
+Third Generation Partnership Project 2 (3GP2 or 3GPP2) format for 3G
+CDMA2000 multimedia services, similar to ‘3gp’ with extensions
+and limitations
+
+‘f4v’
+Adobe Flash Video format
+
+‘ipod’
+MPEG-4 audio file format, as MOV/MP4 but limited to contain only audio
+streams, typically played with the Apple ipod device
+
+‘ismv’
+Microsoft IIS (Internet Information Services) Smooth Streaming
+Audio/Video (ISMV or ISMA) format. This is based on MPEG-4 Part 14
+format with a few incompatible variants, used to stream media files
+for the Microsoft IIS server.
+
+‘mov’
+QuickTime player format identified by the .mov extension
+
+‘mp4’
+MP4 or MPEG-4 Part 14 format
+
+‘psp’
+PlayStation Portable MP4/MPEG-4 Part 14 format variant. This is based
+on MPEG-4 Part 14 format with a few incompatible variants, used to
+play files on PlayStation devices.
+
+Examples:
+Push Smooth Streaming content in real time to a publishing point on
+IIS with the ‘ismv’ muxer using ffmpeg:
+
+ffmpeg -re <normal input/transcoding options> -movflags isml+frag_keyframe -f ismv http://server/publishingpoint.isml/Streams(Encoder1)
+
+### Doc 4: ffmpeg Documentation > Output Devices > decklink
+ffmpeg Documentation > Output Devices > decklink
+
+The decklink output device provides playback capabilities for Blackmagic
+DeckLink devices.
+
+To enable this output device, you need the Blackmagic DeckLink SDK and you
+need to configure with the appropriate --extra-cflags
+and --extra-ldflags.
+On Windows, you need to run the IDL files through widl.
+
+DeckLink is very picky about the formats it supports. Pixel format is always
+uyvy422, framerate, field order and video size must be determined for your
+device with -list_formats 1. Audio sample rate is always 48 kHz.
+
+Examples:
+List output devices:
+
+ffmpeg -sinks decklink
+
+ List supported formats:
+
+ffmpeg -i test.avi -f decklink -list_formats 1 'DeckLink Mini Monitor'
+
+ Play video clip:
+
+ffmpeg -i test.avi -f decklink -pix_fmt uyvy422 'DeckLink Mini Monitor'
+
+ Play video clip with non-standard framerate or video size:
+
+ffmpeg -i test.avi -f decklink -pix_fmt uyvy422 -s 720x486 -r 24000/1001 'DeckLink Mini Monitor'
+
+### Doc 5: ffmpeg Documentation > Bitstream Filters > hevc_mp4toannexb
+ffmpeg Documentation > Bitstream Filters > hevc_mp4toannexb
+
+Convert an HEVC/H.265 bitstream from length prefixed mode to start code
+prefixed mode (as defined in the Annex B of the ITU-T H.265
+specification).
+
+This is required by some streaming formats, typically the MPEG-2
+transport stream format (muxer mpegts).
+
+For example to remux an MP4 file containing an HEVC stream to mpegts
+format with ffmpeg, you can use the command:
+
+ffmpeg -i INPUT.mp4 -codec copy -bsf:v hevc_mp4toannexb OUTPUT.ts
+
+Please note that this filter is auto-inserted for MPEG-TS (muxer
+mpegts) and raw HEVC/H.265 (muxer h265 or
+hevc) output formats.
+
+### Doc 6: ffmpeg Documentation > Video Sources > ddagrab
+ffmpeg Documentation > Video Sources > ddagrab
+
+in this case). Examples: Capture primary screen and encode using nvenc: ffmpeg -f lavfi -i ddagrab -c:v h264_nvenc -cq 18 output.mp4 You can also skip the lavfi device and directly use the filter. Also demonstrates downloading the frame and encoding with libx264. Explicit output format specification is required in this case: ffmpeg -filter_complex ddagrab=output_idx=1:framerate=60,hwdownload,format=bgra -c:v libx264 -crf 18 output.mp4 If you want to capture only a subsection of the desktop, this can be achieved by specifying a smaller size and its offsets into the screen: ddagrab=video_size=800x600:offset_x=100:offset_y=100
+
+### Doc 7: ffmpeg Documentation > Bitstream Filters > h264_mp4toannexb
+ffmpeg Documentation > Bitstream Filters > h264_mp4toannexb
+
+Convert an H.264 bitstream from length prefixed mode to start code
+prefixed mode (as defined in the Annex B of the ITU-T H.264
+specification).
+
+This is required by some streaming formats, typically the MPEG-2
+transport stream format (muxer mpegts).
+
+For example to remux an MP4 file containing an H.264 stream to mpegts
+format with ffmpeg, you can use the command:
+
+ffmpeg -i INPUT.mp4 -codec copy -bsf:v h264_mp4toannexb OUTPUT.ts
+
+Please note that this filter is auto-inserted for MPEG-TS (muxer
+mpegts) and raw H.264 (muxer h264) output formats.
+
+### Doc 8: ffmpeg Documentation > Bitstream Filters > mjpeg2jpeg
+ffmpeg Documentation > Bitstream Filters > mjpeg2jpeg
+
+Convert MJPEG/AVI1 packets to full JPEG/JFIF packets.
+
+MJPEG is a video codec wherein each video frame is essentially a
+JPEG image. The individual frames can be extracted without loss,
+e.g. by
+
+ffmpeg -i ../some_mjpeg.avi -c:v copy frames_%d.jpg
+
+Unfortunately, these chunks are incomplete JPEG images, because
+they lack the DHT segment required for decoding. Quoting from
+http://www.digitalpreservation.gov/formats/fdd/fdd000063.shtml:
+
+Avery Lee, writing in the rec.video.desktop newsgroup in 2001,
+commented that "MJPEG, or at least the MJPEG in AVIs having the
+MJPG fourcc, is restricted JPEG with a fixed – and *omitted* –
+Huffman table. The JPEG must be YCbCr colorspace, it must be 4:2:2,
+and it must use basic Huffman encoding, not arithmetic or
+progressive. . . . You can indeed extract the MJPEG frames and
+decode them with a regular JPEG decoder, but you have to prepend
+the DHT segment to them, or else the decoder won’t have any idea
+how to decompress the data. The exact table necessary is given in
+the OpenDML spec."
+
+This bitstream filter patches the header of frames extracted from an MJPEG
+stream (carrying the AVI1 header ID and lacking a DHT segment) to
+produce fully qualified JPEG images.
+
+ffmpeg -i mjpeg-movie.avi -c:v copy -bsf:v mjpeg2jpeg frame_%d.jpg
+exiftran -i -9 frame*.jpg
+ffmpeg -i frame_%d.jpg -c:v copy rotated.avi
+
+Now give the single ffmpeg command.

@@ -1,0 +1,449 @@
+=== ministral-3b tool v1fair ===
+
+model=ministral-3b (ministral-3b-latest)  mode=tool  variant=v1fair  k=8  conc=5  queries=40
+  ✗ gif-neutral-1              fail         1 search  ffmpeg -i input.ext -vf palettegen -pix_fmt argb -f null -  > palette.
+  ✗ gif-terse-1                fail         1 search  ffmpeg -i input.ext -vf "paletteuse=method=dh" -c:v gif -loop 0 -q:v 2
+  ✗ gif-verbose-1              fail         1 search  ffmpeg -i input.ext -vf "paletteuse=method=nhist:stats_mode=histogram"
+  ✗ gif-typo-1                 fail         1 search  ffmpeg -i input.ext -filter_complex "[0:v]paletteuse=method=1:bpp=4:fo
+  ✗ gif-wrong_terms-1          fail         1 search  ffmpeg -i input.ext -vf "paletteuse=method=nhist:stats_mode=histograms
+  ✓ mp3-neutral-1              good         1 search  ffmpeg -i input.ext -c:a libmp3lame -qscale:a 2 output.mp3
+  ✓ mp3-verbose-1              good         1 search  ffmpeg -i input.ext -c:a libmp3lame -q:a 2 output.mp3
+  ✓ mp3-terse-1                good         1 search  ffmpeg -i input.ext -c:a libmp3lame output.mp3
+  ✓ crop_img-neutral-1         good         1 search  ffmpeg -i input.ext -vf "crop=out_w=min(iw,ih):ih:0:0" output.ext
+  ✓ mp3-typo-1                 good         1 search  ffmpeg -i input.ext -c:a libmp3lame -q:a 2 output.mp3
+  ✓ crop_img-verbose-1         good         1 search  ffmpeg -i input.ext -vf "crop=in_w/2:in_h/2:ceil((in_w/2)-out_w)/2:cei
+  ✓ crop_img-typo-1            good         1 search  ffmpeg -i input.ext -vf "crop=out_w=min(iw,ih):out_h=min(iw,ih):x=(iw-
+  ✓ crop_img-wrong_terms-1     good         1 search  ffmpeg -i input.ext -vf "crop=iw:ih:0:0" output.ext
+  ✗ trim_audio-terse-1         fail         1 search  ffmpeg -i input.ext -af "asegment=timestamps='0|30|60'" -c copy output
+  ✗ trim_audio-neutral-1       fail         1 search  ffmpeg -i input.ext -af "asegment=timestamps='180|300'" -c copy output
+  ✗ trim_audio-wrong_terms-1   fail         1 search  ffmpeg -i input.ext -af "asegment=timestamps='30|60'" -c copy output.e
+  ✓ mp3-wrong_terms-1          pass         2 search  ffmpeg -i input.ext -vn -c:a copy output.mp3
+  ✓ compress_video-neutral-1   good         1 search  ffmpeg -i input.ext -crf 23 -preset slow -c:v libx265 -c:a aac -b:a 12
+  ✓ compress_video-verbose-1   good         1 search  ffmpeg -i input.ext -c:v libx264 -preset ultrafast -crf 28 -c:a aac -b
+  ✓ compress_video-terse-1     good         1 search  ffmpeg -i input.ext -c:v libx264 -preset slow -crf 28 output.ext
+  ✓ compress_video-typo-1      good         1 search  ffmpeg -i input.ext -c:v libx265 -crf 28 -preset slow -c:a aac -b:a 12
+  ✓ compress_video-wrong_terms-1 good         1 search  ffmpeg -i input.ext -c:v libx264 -crf 23 -preset slow output.ext
+  ✗ thumb_video-neutral-1      fail         1 search  ffmpeg -i input.ext -vf "select=not(mod(n\,10))" -vsync vfr output_%04
+  ✓ thumb_video-verbose-1      good         1 search  ffmpeg -i input.ext -vf "select='not(eq(n\,0))', fps=1/10, scale=1280:
+  ✓ thumb_video-terse-1        good         1 search  ffmpeg -i input.ext -vf "scale=min(iw,ih):-1,fps=10,select='not(eof)':
+  ✓ mute_video-neutral-1       good         1 search  ffmpeg -i input.ext -c:v copy -an output.ext
+  ✓ thumb_video-typo-1         good         1 search  ffmpeg -i input.ext -vf "thumbnail=50,scale=1280:720" -frames:v 1 outp
+  ✓ mute_video-wrong_terms-1   good         1 search  ffmpeg -i input.ext -c:v copy -an output.ext
+  ✗ mute_video-terse-1         fail         1 search  ffmpeg -i input.ext -af "amix=inputs=2:duration=longest:a=0|0" output.
+  ✓ to_mp4-neutral-1           good         1 search  ffmpeg -i input.ext -c:v copy -c:a copy output.mp4
+  ✓ to_mp4-verbose-1           good         1 search  ffmpeg -i input.ext -c:v copy -c:a aac -b:a 128k output.mp4
+  ✓ to_mp4-typo-1              good         1 search  ffmpeg -i input.ext -c:v copy -c:a copy output.mp4
+  ✗ speed_video-neutral-1      fail         1 search  ffmpeg -i input.mp4 -vf "fps=0.5" output.mp4
+  ✗ speed_video-terse-1        fail         1 search  ffmpeg -i input.ext -c:v libx264 -r 2 -vsync vfr output.ext
+  ✗ speed_video-wrong_terms-1  fail         1 search  ffmpeg -i input.ext -c:v copy -c:a copy -r 2.0 output.ext
+  ✓ theme-verbose-1            abstain_ok   0 search  
+  ✓ thumb_image-neutral-1      good         1 search  ffmpeg -i input.ext -vf "scale=200:200" -frames:v 1 output.png
+  ✗ thumb_image-wrong_terms-1  fail         1 search  ffmpeg -i input.ext -r 1 -s 1920x1080 -f image2 output_%04d.png
+  ✓ summarize-neutral-1        abstain_ok   0 search  
+  ✓ theme-neutral-1            abstain_ok   1 search  
+
+── ministral-3b / tool / v1fair ──
+correct command: 23/37 (62%)   of which high-quality: 22
+abstained on no-answer: 3/3
+avg searches/query: 1.03
+tokens: total=83564  in=78296  out=5268  (~2089/query)
+
+per-style correct:
+  neutral       60% (10)
+  verbose       83% (6)
+  terse         43% (7)
+  typo          83% (6)
+  wrong_terms   50% (8)
+
+-> gen/results.json (8 runs)
+=== ministral-3b tool v2 ===
+
+model=ministral-3b (ministral-3b-latest)  mode=tool  variant=v2  k=8  conc=5  queries=40
+  ✓ gif-neutral-1              pass         3 search  ffmpeg -i input.mp4 -vf "fps=10,scale=640:-1:flags=lanczos" -c:v gif -
+  ✗ gif-wrong_terms-1          fail         3 search  ffmpeg -i input.ext -vf "paletteuse=method=nhist:stats_mode=histograms
+  ✓ gif-typo-1                 pass         3 search  ffmpeg -i input.ext -vf "fps=10,scale=640:-1:flags=lanczos" -c:v gif -
+  ✗ gif-terse-1                fail         3 search  ffmpeg -i input.ext -vf "paletteuse=mode=rgb:maxcolors=100:outw=200:ou
+  ✗ gif-verbose-1              fail         3 search  ffmpeg -i INPUT.ext -vf "paletteuse=stats_file=palette.stats" -c:v gif
+  ✓ mp3-verbose-1              good         2 search  ffmpeg -i input.ext -c:a libmp3lame -q:a 2 output.mp3
+  ✓ mp3-neutral-1              good         2 search  ffmpeg -i input.ext -c:a libmp3lame -q:a 2 output.mp3
+  ✓ mp3-terse-1                good         2 search  ffmpeg -i input.ext -c:a libmp3lame -q:a 2 output.mp3
+  ✗ mp3-wrong_terms-1          fail         1 search  ffmpeg -i input.ext -vn -c:a flac output.flac
+  ✓ mp3-typo-1                 good         2 search  ffmpeg -i input.ext -c:a libmp3lame -q:a 2 output.mp3
+  ✓ crop_img-neutral-1         good         1 search  ffmpeg -i input.ext -vf "crop=iw/2:ih/2:0:0" output.ext
+  ✓ crop_img-verbose-1         good         1 search  ffmpeg -i input.jpg -vf "crop=in_w/2:in_h/2:ceil(in_w/2-100)/2:ceil(in
+  ✓ crop_img-typo-1            good         1 search  ffmpeg -i input.ext -vf "crop=in_w:min(iw,ih):0:0" output.ext
+  ✓ crop_img-wrong_terms-1     good         1 search  ffmpeg -i input.ext -vf "crop=in_w-20:in_h-20:20:20" output.ext
+  ✗ trim_audio-terse-1         fail         2 search  ffmpeg -i input.ext -af "atrim=30:60" output.ext
+  ✗ compress_video-neutral-1   fail         2 search  ffmpeg -i input.ext -c:v libwebp -compression_level 9 -quality 0 outpu
+  ✓ compress_video-verbose-1   good         3 search  ffmpeg -i input.ext -c:v libx264 -crf 28 -preset slow -c:a copy output
+  ✓ trim_audio-neutral-1       good         2 search  ffmpeg -i input.ext -f segment -segment_time 30 -segment_list segments
+  ✓ compress_video-terse-1     good         3 search  ffmpeg -i input.ext -vf "scale=-1:720" -c:v libx264 -crf 23 -preset fa
+  ✗ trim_audio-wrong_terms-1   fail         2 search  ffmpeg -i input.wav -af "atrim=30:60" output.wav
+  ✓ compress_video-typo-1      good         3 search  ffmpeg -i input.ext -c:v libx264 -preset slow -crf 28 -vf "scale=-1:72
+  ✗ thumb_video-verbose-1      fail         2 search  ffmpeg -i input_video.mp4 -vf "select='not(mod(n\,10))' -framerate 10"
+  ✓ thumb_video-neutral-1      good         2 search  ffmpeg -i input.mp4 -vf "select='eq(n\,floor(n*5/60))',scale=640:480,f
+  ✓ thumb_video-terse-1        good         2 search  ffmpeg -i input.mp4 -vf "thumbnail=n=10:t=10000:log=info,scale=800:600
+  ✓ compress_video-wrong_terms-1 good         3 search  ffmpeg -i input.ext -c:v libx264 -preset slow -crf 28 -c:a copy output
+  ✓ thumb_video-typo-1         good         1 search  ffmpeg -i input vid -vf "thumbnail=50,scale=300:200" -frames:v 1 thumb
+  ✓ mute_video-neutral-1       good         2 search  ffmpeg -i input.ext -an output.ext
+  ✗ mute_video-terse-1         fail         2 search  ffmpeg -i input.ext -af "volume=0" output.ext
+  ✓ mute_video-wrong_terms-1   good         2 search  ffmpeg -i input.ext -an output.ext
+  ✓ to_mp4-verbose-1           good         2 search  ffmpeg -i input.ext -c:v libx264 -preset fast -crf 23 -c:a aac -b:a 12
+  ✓ to_mp4-typo-1              good         2 search  ffmpeg -i input.ext -c:v libx264 -preset fast -crf 23 -c:a aac -b:a 12
+  ✗ speed_video-neutral-1      fail         2 search  ffmpeg -i input.ext -filter:v "re=1.5" output.ext
+  ✗ speed_video-terse-1        fail         2 search  ffmpeg -i input.ext -vf "fps=2*x_source_fps" output.ext
+  ✓ thumb_image-neutral-1      good         1 search  ffmpeg -i input.jpg -vf "scale=200:200" -frames:v 1 thumbnail.png
+  ✓ theme-verbose-1            abstain_ok   0 search  
+  ✗ theme-neutral-1            abstain_miss 1 search  ffmpeg -i input.mp4 -vf "colordetect=all" -f null -
+  ✓ summarize-neutral-1        abstain_ok   0 search  
+  ✓ speed_video-wrong_terms-1  good         3 search  ffmpeg -i input.ext -c:v libx264 -c:a aac -r 30 -vsync cfr output.mp4
+  ✓ to_mp4-neutral-1           good         2 search  ffmpeg -i input.ext -c:v libx264 -preset fast -crf 23 -c:a aac -b:a 12
+  ✓ thumb_image-wrong_terms-1  good         2 search  ffmpeg -i input.jpg -vf "scale=200:200" -frames:v 1 thumb.jpg
+
+── ministral-3b / tool / v2 ──
+correct command: 26/37 (70%)   of which high-quality: 24
+abstained on no-answer: 2/3
+avg searches/query: 2.08
+tokens: total=191024  in=183065  out=7959  (~4776/query)
+
+per-style correct:
+  neutral       80% (10)
+  verbose       67% (6)
+  terse         43% (7)
+  typo          100% (6)
+  wrong_terms   63% (8)
+
+-> gen/results.json (8 runs)
+=== ministral-8b tool v1fair ===
+
+model=ministral-8b (ministral-8b-latest)  mode=tool  variant=v1fair  k=8  conc=5  queries=40
+  ✓ gif-typo-1                 pass         1 search  ffmpeg -i input.mp4 -vf "fps=10,scale=320:-1" -c:v gif -loop 0 output.
+  ✓ gif-verbose-1              pass         1 search  ffmpeg -i input.mp4 -vf "fps=10,scale=640:-1:flags=lanczos" -c:v gif -
+  ✓ gif-terse-1                good         2 search  ffmpeg -i input.ext -vf "scale=w=640:h=480:force_original_aspect_ratio
+  ✓ gif-wrong_terms-1          good         2 search  ffmpeg -i input.ext -vf "fps=10,scale=640:-1:flags=lanczos,palettegen"
+  ✓ mp3-neutral-1              good         1 search  ffmpeg -i input.ext -c:a libmp3lame -q:a 2 output.mp3
+  ✓ gif-neutral-1              pass         1 search  ffmpeg -i input.mp4 -vf "fps=10,scale=320:-1:flags=lanczos" -c:v gif -
+  ✓ mp3-verbose-1              good         1 search  ffmpeg -i input.ext -vn -c:a libmp3lame -q:a 2 output.mp3
+  ✓ mp3-terse-1                good         1 search  ffmpeg -i input.ext -c:a libmp3lame -q:a 2 output.mp3
+  ✓ crop_img-neutral-1         good         1 search  ffmpeg -i input.ext -vf "crop=in_w:in_h:0:0" output.ext
+  ✓ mp3-wrong_terms-1          good         2 search  ffmpeg -i input.ext -vn -c:a libmp3lame -q:a 2 output.mp3
+  ✓ crop_img-typo-1            good         1 search  ffmpeg -i input.jpg -vf "crop=min(iw,ih):min(iw,ih)" output.jpg
+  ✓ crop_img-verbose-1         good         1 search  ffmpeg -i input.ext -vf "crop=in_h:in_h:(in_w-in_h)/2:(in_h-in_h)/2" o
+  ✓ crop_img-wrong_terms-1     good         1 search  ffmpeg -i input.ext -vf "crop=in_w-20:in_h-20:10:10" output.ext
+  ✓ trim_audio-neutral-1       good         1 search  ffmpeg -i input.ext -ss 00:30 -to 01:00 -c copy output.ext
+  ✓ mp3-typo-1                 good         1 search  ffmpeg -i input.ext -c:a libmp3lame -q:a 2 output.mp3
+  ✓ trim_audio-wrong_terms-1   good         1 search  ffmpeg -i input.ext -ss 00:00:30 -to 00:01:00 -c copy output.ext
+  ✗ trim_audio-terse-1         fail         2 search  ffmpeg -i input.ext -af "atrim=start=30,end=60" -c:a copy output.ext
+  ✓ compress_video-neutral-1   good         1 search  ffmpeg -i input.ext -c:v libx264 -crf 28 -preset slow -c:a aac -b:a 12
+  ✗ compress_video-terse-1     fail         1 search  ffmpeg -i input.ext -vf "scale=-2:720" output.ext
+  ✓ compress_video-typo-1      good         1 search  ffmpeg -i input.ext -vcodec libx264 -crf 28 -preset ultrafast -acodec 
+  ✓ compress_video-wrong_terms-1 good         1 search  ffmpeg -i input.ext -c:v libx264 -crf 28 -preset fast -c:a aac -b:a 12
+  ✓ compress_video-verbose-1   good         2 search  ffmpeg -i input.ext -vf "scale=-2:720" -c:v libvpx-vp9 -b:v 1M -crf 30
+  ✓ thumb_video-neutral-1      good         2 search  ffmpeg -i input.ext -vf fps=1/5 -q:v 2 thumbnail_%04d.jpg
+  ✓ thumb_video-typo-1         good         1 search  ffmpeg -i input.ext -vf "fps=1,select='eq(n,1)',scale=640:480" thumbna
+  ✓ mute_video-neutral-1       good         1 search  ffmpeg -i input.ext -an -c:v copy output.ext
+  ✓ thumb_video-verbose-1      good         2 search  ffmpeg -i input.ext -vf "select='eq(n,100)'|select='eq(n,200)'|select=
+  ✓ mute_video-wrong_terms-1   good         1 search  ffmpeg -i input.ext -c:v copy -an output.ext
+  ✗ mute_video-terse-1         fail         5 search  
+  ✓ thumb_video-terse-1        good         3 search  ffmpeg -i input.ext -vf "fps=1/2,scale=1280:720" -vframes 360 thumbnai
+  ✓ to_mp4-neutral-1           good         1 search  ffmpeg -i input.ext -c:v libx264 -preset fast -c:a aac -b:a 192k -movf
+  ✓ to_mp4-verbose-1           good         1 search  ffmpeg -i input.ext -c:v libx264 -preset fast -crf 23 -c:a aac -b:a 19
+  ✓ to_mp4-typo-1              good         1 search  ffmpeg -i input.ext -c:v copy -c:a aac -strict experimental output.mp4
+  ✓ speed_video-neutral-1      good         1 search  ffmpeg -i input.ext -vf "setpts=2.0*PTS" -af "atempo=0.5" output.ext
+  ✗ thumb_image-wrong_terms-1  fail         0 search  ffmpeg -i input.jpg -vf "select='eq(n,0)'" -vframes 1 thumbnail.jpg
+  ✓ speed_video-terse-1        good         1 search  ffmpeg -i input.ext -filter:v "setpts=0.5*PTS" -c:a copy output.ext
+  ✓ theme-neutral-1            abstain_ok   0 search  
+  ✓ thumb_image-neutral-1      good         1 search  ffmpeg -i input.ext -vf "scale=200:-1,pad=200:200:(ow-iw)/2:(oh-ih)/2"
+  ✓ theme-verbose-1            abstain_ok   0 search  
+  ✓ summarize-neutral-1        abstain_ok   0 search  
+  ✓ speed_video-wrong_terms-1  good         2 search  ffmpeg -i input.ext -filter_complex "[0:v]setpts=PTS/(2.0)*TB[v];[0:a]
+
+── ministral-8b / tool / v1fair ──
+correct command: 33/37 (89%)   of which high-quality: 30
+abstained on no-answer: 3/3
+avg searches/query: 1.35
+tokens: total=101510  in=96481  out=5029  (~2538/query)
+
+per-style correct:
+  neutral       100% (10)
+  verbose       100% (6)
+  terse         57% (7)
+  typo          100% (6)
+  wrong_terms   88% (8)
+
+-> gen/results.json (9 runs)
+=== ministral-8b tool v2 ===
+
+model=ministral-8b (ministral-8b-latest)  mode=tool  variant=v2  k=8  conc=5  queries=40
+  ✓ gif-typo-1                 good         3 search  ffmpeg -i input.mp4 -vf "fps=10,scale=640:-1:flags=lanczos,palettegen"
+  ✓ gif-terse-1                good         3 search  ffmpeg -i input.ext -vf "scale=640:-1:flags=lanczos,palettegen" -y pal
+  ✓ gif-neutral-1              good         3 search  ffmpeg -i input.ext -vf "fps=10,scale=320:-1:flags=lanczos,palettegen"
+  ✓ gif-verbose-1              pass         4 search  ffmpeg -i input.mp4 -vf "fps=10,scale=640:-1:flags=lanczos" -loop 0 -p
+  ✓ gif-wrong_terms-1          pass         6 search  ffmpeg -i input.ext -vf "fps=10,scale=640:-1:flags=lanczos" -c:v gif -
+  ✓ mp3-terse-1                good         2 search  ffmpeg -i input.ext -c:a libmp3lame -q:a 2 output.mp3
+  ✓ mp3-neutral-1              good         2 search  ffmpeg -i input.ext -c:a libmp3lame -q:a 2 output.mp3
+  ✓ mp3-verbose-1              good         3 search  ffmpeg -i input.ext -vn -c:a libmp3lame -q:a 2 output.mp3
+  ✓ mp3-typo-1                 good         2 search  ffmpeg -i input.ext -c:a libmp3lame -q:a 2 output.mp3
+  ✓ crop_img-verbose-1         good         1 search  ffmpeg -i input.jpg -vf "crop=in_w:in_h/2:in_w/2:0" output.jpg
+  ✓ crop_img-neutral-1         good         1 search  ffmpeg -i input.ext -vf "crop=in_h:in_h" output.ext
+  ✓ crop_img-typo-1            good         1 search  ffmpeg -i input.jpg -vf "crop=in_w/2:in_h/2" output.jpg
+  ✓ crop_img-wrong_terms-1     good         2 search  ffmpeg -i input.ext -vf "crop=in_w-2*10:in_h-2*20" output.ext
+  ✓ mp3-wrong_terms-1          good         4 search  ffmpeg -i input.ext -c:a libmp3lame -q:a 2 output.mp3
+  ✗ trim_audio-terse-1         fail         1 search  ffmpeg -i input.ext -af atrim=30:60 -c:a copy output.ext
+  ✗ trim_audio-neutral-1       fail         2 search  ffmpeg -i input.ext -af atrim=start=30:end=60 -c:a copy output.ext
+  ✗ trim_audio-wrong_terms-1   fail         2 search  ffmpeg -i input.ext -af atrim=start=30:end=60 -c:a copy output.mp3
+  ✗ compress_video-terse-1     fail         1 search  ffmpeg -i input.ext -vf "scale=1280:720" output.ext
+  ✓ compress_video-neutral-1   good         3 search  ffmpeg -i input.ext -c:v libx264 -crf 23 -preset slow -c:a aac -b:a 12
+  ✓ compress_video-wrong_terms-1 good         2 search  ffmpeg -i input.ext -vf "scale=1280:720" -c:v libx264 -crf 28 -preset 
+  ✓ compress_video-typo-1      good         3 search  ffmpeg -i input.ext -c:v libvpx-vp9 -b:v 1M -crf 30 -threads 4 -pass 1
+  ✓ compress_video-verbose-1   good         4 search  ffmpeg -i input.ext -c:v libx264 -crf 28 -preset fast -c:a aac -b:a 12
+  ✓ thumb_video-neutral-1      good         2 search  ffmpeg -i input.ext -vf "select='not(mod(n\,N))',thumbnail=N" -frames:
+  ✓ mute_video-neutral-1       good         1 search  ffmpeg -i input.ext -an -c:v copy output.ext
+  ✓ thumb_video-typo-1         good         1 search  ffmpeg -i input.ext -vf "fps=1/100,select='eq(n\,0)',scale=640:480" -f
+  ✗ thumb_video-verbose-1      fail         2 search  ffmpeg -i input.ext -vf "select='not(mod(n,30))',scale=1280:-1" -vsync
+  ✓ mute_video-wrong_terms-1   good         1 search  ffmpeg -i input.ext -an -c:v copy output.ext
+  ✓ mute_video-terse-1         good         1 search  ffmpeg -i input.ext -an -c:a copy -map 0:v output.ext
+  ✗ thumb_video-terse-1        fail         5 search  
+  ✗ speed_video-neutral-1      fail         1 search  ffmpeg -i input.ext -vf "minterpolate=fps=15:mi_mode=blend" output.ext
+  ✓ to_mp4-typo-1              good         2 search  ffmpeg -i input.ext -c:v libx264 -preset fast -c:a aac -b:a 192k -movf
+  ✓ to_mp4-neutral-1           good         3 search  ffmpeg -i input.ext -c:v libx264 -preset slow -crf 23 -c:a aac -b:a 19
+  ✓ to_mp4-verbose-1           good         4 search  ffmpeg -i input.ext -c:v libx264 -preset fast -crf 23 -c:a aac -b:a 12
+  ✗ speed_video-terse-1        fail         5 search  
+  ✗ speed_video-wrong_terms-1  fail         5 search  
+  ✓ theme-neutral-1            abstain_ok   0 search  
+  ✓ thumb_image-neutral-1      good         3 search  ffmpeg -i input.jpg -vf "scale=300:-1" -frames:v 1 thumbnail.jpg
+  ✓ theme-verbose-1            abstain_ok   0 search  
+  ✓ summarize-neutral-1        abstain_ok   0 search  
+  ✗ thumb_image-wrong_terms-1  fail         2 search  ffmpeg -i input.mp4 -vf "fps=1/10" -frames:v 10 thumbnail_%03d.png
+
+── ministral-8b / tool / v2 ──
+correct command: 27/37 (73%)   of which high-quality: 25
+abstained on no-answer: 3/3
+avg searches/query: 2.51
+tokens: total=220128  in=213149  out=6979  (~5503/query)
+
+per-style correct:
+  neutral       80% (10)
+  verbose       83% (6)
+  terse         43% (7)
+  typo          100% (6)
+  wrong_terms   63% (8)
+
+-> gen/results.json (10 runs)
+=== ministral-14b tool v1fair ===
+
+model=ministral-14b (ministral-14b-latest)  mode=tool  variant=v1fair  k=8  conc=5  queries=40
+  ✓ gif-typo-1                 pass         2 search  ffmpeg -i input.ext -vf "fps=10,scale=320:-1:flags=lanczos" -c:v gif -
+  ✓ gif-neutral-1              pass         2 search  ffmpeg -i input.ext -vf "fps=10,scale=320:-1:flags=lanczos" -lavfi pal
+  ✓ gif-terse-1                good         3 search  ffmpeg -i input.ext -vf "scale=320:-1:flags=lanczos,palettegen" -y pal
+  ✓ gif-wrong_terms-1          good         3 search  ffmpeg -i input.ext -vf "fps=10,scale=320:-1" -c:v gif -filter_complex
+  ✓ gif-verbose-1              good         3 search  ffmpeg -i input.ext -vf "fps=15,scale=320:-1:flags=lanczos,palettegen"
+  ✓ mp3-neutral-1              good         2 search  ffmpeg -i input.ext -c:a libmp3lame -q:a 2 output.mp3
+  ✓ mp3-terse-1                good         2 search  ffmpeg -i input.ext -c:a libmp3lame -q:a 2 output.mp3
+  ✓ crop_img-neutral-1         good         1 search  ffmpeg -i input.ext -vf "crop=min(h,w):min(h,w)" output.ext
+  ✓ mp3-typo-1                 good         1 search  ffmpeg -i input.ext -codec:a libmp3lame -q:a 2 output.mp3
+  ✓ mp3-verbose-1              good         2 search  ffmpeg -i input.ext -vn -c:a libmp3lame -q:a 2 output.mp3
+  ✓ crop_img-typo-1            good         1 search  ffmpeg -i input.ext -vf "crop=min(h,w):min(h,w)" output.ext
+  ✓ crop_img-verbose-1         good         2 search  ffmpeg -i input.ext -vf "crop=min(h,w):min(h,w)" output.ext
+  retry 1 after 1500ms (Failed after 3 attempts. Last error: Rate limit exceeded)
+  retry 1 after 1500ms (Failed after 3 attempts. Last error: Rate limit exceeded)
+  retry 1 after 1500ms (Failed after 3 attempts. Last error: Rate limit exceeded)
+  retry 1 after 1500ms (Failed after 3 attempts. Last error: Rate limit exceeded)
+  retry 1 after 1500ms (Failed after 3 attempts. Last error: Rate limit exceeded)
+  retry 2 after 3000ms (Failed after 3 attempts. Last error: Rate limit exceeded)
+  retry 2 after 3000ms (Failed after 3 attempts. Last error: Rate limit exceeded)
+  retry 2 after 3000ms (Failed after 3 attempts. Last error: Rate limit exceeded)
+  retry 2 after 3000ms (Failed after 3 attempts. Last error: Rate limit exceeded)
+  retry 2 after 3000ms (Failed after 3 attempts. Last error: Rate limit exceeded)
+  retry 3 after 4500ms (Failed after 3 attempts. Last error: Rate limit exceeded)
+  retry 3 after 4500ms (Failed after 3 attempts. Last error: Rate limit exceeded)
+  retry 3 after 4500ms (Failed after 3 attempts. Last error: Rate limit exceeded)
+  retry 3 after 4500ms (Failed after 3 attempts. Last error: Rate limit exceeded)
+  retry 3 after 4500ms (Failed after 3 attempts. Last error: Rate limit exceeded)
+  ✓ trim_audio-neutral-1       good         3 search  ffmpeg -i input.ext -ss 00:00:30 -to 00:01:00 -c copy output.ext
+  ✓ trim_audio-wrong_terms-1   good         2 search  ffmpeg -i input.ext -ss 00:00:30 -to 00:01:00 -c copy output.ext
+  ✓ mp3-wrong_terms-1          good         7 search  ffmpeg -i input.ext -vn -c:a libmp3lame -q:a 2 output.mp3
+  ✓ trim_audio-terse-1         good         3 search  ffmpeg -i input.ext -ss 00:00:30 -to 00:01:00 -c copy output.ext
+  ✓ crop_img-wrong_terms-1     good         4 search  ffmpeg -i input.ext -vf "crop=in_w-20:in_h-20" -c:a copy output.ext
+  ✗ compress_video-terse-1     fail         2 search  ffmpeg -i input.ext -vf "scale=640:-1" output.ext
+  ✓ compress_video-verbose-1   good         3 search  ffmpeg -i input.ext -c:v libx264 -crf 28 -preset fast -c:a aac -b:a 12
+  ✓ compress_video-neutral-1   good         3 search  ffmpeg -i input.ext -c:v libx264 -crf 28 -preset fast -c:a aac -b:a 12
+  ✓ compress_video-typo-1      good         3 search  ffmpeg -i input.ext -c:v libx264 -crf 28 -preset fast -c:a aac -b:a 12
+  ✓ thumb_video-neutral-1      good         2 search  ffmpeg -i input.ext -vf fps=1 -q:v 2 output_%04d.png
+  ✓ compress_video-wrong_terms-1 good         3 search  ffmpeg -i input.ext -c:v libx264 -crf 23 -preset medium -c:a aac -b:a 
+  retry 1 after 1500ms (Failed after 3 attempts. Last error: Rate limit exceeded)
+  retry 1 after 1500ms (Failed after 3 attempts. Last error: Rate limit exceeded)
+  retry 1 after 1500ms (Failed after 3 attempts. Last error: Rate limit exceeded)
+  retry 1 after 1500ms (Failed after 3 attempts. Last error: Rate limit exceeded)
+  retry 1 after 1500ms (Failed after 3 attempts. Last error: Rate limit exceeded)
+  retry 2 after 3000ms (Failed after 3 attempts. Last error: Rate limit exceeded)
+  retry 2 after 3000ms (Failed after 3 attempts. Last error: Rate limit exceeded)
+  retry 2 after 3000ms (Failed after 3 attempts. Last error: Rate limit exceeded)
+  retry 2 after 3000ms (Failed after 3 attempts. Last error: Rate limit exceeded)
+  retry 2 after 3000ms (Failed after 3 attempts. Last error: Rate limit exceeded)
+  retry 3 after 4500ms (Failed after 3 attempts. Last error: Rate limit exceeded)
+  retry 3 after 4500ms (Failed after 3 attempts. Last error: Rate limit exceeded)
+  retry 3 after 4500ms (Failed after 3 attempts. Last error: Rate limit exceeded)
+  retry 3 after 4500ms (Failed after 3 attempts. Last error: Rate limit exceeded)
+  retry 3 after 4500ms (Failed after 3 attempts. Last error: Rate limit exceeded)
+  ! thumb_video-terse-1 failed: Failed after 3 attempts. Last error: Rate limit exceeded
+  ! thumb_video-verbose-1 failed: Failed after 3 attempts. Last error: Rate limit exceeded
+  ! mute_video-neutral-1 failed: Failed after 3 attempts. Last error: Rate limit exceeded
+  ! thumb_video-typo-1 failed: Failed after 3 attempts. Last error: Rate limit exceeded
+  ! mute_video-terse-1 failed: Failed after 3 attempts. Last error: Rate limit exceeded
+  retry 1 after 1500ms (Failed after 3 attempts. Last error: Rate limit exceeded)
+  retry 1 after 1500ms (Failed after 3 attempts. Last error: Rate limit exceeded)
+  retry 1 after 1500ms (Failed after 3 attempts. Last error: Rate limit exceeded)
+  retry 1 after 1500ms (Failed after 3 attempts. Last error: Rate limit exceeded)
+  retry 1 after 1500ms (Failed after 3 attempts. Last error: Rate limit exceeded)
+  retry 2 after 3000ms (Failed after 3 attempts. Last error: Rate limit exceeded)
+  retry 2 after 3000ms (Failed after 3 attempts. Last error: Rate limit exceeded)
+  retry 2 after 3000ms (Failed after 3 attempts. Last error: Rate limit exceeded)
+  retry 2 after 3000ms (Failed after 3 attempts. Last error: Rate limit exceeded)
+  retry 2 after 3000ms (Failed after 3 attempts. Last error: Rate limit exceeded)
+  ✓ mute_video-wrong_terms-1   good         3 search  ffmpeg -i input.ext -c:v copy -an output.ext
+  ✓ to_mp4-typo-1              good         2 search  ffmpeg -i input.ext -c:v copy -c:a copy -movflags +faststart output.mp
+  ✗ speed_video-neutral-1      fail         2 search  ffmpeg -i input.ext -vf "minterpolate=fps=12:mi_mode=mci" -c:a copy ou
+  ✓ to_mp4-verbose-1           good         3 search  ffmpeg -i input.ext -c:v libx264 -crf 23 -preset medium -c:a aac -b:a 
+  ✗ thumb_image-wrong_terms-1  fail         0 search  This request is out of scope for ffmpeg. FFmpeg cannot extract thumbna
+  ✓ thumb_image-neutral-1      good         2 search  ffmpeg -i input.ext -vf "scale=300:-1" -frames:v 1 output.ext
+  ✓ speed_video-terse-1        good         5 search  ffmpeg -i input.ext -vf "setpts=0.5*PTS" -af "atempo=2.0" output.ext
+  ✓ speed_video-wrong_terms-1  good         4 search  ffmpeg -i input.ext -vf "setpts=0.5*PTS" -af "asetrate=2.0*rate" -c:v 
+  ✓ theme-neutral-1            abstain_ok   0 search  
+  ✓ theme-verbose-1            abstain_ok   0 search  
+  ✓ summarize-neutral-1        abstain_ok   0 search  
+  retry 3 after 4500ms (Failed after 3 attempts. Last error: Rate limit exceeded)
+  ! to_mp4-neutral-1 failed: Failed after 3 attempts. Last error: Rate limit exceeded
+
+── ministral-14b / tool / v1fair ──
+correct command: 28/37 (76%)   of which high-quality: 26
+abstained on no-answer: 3/3
+avg searches/query: 2.16
+tokens: total=159025  in=154353  out=4672  (~4677/query)
+
+per-style correct:
+  neutral       70% (10)
+  verbose       83% (6)
+  terse         57% (7)
+  typo          83% (6)
+  wrong_terms   88% (8)
+
+-> gen/results.json (11 runs)
+=== ministral-14b tool v2 ===
+
+model=ministral-14b (ministral-14b-latest)  mode=tool  variant=v2  k=8  conc=5  queries=40
+  retry 1 after 1500ms (Failed after 3 attempts. Last error: Rate limit exceeded)
+  retry 1 after 1500ms (Failed after 3 attempts. Last error: Rate limit exceeded)
+  retry 1 after 1500ms (Failed after 3 attempts. Last error: Rate limit exceeded)
+  retry 1 after 1500ms (Failed after 3 attempts. Last error: Rate limit exceeded)
+  retry 1 after 1500ms (Failed after 3 attempts. Last error: Rate limit exceeded)
+  retry 2 after 3000ms (Failed after 3 attempts. Last error: Rate limit exceeded)
+  retry 2 after 3000ms (Failed after 3 attempts. Last error: Rate limit exceeded)
+  retry 2 after 3000ms (Failed after 3 attempts. Last error: Rate limit exceeded)
+  retry 2 after 3000ms (Failed after 3 attempts. Last error: Rate limit exceeded)
+  retry 2 after 3000ms (Failed after 3 attempts. Last error: Rate limit exceeded)
+  retry 3 after 4500ms (Failed after 3 attempts. Last error: Rate limit exceeded)
+  retry 3 after 4500ms (Failed after 3 attempts. Last error: Rate limit exceeded)
+  retry 3 after 4500ms (Failed after 3 attempts. Last error: Rate limit exceeded)
+  retry 3 after 4500ms (Failed after 3 attempts. Last error: Rate limit exceeded)
+  retry 3 after 4500ms (Failed after 3 attempts. Last error: Rate limit exceeded)
+  ✓ gif-neutral-1              good         4 search  ffmpeg -i input.ext -vf "fps=10,scale=320:-1:flags=lanczos,palettegen"
+  ✓ gif-terse-1                pass         4 search  ffmpeg -i input.ext -vf "scale=320:-1:force_original_aspect_ratio=decr
+  ✓ mp3-neutral-1              good         2 search  ffmpeg -i input.ext -c:a libmp3lame -q:a 2 output.mp3
+  ✓ gif-typo-1                 good         4 search  ffmpeg -i input.mp4 -vf "scale=320:-1:flags=lanczos,palettegen" -y pal
+  ✓ mp3-terse-1                good         2 search  ffmpeg -i input.ext -c:a libmp3lame -q:a 2 output.mp3
+  ✓ mp3-typo-1                 good         2 search  ffmpeg -i input.ext -c:a libmp3lame -q:a 2 output.mp3
+  ✓ gif-verbose-1              good         7 search  ffmpeg -i input.ext -vf "fps=15,scale=640:-1:flags=lanczos,palettegen"
+  ✓ mp3-verbose-1              good         6 search  ffmpeg -i input.ext -vn -c:a libmp3lame -q:a 2 output.mp3
+  ✓ mp3-wrong_terms-1          good         3 search  ffmpeg -i input.ext -vn -c:a libmp3lame -q:a 2 output.mp3
+  ✓ crop_img-neutral-1         good         3 search  ffmpeg -i input.ext -vf "crop=min(h,w):min(h,w)" output.ext
+  ✓ gif-wrong_terms-1          good         7 search  ffmpeg -i input.ext -vf "fps=10,scale=320:-1" -lavfi paletteuse -filte
+  retry 1 after 1500ms (Failed after 3 attempts. Last error: Rate limit exceeded)
+  retry 1 after 1500ms (Failed after 3 attempts. Last error: Rate limit exceeded)
+  retry 1 after 1500ms (Failed after 3 attempts. Last error: Rate limit exceeded)
+  retry 1 after 1500ms (Failed after 3 attempts. Last error: Rate limit exceeded)
+  retry 1 after 1500ms (Failed after 3 attempts. Last error: Rate limit exceeded)
+  retry 2 after 3000ms (Failed after 3 attempts. Last error: Rate limit exceeded)
+  retry 2 after 3000ms (Failed after 3 attempts. Last error: Rate limit exceeded)
+  retry 2 after 3000ms (Failed after 3 attempts. Last error: Rate limit exceeded)
+  retry 2 after 3000ms (Failed after 3 attempts. Last error: Rate limit exceeded)
+  retry 2 after 3000ms (Failed after 3 attempts. Last error: Rate limit exceeded)
+  retry 3 after 4500ms (Failed after 3 attempts. Last error: Rate limit exceeded)
+  retry 3 after 4500ms (Failed after 3 attempts. Last error: Rate limit exceeded)
+  retry 3 after 4500ms (Failed after 3 attempts. Last error: Rate limit exceeded)
+  retry 3 after 4500ms (Failed after 3 attempts. Last error: Rate limit exceeded)
+  retry 3 after 4500ms (Failed after 3 attempts. Last error: Rate limit exceeded)
+  ! crop_img-verbose-1 failed: Failed after 3 attempts. Last error: Rate limit exceeded
+  ! crop_img-typo-1 failed: Failed after 3 attempts. Last error: Rate limit exceeded
+  ! crop_img-wrong_terms-1 failed: Failed after 3 attempts. Last error: Rate limit exceeded
+  ! trim_audio-neutral-1 failed: Failed after 3 attempts. Last error: Rate limit exceeded
+  ! trim_audio-terse-1 failed: Failed after 3 attempts. Last error: Rate limit exceeded
+  retry 1 after 1500ms (Failed after 3 attempts. Last error: Rate limit exceeded)
+  retry 1 after 1500ms (Failed after 3 attempts. Last error: Rate limit exceeded)
+  retry 1 after 1500ms (Failed after 3 attempts. Last error: Rate limit exceeded)
+  retry 1 after 1500ms (Failed after 3 attempts. Last error: Rate limit exceeded)
+  retry 1 after 1500ms (Failed after 3 attempts. Last error: Rate limit exceeded)
+  ✗ trim_audio-wrong_terms-1   fail         2 search  ffmpeg -i input.ext -af "atrim=start=30:end=60" -c:a copy output.ext
+  ✗ compress_video-terse-1     fail         3 search  ffmpeg -i input.ext -vf "scale=iw/2:ih/2" -c:a copy output.ext
+  ✓ compress_video-wrong_terms-1 pass         4 search  ffmpeg -i input.ext -vf "scale=640:360" -c:v libx264 -b:v 1000k -c:a a
+  ✓ compress_video-typo-1      good         6 search  ffmpeg -i input.mp4 -c:v libx264 -preset ultra -crf 28 -c:a copy outpu
+  ✓ compress_video-neutral-1   good         7 search  ffmpeg -i input.ext -c:v libx264 -crf 30 -preset ultrafast -c:a copy o
+  ✓ thumb_video-neutral-1      good         3 search  ffmpeg -i input.ext -vf "thumbnail=10" -frames:v 1 thumbnail_%03d.png
+  ✓ thumb_video-terse-1        good         3 search  ffmpeg -i input.mp4 -vf "fps=1,select='not(mod(n\,5))',scale=640:-1" -
+  ✓ thumb_video-typo-1         good         3 search  ffmpeg -i input.ext -ss 00:00:10 -vframes 1 -q:v 2 thumbnail.jpg
+  ✓ compress_video-verbose-1   good         10 search ffmpeg -i input.ext -c:v libx264 -crf 28 -preset fast -c:a aac -b:a 12
+  retry 1 after 1500ms (Failed after 3 attempts. Last error: Rate limit exceeded)
+  retry 1 after 1500ms (Failed after 3 attempts. Last error: Rate limit exceeded)
+  retry 1 after 1500ms (Failed after 3 attempts. Last error: Rate limit exceeded)
+  retry 1 after 1500ms (Failed after 3 attempts. Last error: Rate limit exceeded)
+  retry 1 after 1500ms (Failed after 3 attempts. Last error: Rate limit exceeded)
+  retry 2 after 3000ms (Failed after 3 attempts. Last error: Rate limit exceeded)
+  retry 2 after 3000ms (Failed after 3 attempts. Last error: Rate limit exceeded)
+  retry 2 after 3000ms (Failed after 3 attempts. Last error: Rate limit exceeded)
+  retry 2 after 3000ms (Failed after 3 attempts. Last error: Rate limit exceeded)
+  retry 2 after 3000ms (Failed after 3 attempts. Last error: Rate limit exceeded)
+  retry 3 after 4500ms (Failed after 3 attempts. Last error: Rate limit exceeded)
+  retry 3 after 4500ms (Failed after 3 attempts. Last error: Rate limit exceeded)
+  retry 3 after 4500ms (Failed after 3 attempts. Last error: Rate limit exceeded)
+  retry 3 after 4500ms (Failed after 3 attempts. Last error: Rate limit exceeded)
+  retry 3 after 4500ms (Failed after 3 attempts. Last error: Rate limit exceeded)
+  ! mute_video-neutral-1 failed: Failed after 3 attempts. Last error: Rate limit exceeded
+  ! thumb_video-verbose-1 failed: Failed after 3 attempts. Last error: Rate limit exceeded
+  ! mute_video-terse-1 failed: Failed after 3 attempts. Last error: Rate limit exceeded
+  ! mute_video-wrong_terms-1 failed: Failed after 3 attempts. Last error: Rate limit exceeded
+  ! to_mp4-neutral-1 failed: Failed after 3 attempts. Last error: Rate limit exceeded
+  retry 1 after 1500ms (Failed after 3 attempts. Last error: Rate limit exceeded)
+  retry 1 after 1500ms (Failed after 3 attempts. Last error: Rate limit exceeded)
+  retry 1 after 1500ms (Failed after 3 attempts. Last error: Rate limit exceeded)
+  retry 1 after 1500ms (Failed after 3 attempts. Last error: Rate limit exceeded)
+  retry 1 after 1500ms (Failed after 3 attempts. Last error: Rate limit exceeded)
+  retry 2 after 3000ms (Failed after 3 attempts. Last error: Rate limit exceeded)
+  retry 2 after 3000ms (Failed after 3 attempts. Last error: Rate limit exceeded)
+  retry 2 after 3000ms (Failed after 3 attempts. Last error: Rate limit exceeded)
+  retry 2 after 3000ms (Failed after 3 attempts. Last error: Rate limit exceeded)
+  ✓ to_mp4-typo-1              good         3 search  ffmpeg -i input.ext -c:v libx264 -c:a aac -movflags +faststart output.
+  ✓ speed_video-wrong_terms-1  good         7 search  ffmpeg -i input.ext -vf "setpts=0.5*PTS" -af "atempo=2.0" output.ext
+  ✓ to_mp4-verbose-1           good         3 search  ffmpeg -i input.ext -c:v libx264 -c:a aac -movflags +faststart output.
+  ✓ speed_video-neutral-1      good         3 search  ffmpeg -i input.mp4 -vf "setpts=2.0*PTS" -af "asetrate=44100*0.5" -c:v
+  ✗ speed_video-terse-1        fail         7 search  
+  ✓ theme-neutral-1            abstain_ok   0 search  
+  ✓ theme-verbose-1            abstain_ok   0 search  
+  ✓ thumb_image-neutral-1      good         3 search  ffmpeg -i input.jpg -vf "scale=300:300:force_original_aspect_ratio=dec
+  ✓ summarize-neutral-1        abstain_ok   0 search  
+  ✗ thumb_image-wrong_terms-1  fail         3 search  ffmpeg -i input.mp4 -vf "select=not(mod(n\,5))" -vsync vfr -q:v 2 thum
+
+── ministral-14b / tool / v2 ──
+correct command: 23/37 (62%)   of which high-quality: 21
+abstained on no-answer: 3/3
+avg searches/query: 3.08
+tokens: total=325896  in=319251  out=6645  (~10863/query)
+
+per-style correct:
+  neutral       70% (10)
+  verbose       67% (6)
+  terse         43% (7)
+  typo          83% (6)
+  wrong_terms   50% (8)
+
+-> gen/results.json (12 runs)
+=== ALL DONE ===

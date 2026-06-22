@@ -1,0 +1,195 @@
+# Paste everything below into the chat. (System instructions first, then the request + retrieved docs.)
+# Query id: speed_video-neutral-1  |  intent: speed_video  |  RAG, retrieved k=8 (bge-small + BM25 RRF, all-glued)
+# Doc sections retrieved: mcdeint, Options-68, tiltandshift, Options-42, realtime_002c-arealtime, Codec-Options, fade, rotate
+# ============================================================================
+
+You are an ffmpeg expert helping non-technical people.
+The user describes, in plain language, what they want to do with a media file.
+Your job: produce ONE ffmpeg command that accomplishes it.
+
+Rules:
+- Use only real ffmpeg flags, encoders and filters. Do not invent options.
+- Use input.ext / output.ext as placeholder filenames.
+- Reply with a single fenced bash code block containing exactly one ffmpeg command,
+  then one short plain-language line explaining what it does.
+- If the request is something ffmpeg fundamentally cannot do (e.g. understanding or
+  summarizing the *content* of a video), do NOT output a command. Say it is out of
+  scope for ffmpeg and stop.
+
+User request: "make this video play in slow motion"
+
+Relevant ffmpeg documentation:
+
+### Doc 1: ffmpeg Documentation > Video Filters > mcdeint
+ffmpeg Documentation > Video Filters > mcdeint
+
+Apply motion-compensation deinterlacing.
+
+It needs one field per frame as input and must thus be used together
+with yadif=1/3 or equivalent.
+
+This filter accepts the following options:
+
+mode
+Set the deinterlacing mode.
+
+It accepts one of the following values:
+
+‘fast’
+‘medium’
+‘slow’
+use iterative motion estimation
+
+‘extra_slow’
+like ‘slow’, but use multiple reference frames.
+
+Default value is ‘fast’.
+
+parity
+Set the picture field parity assumed for the input video. It must be
+one of the following values:
+
+‘0, tff’
+assume top field first
+
+‘1, bff’
+assume bottom field first
+
+Default value is ‘bff’.
+
+qp
+Set per-block quantization parameter (QP) used by the internal
+encoder.
+
+Higher values should result in a smoother motion vector field but less
+optimal individual vectors. Default value is 1.
+
+### Doc 2: ffmpeg Documentation > Muxers > apng > Options
+ffmpeg Documentation > Muxers > apng > Options
+
+final_delay delay
+Force a delay expressed in seconds after the last frame of each
+repetition. Default value is 0.0.
+
+plays repetitions
+specify how many times to play the content, 0 causes an infinite
+loop, with 1 there is no loop
+
+### Doc 3: ffmpeg Documentation > Video Filters > tiltandshift
+ffmpeg Documentation > Video Filters > tiltandshift
+
+Apply tilt-and-shift effect. What happens when you invert time and space? Normally a video is composed of several frames that represent a different instant of time and shows a scene that evolves in the space captured by the frame. This filter is the antipode of that concept, taking inspiration from tilt and shift photography. A filtered frame contains the whole timeline of events composing the sequence, and this is obtained by placing a slice of pixels from each frame into a single one. However, since there are no infinite-width frames, this is done up the width of the input frame, and a video is recomposed by shifting away one column for each subsequent frame. In order to map space to time, the filter tilts each input frame as well, so that motion is preserved. This is accomplished by progressively selecting a different column from each input frame. The end result is a sort of inverted parallax, so that far away objects move much faster that the ones in the front. The ideal conditions for this video effect are when there is either very little motion and the background is static, or when there is a lot of motion and a very wide depth of field (e.g. wide panorama, while moving on a train). The filter accepts the following parameters: tilt Tilt video while shifting (default). When unset, video will be sliding a static image, composed of the first column of each frame. start What to do at the start of filtering (see below). end What to do at the end of filtering (see below). hold How many columns should pass through before start of filtering. pad How many columns should be inserted before end of filtering. Normally the filter shifts and tilts from the very first frame, and stops when the last one is received. However, before filtering starts, normal video may
+
+### Doc 4: ffmpeg Documentation > Video Encoders > libx264, libx264rgb > Options
+ffmpeg Documentation > Video Encoders > libx264, libx264rgb > Options
+
+Set motion estimation method. Possible values in the decreasing order of speed: ‘dia (dia)’ ‘epzs (dia)’ Diamond search with radius 1 (fastest). ‘epzs’ is an alias for ‘dia’. ‘hex (hex)’ Hexagonal search with radius 2. ‘umh (umh)’ Uneven multi-hexagon search. ‘esa (esa)’ Exhaustive search. ‘tesa (tesa)’ Hadamard exhaustive search (slowest). forced-idr Normally, when forcing a I-frame type, the encoder can select any type of I-frame. This option forces it to choose an IDR-frame. subq (subme) Sub-pixel motion estimation method. b_strategy (b-adapt) Adaptive B-frame placement decision algorithm. Use only on first-pass. keyint_min (min-keyint) Minimum GOP size. coder Set entropy encoder. Possible values: ‘ac’ Enable CABAC. ‘vlc’ Enable CAVLC and disable CABAC. It generates the same effect as x264’s --no-cabac option. cmp Set full pixel motion estimation comparison algorithm. Possible values: ‘chroma’ Enable chroma in motion estimation. ‘sad’ Ignore chroma in motion estimation. It generates the same effect as x264’s --no-chroma-me option. threads (threads) Number of encoding threads. thread_type Set multithreading technique. Possible values: ‘slice’ Slice-based multithreading. It generates the same effect as x264’s --sliced-threads option. ‘frame’ Frame-based multithreading. flags Set encoding flags. It can be used to disable closed GOP and enable open GOP by setting it to -cgop. The result is similar to the behavior of x264’s --open-gop option. rc_init_occupancy (vbv-init) Initial VBV buffer occupancy preset (preset) Set the encoding preset. tune (tune) Set tuning of the encoding params. profile (profile) Set profile restrictions. fastfirstpass Enable fast settings when encoding first pass, when set to 1. When set to 0, it has the same effect of x264’s --slow-firstpass option. crf (crf) Set the quality for constant quality mode. crf_max (crf-max) In CRF mode, prevents VBV from lowering quality beyond this point. qp (qp) Set constant quantization rate control method parameter. aq-mode (aq-mode) Set AQ method. Possible values: ‘none (0)’ Disabled. ‘variance (1)’ Variance AQ (complexity mask). ‘autovariance (2)’ Auto-variance AQ (experimental). aq-strength (aq-strength)
+
+### Doc 5: ffmpeg Documentation > Multimedia Filters > realtime, arealtime
+ffmpeg Documentation > Multimedia Filters > realtime, arealtime
+
+Slow down filtering to match real time approximately.
+
+These filters will pause the filtering for a variable amount of time to
+match the output rate with the input timestamps.
+They are similar to the re option to ffmpeg.
+
+They accept the following options:
+
+limit
+Time limit for the pauses. Any pause longer than that will be considered
+a timestamp discontinuity and reset the timer. Default is 2 seconds.
+
+speed
+Speed factor for processing. The value must be a float larger than zero.
+Values larger than 1.0 will result in faster than realtime processing,
+smaller will slow processing down. The limit is automatically adapted
+accordingly. Default is 1.0.
+
+A processing speed faster than what is possible without these filters cannot
+be achieved.
+
+### Doc 6: ffmpeg Documentation > Codec Options
+ffmpeg Documentation > Codec Options
+
+full motion estimation(slowest) ‘(768, 1024]’ umh motion estimation ‘(512, 768]’ hex motion estimation ‘(256, 512]’ l2s diamond motion estimation ‘[2,256]’ var diamond motion estimation ‘(-1, 2)’ small diamond motion estimation ‘-1’ funny diamond motion estimation ‘(INT_MIN, -1)’ sab diamond motion estimation last_pred integer (encoding,video) Set amount of motion predictors from the previous frame. precmp integer (encoding,video) Set pre motion estimation compare function. Possible values: ‘sad’ sum of absolute differences, fast (default) ‘sse’ sum of squared errors ‘satd’ sum of absolute Hadamard transformed differences ‘dct’ sum of absolute DCT transformed differences ‘psnr’ sum of squared quantization errors (avoid, low quality) ‘bit’ number of bits needed for the block ‘rd’ rate distortion optimal, slow ‘zero’ 0 ‘vsad’ sum of absolute vertical differences ‘vsse’ sum of squared vertical differences ‘nsse’ noise preserving sum of squared differences ‘w53’ 5/3 wavelet, only used in snow ‘w97’ 9/7 wavelet, only used in snow ‘dctmax’ ‘chroma’ pre_dia_size integer (encoding,video) Set diamond type & size for motion estimation pre-pass. subq integer (encoding,video) Set sub pel motion estimation quality. me_range integer (encoding,video) Set limit motion vectors range (1023 for DivX player). global_quality integer (encoding,audio,video) slice_flags integer mbd integer (encoding,video) Set macroblock decision algorithm (high quality mode). Possible values: ‘simple’ use mbcmp (default) ‘bits’ use fewest bits ‘rd’ use best rate distortion rc_init_occupancy integer (encoding,video) Set number of bits which should be loaded into the rc buffer before decoding starts. flags2 flags (decoding/encoding,audio,video,subtitles) Possible values: ‘fast’ Allow non spec compliant speedup tricks. ‘noout’ Skip bitstream encoding. ‘ignorecrop’ Ignore cropping information from sps. ‘local_header’ Place global headers at every keyframe instead of in extradata. ‘chunks’ Frame data might be split into multiple chunks. ‘showall’ Show all frames before the first keyframe. ‘export_mvs’ Export motion vectors into frame side-data (see AV_FRAME_DATA_MOTION_VECTORS) for codecs that support it. See also doc/examples/export_mvs.c. ‘skip_manual’ Do not skip samples and export skip information as frame side data. ‘ass_ro_flush_noop’ Do not reset ASS ReadOrder field on flush. ‘icc_profiles’
+
+### Doc 7: ffmpeg Documentation > Video Filters > fade
+ffmpeg Documentation > Video Filters > fade
+
+Apply a fade-in/out effect to the input video.
+
+It accepts the following parameters:
+
+type, t
+The effect type can be either "in" for a fade-in, or "out" for a fade-out
+effect.
+Default is in.
+
+start_frame, s
+Specify the number of the frame to start applying the fade
+effect at. Default is 0.
+
+nb_frames, n
+The number of frames that the fade effect lasts. At the end of the
+fade-in effect, the output video will have the same intensity as the input video.
+At the end of the fade-out transition, the output video will be filled with the
+selected color.
+Default is 25.
+
+alpha
+If set to 1, fade only alpha channel, if one exists on the input.
+Default value is 0.
+
+start_time, st
+Specify the timestamp (in seconds) of the frame to start to apply the fade
+effect. If both start_frame and start_time are specified, the fade will start at
+whichever comes last. Default is 0.
+
+duration, d
+The number of seconds for which the fade effect has to last. At the end of the
+fade-in effect the output video will have the same intensity as the input video,
+at the end of the fade-out transition the output video will be filled with the
+selected color.
+If both duration and nb_frames are specified, duration is used. Default is 0
+(nb_frames is used by default).
+
+color, c
+Specify the color of the fade. Default is "black".
+
+Examples:
+Fade in the first 30 frames of video:
+
+fade=in:0:30
+
+The command above is equivalent to:
+
+fade=t=in:s=0:n=30
+
+ Fade out the last 45 frames of a 200-frame video:
+
+fade=out:155:45
+fade=type=out:start_frame=155:nb_frames=45
+
+ Fade in the first 25 frames and fade out the last 25 frames of a 1000-frame video:
+
+fade=in:0:25, fade=out:975:25
+
+ Make the first 5 frames yellow, then fade in from frame 5-24:
+
+fade=in:5:20:color=yellow
+
+ Fade in alpha over first 25 frames of video:
+
+fade=in:0:25:alpha=1
+
+ Make the first 5.5 seconds black, then fade in for 0.5 seconds:
+
+fade=t=in:st=5.5:d=0.5
+
+### Doc 8: ffmpeg Documentation > Video Filters > rotate
+ffmpeg Documentation > Video Filters > rotate
+
+These are only available when computing the out_w and out_h expressions. Examples: Rotate the input by PI/6 radians clockwise: rotate=PI/6 Rotate the input by PI/6 radians counter-clockwise: rotate=-PI/6 Rotate the input by 45 degrees clockwise: rotate=45*PI/180 Apply a constant rotation with period T, starting from an angle of PI/3: rotate=PI/3+2*PI*t/T Make the input video rotation oscillating with a period of T seconds and an amplitude of A radians: rotate=A*sin(2*PI/T*t) Rotate the video, output size is chosen so that the whole rotating input video is always completely contained in the output: rotate='2*PI*t:ow=hypot(iw,ih):oh=ow' Rotate the video, reduce the output size so that no background is ever shown: rotate=2*PI*t:ow='min(iw,ih)/sqrt(2)':oh=ow:c=none
+
+Now give the single ffmpeg command.

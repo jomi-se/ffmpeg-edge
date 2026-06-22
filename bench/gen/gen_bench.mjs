@@ -44,6 +44,7 @@ const mode = arg("mode", "rag");
 const K = +arg("k", 8);
 const STEPS = +arg("steps", 5);
 const limit = arg("limit", null);
+const variant = arg("variant", "v1"); // v1=base prompt, v2=coached tool prompt
 if (!MODELS[modelKey]) throw new Error(`unknown model ${modelKey}; have ${Object.keys(MODELS)}`);
 if (!["rag", "tool"].includes(mode)) throw new Error(`mode must be rag|tool`);
 
@@ -69,10 +70,49 @@ Rules:
   summarizing the *content* of a video), do NOT output a command. Say it is out of
   scope for ffmpeg and stop.`;
 
+// v2: coaches HOW to search our docs and HOW to reason about ffmpeg solutions —
+// process and doc taxonomy only, never the per-task answer (that would be leakage).
+const SYSTEM_TOOL_V2 = `You are an ffmpeg expert helping non-technical people.
+The user describes, in plain language, what they want to do with a media file.
+Your job: search the official ffmpeg docs, then produce ONE ffmpeg command.
+
+How the search tool works (use this to search well):
+- It does hybrid keyword+semantic search over the real ffmpeg manual and returns
+  the most relevant sections, each with its title in [brackets].
+- The manual is organized into: command-line Options (e.g. -ss, -t, -an, -b:v),
+  Encoders (codecs like the names after -c:v / -c:a), Muxers (output containers /
+  file extensions), and Filters (audio & video transforms used in -vf / -af / -filter_complex).
+
+How to search effectively:
+- First, decompose the task into the pieces an ffmpeg command needs. Most tasks need
+  one or more of: (a) a FILTER for a transform, (b) an ENCODER for the target format,
+  (c) a MUXER/container for the output extension, (d) plain Options for trimming or
+  stream selection. A format conversion almost always needs BOTH the right encoder
+  AND the right container — search for each separately.
+- Search by the technical operation or component, not casual words. Issue a separate,
+  targeted search for each unknown piece. 2-4 searches is normal; one is rarely enough.
+- Before using any flag/encoder/filter, confirm its EXACT name and syntax appears in a
+  returned section. Never invent names. If a result lacks what you need, search again
+  with different wording. Do NOT repeat an identical search — rephrase instead.
+
+Rules:
+- Use only real ffmpeg flags, encoders and filters confirmed by the docs.
+- Use input.ext / output.ext as placeholder filenames.
+- Reply with a single fenced bash code block containing exactly one ffmpeg command,
+  then one short plain-language line explaining what it does.
+- If the request is something ffmpeg fundamentally cannot do (e.g. understanding or
+  summarizing the *content* of a video), do NOT output a command. Say it is out of
+  scope for ffmpeg and stop.`;
+
+const systemFor = () => (mode === "tool" && variant === "v2" ? SYSTEM_TOOL_V2 : SYSTEM);
+
 const fmtDocs = (docs) =>
   docs.map((d, i) => `### Doc ${i + 1}: ${d.path}\n${d.text}`).join("\n\n");
 
-const searchTool = tool({
+const SEARCH_K = 5;          // chunks returned per search call
+const SEARCH_CHARS = 3200;  // > longest macro chunk (3014) ⇒ full chunks, parity with RAG
+// Built per query so the search log is local — safe under concurrency.
+const makeSearchTool = (localLog) => tool({
   description:
     "Search the official ffmpeg documentation for flags, encoders, muxers and filters. " +
     "Call this before answering, and again if the first results don't cover what you need. " +
@@ -85,13 +125,11 @@ const searchTool = tool({
     required: ["query"],
   }),
   execute: async ({ query }) => {
-    const docs = await retriever.search(query, 5);
-    searchLog.push(query);
-    return docs.map((d) => `[${d.path}]\n${d.text.slice(0, 700)}`).join("\n\n---\n\n");
+    const docs = await retriever.search(query, SEARCH_K);
+    localLog.push(query);
+    return docs.map((d) => `[${d.path}]\n${d.text.slice(0, SEARCH_CHARS)}`).join("\n\n---\n\n");
   },
 });
-
-let searchLog = [];
 
 async function callWithRetry(opts, tries = 4) {
   for (let attempt = 1; ; attempt++) {
@@ -106,52 +144,61 @@ async function callWithRetry(opts, tries = 4) {
   }
 }
 
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 async function runOne(q) {
-  searchLog = [];
+  const localLog = [];
   let result, retrievedPaths = [];
   if (mode === "rag") {
     const docs = await retriever.search(q.text, K);
     retrievedPaths = docs.map((d) => d.path);
     result = await callWithRetry({
-      model, system: SYSTEM, temperature: 0,
+      model, system: systemFor(), temperature: 0,
       prompt: `User request: "${q.text}"\n\nRelevant ffmpeg documentation:\n\n${fmtDocs(docs)}\n\nNow give the single ffmpeg command.`,
     });
   } else {
     result = await callWithRetry({
-      model, system: SYSTEM, temperature: 0,
-      tools: { search_ffmpeg_docs: searchTool },
+      model, system: systemFor(), temperature: 0,
+      tools: { search_ffmpeg_docs: makeSearchTool(localLog) },
       stopWhen: stepCountIs(STEPS),
       prompt: `User request: "${q.text}"\n\nSearch the ffmpeg docs as needed, then give the single ffmpeg command.`,
     });
-    retrievedPaths = [...searchLog];
+    retrievedPaths = [...localLog];
   }
   const g = grade({ text: result.text, intent: q.intent, no_answer: q.no_answer });
+  // totalUsage = aggregate over all tool steps; usage = last step only.
+  const tu = result.totalUsage ?? result.usage ?? null;
   return {
     id: q.id, intent: q.intent, style: q.style, no_answer: !!q.no_answer,
     request: q.text, output: result.text, command: g.command, verdict: g.verdict,
     nSteps: result.steps?.length ?? 1,
-    nSearches: mode === "tool" ? searchLog.length : 1,
-    searches: mode === "tool" ? [...searchLog] : retrievedPaths,
-    usage: result.usage ?? null,
+    nSearches: mode === "tool" ? localLog.length : 1,
+    searches: mode === "tool" ? [...localLog] : retrievedPaths,
+    tokensIn: tu?.inputTokens ?? null, tokensOut: tu?.outputTokens ?? null,
+    tokensTotal: tu?.totalTokens ?? null,
   };
 }
 
-console.log(`\nmodel=${modelKey} (${MODELS[modelKey]})  mode=${mode}  k=${K}  queries=${queries.length}`);
-const records = [];
-for (const q of queries) {
-  try {
-    const r = await runOne(q);
-    records.push(r);
-    const mark = isCorrect(r.verdict) ? "✓" : "✗";
-    process.stdout.write(`  ${mark} ${r.id.padEnd(26)} ${r.verdict.padEnd(12)} ${(mode === "tool" ? `${r.nSearches} search` : "").padEnd(9)} ${r.command.slice(0, 70)}\n`);
-  } catch (e) {
-    process.stderr.write(`  ! ${q.id} failed: ${e.message}\n`);
-    records.push({ id: q.id, intent: q.intent, style: q.style, no_answer: !!q.no_answer, request: q.text, error: String(e.message || e), verdict: "error" });
+const CONC = +arg("concurrency", 5); // requests in flight; callWithRetry handles 429s
+console.log(`\nmodel=${modelKey} (${MODELS[modelKey]})  mode=${mode}  variant=${variant}  k=${K}  conc=${CONC}  queries=${queries.length}`);
+const records = new Array(queries.length);
+let next = 0;
+async function worker() {
+  while (true) {
+    const i = next++;
+    if (i >= queries.length) return;
+    const q = queries[i];
+    try {
+      const r = await runOne(q);
+      records[i] = r;
+      const mark = isCorrect(r.verdict) ? "✓" : "✗";
+      process.stdout.write(`  ${mark} ${r.id.padEnd(26)} ${r.verdict.padEnd(12)} ${(mode === "tool" ? `${r.nSearches} search` : "").padEnd(9)} ${r.command.slice(0, 70)}\n`);
+    } catch (e) {
+      process.stderr.write(`  ! ${q.id} failed: ${e.message}\n`);
+      records[i] = { id: q.id, intent: q.intent, style: q.style, no_answer: !!q.no_answer, request: q.text, error: String(e.message || e), verdict: "error" };
+    }
   }
-  await sleep(400); // gentle on the rate limiter
 }
+await Promise.all(Array.from({ length: Math.min(CONC, queries.length) }, worker));
 
 // ---- summary ----
 const real = records.filter((r) => !r.no_answer);
@@ -160,13 +207,16 @@ const correct = real.filter((r) => isCorrect(r.verdict)).length;
 const good = real.filter((r) => r.verdict === "good").length;
 const abstained = noAns.filter((r) => r.verdict === "abstain_ok").length;
 const pct = (n, d) => d ? (100 * n / d).toFixed(0) + "%" : "n/a";
-console.log(`\n── ${modelKey} / ${mode} ──`);
+const graded = records.filter((r) => r.verdict !== "error");
+const sum = (f) => graded.reduce((a, r) => a + (f(r) || 0), 0);
+const tokIn = sum((r) => r.tokensIn), tokOut = sum((r) => r.tokensOut), tokTot = sum((r) => r.tokensTotal);
+const tokens = { in: tokIn, out: tokOut, total: tokTot, perQuery: graded.length ? Math.round(tokTot / graded.length) : 0 };
+console.log(`\n── ${modelKey} / ${mode} / ${variant} ──`);
 console.log(`correct command: ${correct}/${real.length} (${pct(correct, real.length)})   of which high-quality: ${good}`);
 console.log(`abstained on no-answer: ${abstained}/${noAns.length}`);
-if (mode === "tool") {
-  const avgS = real.reduce((a, r) => a + (r.nSearches || 0), 0) / Math.max(1, real.length);
-  console.log(`avg searches/query: ${avgS.toFixed(1)}`);
-}
+const avgS = real.reduce((a, r) => a + (r.nSearches || 0), 0) / Math.max(1, real.length);
+if (mode === "tool") console.log(`avg searches/query: ${avgS.toFixed(2)}`);
+console.log(`tokens: total=${tokTot}  in=${tokIn}  out=${tokOut}  (~${tokens.perQuery}/query)`);
 
 // per-style
 const styles = [...new Set(real.map((r) => r.style))];
@@ -179,10 +229,11 @@ for (const s of styles) {
 // merge into results.json
 const outPath = path.join(HERE, "results.json");
 const all = fs.existsSync(outPath) ? JSON.parse(fs.readFileSync(outPath, "utf8")) : { runs: {} };
-all.runs[`${modelKey}__${mode}`] = {
-  model: modelKey, modelId: MODELS[modelKey], mode, k: K, steps: STEPS,
+const runKey = variant === "v1" ? `${modelKey}__${mode}` : `${modelKey}__${mode}__${variant}`;
+all.runs[runKey] = {
+  model: modelKey, modelId: MODELS[modelKey], mode, variant, k: K, steps: STEPS,
   updated: new Date().toISOString(),
-  summary: { real: real.length, correct, good, noAns: noAns.length, abstained },
+  summary: { real: real.length, correct, good, noAns: noAns.length, abstained, avgSearches: +avgS.toFixed(2), tokens },
   records,
 };
 fs.writeFileSync(outPath, JSON.stringify(all, null, 2));

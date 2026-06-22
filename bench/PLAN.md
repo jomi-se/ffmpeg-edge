@@ -201,6 +201,23 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done
 
 ## Run log (newest first)
 
+- 2026-06-22 — **Tool coaching (v2) + fairness fix + tokens + variance check.**
+  Found the tool returned 5 chunks truncated to 700 chars while RAG sent 8 FULL
+  chunks (median chunk 738c, p90 2075c → ~half were clipped, often the glued
+  Examples). Fixed tool to return full chunks (parity). Added aggregate token
+  logging (`totalUsage`, not last-step) + a concurrency pool (per-query search log).
+  Coached prompt v2 (teaches doc taxonomy: Options/Encoders/Muxers/Filters, and
+  "decompose → search each piece → verify exact names → don't repeat searches").
+  **Result: coaching reliably ~doubled searches (3b 1.0→2.1, 8b 1.4→2.5, 14b
+  2.2→3.1) and ~doubled tokens, but did NOT raise accuracy** — 8b ~86%→73%, 14b
+  76%→~66%, 3b 62%→70% (within noise). **Variance check** (same cell ×3): 8b tool
+  v1fair = 89/86/84%; so run-to-run ≈ ±3–5pt ON TOP of the n=37 sampling CI (±~14pt).
+  **Verdict: RAG (8 full chunks, 1 call) is the stable winner** — 3b 70 / 8b 89 /
+  14b 92%, ~2.7k tok/q — beating tool on accuracy, cost, latency AND variance.
+  Coaching the *search strategy* did not unlock small models; the bottleneck is
+  synthesis, not retrieval strategy. **Corrects the prior "tool catches up at 14b"**
+  — that 89% was a noisy high; full-chunk repeats land 76%.
+
 - 2026-06-22 — **+ ministral-14b.** Added 14b to the gen matrix: **89% correct in
   BOTH rag and tool** (33/37), abstain 3/3. Key: at 14b the tool path no longer
   hurts (it used **2.5 searches/query** vs 1.2–1.5 for 3b/8b and self-corrected

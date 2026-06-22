@@ -36,8 +36,6 @@ The Vite build uses a relative base path so the static `dist/` output can be hos
 
 Deploy the contents of `dist/`. The app registers `coi-serviceworker.js` from the same base path as the page, which is required for cross-origin isolation on static hosts that cannot set COOP/COEP headers directly.
 
-After the service worker activates, reload once if the page reports that `crossOriginIsolated` is still false. Browsers may require that first controlled reload before multithreaded `ffmpeg.wasm` is available.
-
 ## Attribution
 
-This project is built around [FFmpeg](https://ffmpeg.org/) and [ffmpeg.wasm](https://ffmpegwasm.netlify.app/). FFmpeg is the media engine; recipes and any pasted-in command are always shown as editable args for users to inspect and run.
+This project is built around [FFmpeg](https://ffmpeg.org/) and [ffmpeg.wasm](https://ffmpegwasm.netlify.app/). Consider donating or sponsoring them.

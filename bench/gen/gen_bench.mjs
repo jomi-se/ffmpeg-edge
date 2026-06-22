@@ -34,6 +34,7 @@ if (!process.env.MISTRAL_API_KEY) throw new Error("MISTRAL_API_KEY not found in 
 const MODELS = {
   "ministral-3b": "ministral-3b-latest",
   "ministral-8b": "ministral-8b-latest",
+  "ministral-14b": "ministral-14b-latest",
 };
 
 const argv = process.argv.slice(2);

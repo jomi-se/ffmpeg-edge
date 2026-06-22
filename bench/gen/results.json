@@ -6400,6 +6400,3237 @@
           }
         }
       ]
+    },
+    "ministral-14b__rag": {
+      "model": "ministral-14b",
+      "modelId": "ministral-14b-latest",
+      "mode": "rag",
+      "k": 8,
+      "steps": 5,
+      "updated": "2026-06-22T07:50:28.676Z",
+      "summary": {
+        "real": 37,
+        "correct": 33,
+        "good": 31,
+        "noAns": 3,
+        "abstained": 3
+      },
+      "records": [
+        {
+          "id": "gif-neutral-1",
+          "intent": "gif",
+          "style": "neutral",
+          "no_answer": false,
+          "request": "convert this video to a small gif",
+          "output": "```bash\nffmpeg -i input.ext -vf \"fps=10,scale=320:-1:flags=lanczos,palettegen\" -y palette.png && ffmpeg -i input.ext -i palette.png -lavfi \"fps=10,scale=320:-1:flags=lanczos[x];[x][1:v]paletteuse\" -loop 0 output.gif\n```\n\nCreates a small, smooth animated GIF (320px wide) from your video at 10 frames per second, optimized for web use.",
+          "command": "ffmpeg -i input.ext -vf \"fps=10,scale=320:-1:flags=lanczos,palettegen\" -y palette.png && ffmpeg -i input.ext -i palette.png -lavfi \"fps=10,scale=320:-1:flags=lanczos[x];[x][1:v]paletteuse\" -loop 0 output.gif",
+          "verdict": "good",
+          "nSteps": 1,
+          "nSearches": 1,
+          "searches": [
+            "ffmpeg Documentation > Muxers > gif",
+            "ffmpeg Documentation > Protocols > data",
+            "ffmpeg Documentation > Video Encoders > GIF",
+            "ffmpeg Documentation > Video Filters > paletteuse",
+            "ffmpeg Documentation > Demuxers > gif",
+            "ffmpeg Documentation > Video Filters > removegrain",
+            "ffmpeg Documentation > Video Filters > format",
+            "ffmpeg Documentation > Video Encoders > GIF > Options"
+          ],
+          "usage": {
+            "inputTokens": 1384,
+            "inputTokenDetails": {
+              "noCacheTokens": 1384
+            },
+            "outputTokens": 128,
+            "outputTokenDetails": {
+              "textTokens": 128
+            },
+            "totalTokens": 1512,
+            "raw": {
+              "prompt_tokens": 1384,
+              "completion_tokens": 128,
+              "total_tokens": 1512,
+              "prompt_tokens_details": {
+                "cached_tokens": 0
+              }
+            }
+          }
+        },
+        {
+          "id": "gif-verbose-1",
+          "intent": "gif",
+          "style": "verbose",
+          "no_answer": false,
+          "request": "i'd like to turn this screen recording into a small gif i can share in chat without it being a huge file",
+          "output": "```bash\nffmpeg -i input.ext -vf \"fps=10,scale=480:-1:flags=lanczos,palettegen\" -y palette.png && ffmpeg -i input.ext -i palette.png -lavfi \"fps=10,scale=480:-1:flags=lanczos[x];[x][1:v]paletteuse\" -loop 0 output.gif\n```\n\nThis creates a small, optimized animated GIF (480px wide) from your screen recording at 10 frames per second, with smooth scaling and automatic color optimization for small file size.",
+          "command": "ffmpeg -i input.ext -vf \"fps=10,scale=480:-1:flags=lanczos,palettegen\" -y palette.png && ffmpeg -i input.ext -i palette.png -lavfi \"fps=10,scale=480:-1:flags=lanczos[x];[x][1:v]paletteuse\" -loop 0 output.gif",
+          "verdict": "good",
+          "nSteps": 1,
+          "nSearches": 1,
+          "searches": [
+            "ffmpeg Documentation > Muxers > gif",
+            "ffmpeg Documentation > Protocols > data",
+            "ffmpeg Documentation > Video Filters > paletteuse",
+            "ffmpeg Documentation > Options > Advanced options",
+            "ffmpeg Documentation > Video Sources > ddagrab",
+            "ffmpeg Documentation > Options > Video Options",
+            "ffmpeg Documentation > Demuxers > gif",
+            "ffmpeg Documentation > Video Filters > drawtext"
+          ],
+          "usage": {
+            "inputTokens": 3004,
+            "inputTokenDetails": {
+              "noCacheTokens": 3004
+            },
+            "outputTokens": 136,
+            "outputTokenDetails": {
+              "textTokens": 136
+            },
+            "totalTokens": 3140,
+            "raw": {
+              "prompt_tokens": 3004,
+              "completion_tokens": 136,
+              "total_tokens": 3140,
+              "prompt_tokens_details": {
+                "cached_tokens": 0
+              }
+            }
+          }
+        },
+        {
+          "id": "gif-terse-1",
+          "intent": "gif",
+          "style": "terse",
+          "no_answer": false,
+          "request": "this video -> gif, small",
+          "output": "```bash\nffmpeg -i input.ext -vf \"fps=10,scale=320:-1:flags=lanczos,split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse\" -loop 0 -final_delay 20 -f gif output.gif\n```\n\nThis creates a small, smooth animated GIF from your video with a 10-frame-per-second sampling rate, downscaled to 320px width while preserving aspect ratio, and optimized for small file size.",
+          "command": "ffmpeg -i input.ext -vf \"fps=10,scale=320:-1:flags=lanczos,split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse\" -loop 0 -final_delay 20 -f gif output.gif",
+          "verdict": "good",
+          "nSteps": 1,
+          "nSearches": 1,
+          "searches": [
+            "ffmpeg Documentation > Video Encoders > GIF",
+            "ffmpeg Documentation > Demuxers > gif",
+            "ffmpeg Documentation > Muxers > gif",
+            "ffmpeg Documentation > Video Encoders > GIF > Options",
+            "ffmpeg Documentation > Video Filters > paletteuse",
+            "ffmpeg Documentation > Video Filters > removegrain",
+            "ffmpeg Documentation > Protocols > data",
+            "ffmpeg Documentation > Video Sources > coreimagesrc"
+          ],
+          "usage": {
+            "inputTokens": 1574,
+            "inputTokenDetails": {
+              "noCacheTokens": 1574
+            },
+            "outputTokens": 121,
+            "outputTokenDetails": {
+              "textTokens": 121
+            },
+            "totalTokens": 1695,
+            "raw": {
+              "prompt_tokens": 1574,
+              "completion_tokens": 121,
+              "total_tokens": 1695,
+              "prompt_tokens_details": {
+                "cached_tokens": 0
+              }
+            }
+          }
+        },
+        {
+          "id": "gif-typo-1",
+          "intent": "gif",
+          "style": "typo",
+          "no_answer": false,
+          "request": "convert this vidoe to a samll gif",
+          "output": "```bash\nffmpeg -i input.ext -vf \"fps=10,scale=640:-1:flags=lanczos,split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse\" -loop 0 -final_delay 20 output.gif\n```\n\nThis creates a small, smooth animated GIF from your video by:\n1. Reducing the framerate to 10fps\n2. Resizing to 640px width (height auto)\n3. Using a clean palette for colors\n4. Making it loop continuously with a 0.2s delay between frames",
+          "command": "ffmpeg -i input.ext -vf \"fps=10,scale=640:-1:flags=lanczos,split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse\" -loop 0 -final_delay 20 output.gif",
+          "verdict": "good",
+          "nSteps": 1,
+          "nSearches": 1,
+          "searches": [
+            "ffmpeg Documentation > Protocols > data",
+            "ffmpeg Documentation > Video Encoders > GIF",
+            "ffmpeg Documentation > Video Filters > paletteuse",
+            "ffmpeg Documentation > Muxers > gif",
+            "ffmpeg Documentation > Bitstream Filters > smpte436m_to_eia608",
+            "ffmpeg Documentation > Video Filters > v360",
+            "ffmpeg Documentation > Demuxers > gif",
+            "ffmpeg Documentation > Video Encoders > GIF > Options"
+          ],
+          "usage": {
+            "inputTokens": 1250,
+            "inputTokenDetails": {
+              "noCacheTokens": 1250
+            },
+            "outputTokens": 143,
+            "outputTokenDetails": {
+              "textTokens": 143
+            },
+            "totalTokens": 1393,
+            "raw": {
+              "prompt_tokens": 1250,
+              "completion_tokens": 143,
+              "total_tokens": 1393,
+              "prompt_tokens_details": {
+                "cached_tokens": 0
+              }
+            }
+          }
+        },
+        {
+          "id": "gif-wrong_terms-1",
+          "intent": "gif",
+          "style": "wrong_terms",
+          "no_answer": false,
+          "request": "make this clip into an animated picture, keep it low size",
+          "output": "```bash\nffmpeg -i input.ext -vf \"fps=10,scale=640:-1:flags=lanczos,split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse=dither=sierra2_4a\" -loop 0 -final_delay 20 -c:v gif -f gif output.gif\n```\n\nThis creates a small, low-quality animated GIF from your video clip by reducing the frame rate to 10fps, resizing to 640px width (keeping aspect ratio), and applying dithering to maintain quality at a small file size.",
+          "command": "ffmpeg -i input.ext -vf \"fps=10,scale=640:-1:flags=lanczos,split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse=dither=sierra2_4a\" -loop 0 -final_delay 20 -c:v gif -f gif output.gif",
+          "verdict": "good",
+          "nSteps": 1,
+          "nSearches": 1,
+          "searches": [
+            "ffmpeg Documentation > Audio Filters > adeclip",
+            "ffmpeg Documentation > Audio Filters > areverse",
+            "ffmpeg Documentation > Video Filters > reverse",
+            "ffmpeg Documentation > Muxers > gif",
+            "ffmpeg Documentation > Muxers > apng",
+            "ffmpeg Documentation > Video Filters > tonemap > Options",
+            "ffmpeg Documentation > Video Filters > libplacebo > Tone mapping",
+            "ffmpeg Documentation > Video Filters > weave, doubleweave"
+          ],
+          "usage": {
+            "inputTokens": 2114,
+            "inputTokenDetails": {
+              "noCacheTokens": 1986,
+              "cacheReadTokens": 128
+            },
+            "outputTokens": 143,
+            "outputTokenDetails": {
+              "textTokens": 143
+            },
+            "totalTokens": 2257,
+            "raw": {
+              "prompt_tokens": 2114,
+              "completion_tokens": 143,
+              "total_tokens": 2257,
+              "prompt_tokens_details": {
+                "cached_tokens": 128
+              }
+            },
+            "cachedInputTokens": 128
+          }
+        },
+        {
+          "id": "mp3-neutral-1",
+          "intent": "mp3",
+          "style": "neutral",
+          "no_answer": false,
+          "request": "convert this to a regular mp3",
+          "output": "```bash\nffmpeg -i input.ext -c:a libmp3lame -q:a 2 output.mp3\n```\n\nConverts the input file to a standard MP3 audio file using the high-quality LAME encoder (with a good balance of quality and file size).",
+          "command": "ffmpeg -i input.ext -c:a libmp3lame -q:a 2 output.mp3",
+          "verdict": "good",
+          "nSteps": 1,
+          "nSearches": 1,
+          "searches": [
+            "ffmpeg Documentation > Audio Encoders > libmp3lame",
+            "ffmpeg Documentation > External libraries > LAME",
+            "ffmpeg Documentation > Muxers > mp3",
+            "ffmpeg Documentation > Audio Filters > resample",
+            "ffmpeg Documentation > Audio Encoders > libshine",
+            "ffmpeg Documentation > Bitstream Filters > smpte436m_to_eia608",
+            "ffmpeg Documentation > Description",
+            "ffmpeg Documentation > Bitstream Filters > text2movsub"
+          ],
+          "usage": {
+            "inputTokens": 1810,
+            "inputTokenDetails": {
+              "noCacheTokens": 1682,
+              "cacheReadTokens": 128
+            },
+            "outputTokens": 58,
+            "outputTokenDetails": {
+              "textTokens": 58
+            },
+            "totalTokens": 1868,
+            "raw": {
+              "prompt_tokens": 1810,
+              "completion_tokens": 58,
+              "total_tokens": 1868,
+              "prompt_tokens_details": {
+                "cached_tokens": 128
+              }
+            },
+            "cachedInputTokens": 128
+          }
+        },
+        {
+          "id": "mp3-verbose-1",
+          "intent": "mp3",
+          "style": "verbose",
+          "no_answer": false,
+          "request": "i just want the audio from this video as an mp3 i can put on my phone",
+          "output": "```bash\nffmpeg -i input.ext -vn -c:a libmp3lame -q:a 2 output.mp3\n```\n\nThis extracts the audio from the video and saves it as an MP3 file you can play on your phone.",
+          "command": "ffmpeg -i input.ext -vn -c:a libmp3lame -q:a 2 output.mp3",
+          "verdict": "good",
+          "nSteps": 1,
+          "nSearches": 1,
+          "searches": [
+            "ffmpeg Documentation > Muxers > mp3",
+            "ffmpeg Documentation > Examples > Video and Audio file format conversion",
+            "ffmpeg Documentation > Examples > Video and Audio grabbing",
+            "ffmpeg Documentation > Audio Encoders > libmp3lame",
+            "ffmpeg Documentation > Input Devices > kmsgrab",
+            "ffmpeg Documentation > Input Devices > avfoundation",
+            "ffmpeg Documentation > Options > AVOptions",
+            "ffmpeg Documentation > Options > Advanced options"
+          ],
+          "usage": {
+            "inputTokens": 3408,
+            "inputTokenDetails": {
+              "noCacheTokens": 3280,
+              "cacheReadTokens": 128
+            },
+            "outputTokens": 52,
+            "outputTokenDetails": {
+              "textTokens": 52
+            },
+            "totalTokens": 3460,
+            "raw": {
+              "prompt_tokens": 3408,
+              "completion_tokens": 52,
+              "total_tokens": 3460,
+              "prompt_tokens_details": {
+                "cached_tokens": 128
+              }
+            },
+            "cachedInputTokens": 128
+          }
+        },
+        {
+          "id": "mp3-terse-1",
+          "intent": "mp3",
+          "style": "terse",
+          "no_answer": false,
+          "request": "to mp3",
+          "output": "```bash\nffmpeg -i input.ext -c:a libmp3lame -q:a 2 output.mp3\n```\n\nConverts the input file to an MP3 with good quality (adjust `-q:a` from 0–9 for higher/lower quality).",
+          "command": "ffmpeg -i input.ext -c:a libmp3lame -q:a 2 output.mp3",
+          "verdict": "good",
+          "nSteps": 1,
+          "nSearches": 1,
+          "searches": [
+            "ffmpeg Documentation > Audio Encoders > libmp3lame",
+            "ffmpeg Documentation > External libraries > LAME",
+            "ffmpeg Documentation > Muxers > mp3",
+            "ffmpeg Documentation > Options > AVOptions",
+            "ffmpeg Documentation > Examples > Video and Audio file format conversion",
+            "ffmpeg Documentation > Options > Advanced options",
+            "ffmpeg Documentation > Audio Encoders > libshine",
+            "ffmpeg Documentation > Input Devices > pulse"
+          ],
+          "usage": {
+            "inputTokens": 2731,
+            "inputTokenDetails": {
+              "noCacheTokens": 2603,
+              "cacheReadTokens": 128
+            },
+            "outputTokens": 58,
+            "outputTokenDetails": {
+              "textTokens": 58
+            },
+            "totalTokens": 2789,
+            "raw": {
+              "prompt_tokens": 2731,
+              "completion_tokens": 58,
+              "total_tokens": 2789,
+              "prompt_tokens_details": {
+                "cached_tokens": 128
+              }
+            },
+            "cachedInputTokens": 128
+          }
+        },
+        {
+          "id": "mp3-typo-1",
+          "intent": "mp3",
+          "style": "typo",
+          "no_answer": false,
+          "request": "convet this song to mp3 pls",
+          "output": "```bash\nffmpeg -i input.ext -c:a libmp3lame -q:a 2 output.mp3\n```\n\nConverts the audio file to a high-quality MP3 (using the LAME encoder) while preserving the original sound. The `-q:a 2` flag sets a good balance between file size and audio quality (lower numbers = better quality, 0-9 scale).",
+          "command": "ffmpeg -i input.ext -c:a libmp3lame -q:a 2 output.mp3",
+          "verdict": "good",
+          "nSteps": 1,
+          "nSearches": 1,
+          "searches": [
+            "ffmpeg Documentation > Audio Encoders > libmp3lame",
+            "ffmpeg Documentation > External libraries > LAME",
+            "ffmpeg Documentation > Muxers > mp3",
+            "ffmpeg Documentation > Audio Encoders > libshine",
+            "ffmpeg Documentation > Options > AVOptions",
+            "ffmpeg Documentation > Examples > Video and Audio file format conversion",
+            "ffmpeg Documentation > Multimedia Filters > showspectrum",
+            "ffmpeg Documentation > Muxers > lrc"
+          ],
+          "usage": {
+            "inputTokens": 2317,
+            "inputTokenDetails": {
+              "noCacheTokens": 2189,
+              "cacheReadTokens": 128
+            },
+            "outputTokens": 83,
+            "outputTokenDetails": {
+              "textTokens": 83
+            },
+            "totalTokens": 2400,
+            "raw": {
+              "prompt_tokens": 2317,
+              "completion_tokens": 83,
+              "total_tokens": 2400,
+              "prompt_tokens_details": {
+                "cached_tokens": 128
+              }
+            },
+            "cachedInputTokens": 128
+          }
+        },
+        {
+          "id": "mp3-wrong_terms-1",
+          "intent": "mp3",
+          "style": "wrong_terms",
+          "no_answer": false,
+          "request": "rip the sound out of this and save it as a normal music file",
+          "output": "```bash\nffmpeg -i input.ext -vn -c:a libmp3lame -q:a 2 output.mp3\n```\n\nThis extracts the audio from the video file and saves it as an MP3 music file.",
+          "command": "ffmpeg -i input.ext -vn -c:a libmp3lame -q:a 2 output.mp3",
+          "verdict": "good",
+          "nSteps": 1,
+          "nSearches": 1,
+          "searches": [
+            "ffmpeg Documentation > External libraries > Game Music Emu",
+            "ffmpeg Documentation > Muxers > ircam",
+            "ffmpeg Documentation > Audio Filters > amix",
+            "ffmpeg Documentation > Audio Filters > acompressor",
+            "ffmpeg Documentation > External libraries > ModPlug",
+            "ffmpeg Documentation > Examples > Video and Audio file format conversion",
+            "ffmpeg Documentation > Options > Main options",
+            "ffmpeg Documentation > Audio Filters > aemphasis"
+          ],
+          "usage": {
+            "inputTokens": 2415,
+            "inputTokenDetails": {
+              "noCacheTokens": 2287,
+              "cacheReadTokens": 128
+            },
+            "outputTokens": 48,
+            "outputTokenDetails": {
+              "textTokens": 48
+            },
+            "totalTokens": 2463,
+            "raw": {
+              "prompt_tokens": 2415,
+              "completion_tokens": 48,
+              "total_tokens": 2463,
+              "prompt_tokens_details": {
+                "cached_tokens": 128
+              }
+            },
+            "cachedInputTokens": 128
+          }
+        },
+        {
+          "id": "crop_img-neutral-1",
+          "intent": "crop_img",
+          "style": "neutral",
+          "no_answer": false,
+          "request": "crop this image to a square",
+          "output": "```bash\nffmpeg -i input.ext -vf \"crop=min(h,w):min(h,w)\" output.ext\n```\n\nThis crops the image to the largest possible square while preserving the central content.",
+          "command": "ffmpeg -i input.ext -vf \"crop=min(h,w):min(h,w)\" output.ext",
+          "verdict": "good",
+          "nSteps": 1,
+          "nSearches": 1,
+          "searches": [
+            "ffmpeg Documentation > Video Filters > crop",
+            "ffmpeg Documentation > Video Sources > gfxcapture",
+            "ffmpeg Documentation > Video Filters > libplacebo > Output mode",
+            "ffmpeg Documentation > Video Filters > cropdetect",
+            "ffmpeg Documentation > Video Filters > convolution",
+            "ffmpeg Documentation > Demuxers > image2",
+            "ffmpeg Documentation > Video Filters > feedback",
+            "ffmpeg Documentation > Filtering Introduction"
+          ],
+          "usage": {
+            "inputTokens": 4241,
+            "inputTokenDetails": {
+              "noCacheTokens": 4113,
+              "cacheReadTokens": 128
+            },
+            "outputTokens": 43,
+            "outputTokenDetails": {
+              "textTokens": 43
+            },
+            "totalTokens": 4284,
+            "raw": {
+              "prompt_tokens": 4241,
+              "completion_tokens": 43,
+              "total_tokens": 4284,
+              "prompt_tokens_details": {
+                "cached_tokens": 128
+              }
+            },
+            "cachedInputTokens": 128
+          }
+        },
+        {
+          "id": "crop_img-verbose-1",
+          "intent": "crop_img",
+          "style": "verbose",
+          "no_answer": false,
+          "request": "can you cut this photo down so it's just the centered middle part, like a square crop",
+          "output": "```bash\nffmpeg -i input.ext -vf \"crop=min(h,w):min(h,w)\" output.ext\n```\n\nThis crops your photo to a square centered on the middle, using the smaller of the height or width as the new size.",
+          "command": "ffmpeg -i input.ext -vf \"crop=min(h,w):min(h,w)\" output.ext",
+          "verdict": "good",
+          "nSteps": 1,
+          "nSearches": 1,
+          "searches": [
+            "ffmpeg Documentation > Video Filters > crop",
+            "ffmpeg Documentation > Video Filters > libplacebo > Output mode",
+            "ffmpeg Documentation > Video Sources > gfxcapture",
+            "ffmpeg Documentation > Video Filters > cropdetect",
+            "ffmpeg Documentation > Filtering Introduction",
+            "ffmpeg Documentation > Video Filters > feedback",
+            "ffmpeg Documentation > Video Filters > removelogo",
+            "ffmpeg Documentation > OpenCL Video Filters > deshake_opencl"
+          ],
+          "usage": {
+            "inputTokens": 3880,
+            "inputTokenDetails": {
+              "noCacheTokens": 3752,
+              "cacheReadTokens": 128
+            },
+            "outputTokens": 53,
+            "outputTokenDetails": {
+              "textTokens": 53
+            },
+            "totalTokens": 3933,
+            "raw": {
+              "prompt_tokens": 3880,
+              "completion_tokens": 53,
+              "total_tokens": 3933,
+              "prompt_tokens_details": {
+                "cached_tokens": 128
+              }
+            },
+            "cachedInputTokens": 128
+          }
+        },
+        {
+          "id": "crop_img-typo-1",
+          "intent": "crop_img",
+          "style": "typo",
+          "no_answer": false,
+          "request": "crop this pictrue to a squere",
+          "output": "```bash\nffmpeg -i input.ext -vf \"crop=min(h,w):min(h,w)\" output.ext\n```\n\nThis crops the image to the largest possible square while preserving its content.",
+          "command": "ffmpeg -i input.ext -vf \"crop=min(h,w):min(h,w)\" output.ext",
+          "verdict": "good",
+          "nSteps": 1,
+          "nSearches": 1,
+          "searches": [
+            "ffmpeg Documentation > Video Filters > crop",
+            "ffmpeg Documentation > Video Sources > gfxcapture",
+            "ffmpeg Documentation > Video Filters > cropdetect",
+            "ffmpeg Documentation > Options > Advanced Video options",
+            "ffmpeg Documentation > Filtering Introduction",
+            "ffmpeg Documentation > Video Filters > libplacebo > Output mode",
+            "ffmpeg Documentation > Video Filters > crop > Commands",
+            "ffmpeg Documentation > Video Filters > feedback"
+          ],
+          "usage": {
+            "inputTokens": 3728,
+            "inputTokenDetails": {
+              "noCacheTokens": 3600,
+              "cacheReadTokens": 128
+            },
+            "outputTokens": 42,
+            "outputTokenDetails": {
+              "textTokens": 42
+            },
+            "totalTokens": 3770,
+            "raw": {
+              "prompt_tokens": 3728,
+              "completion_tokens": 42,
+              "total_tokens": 3770,
+              "prompt_tokens_details": {
+                "cached_tokens": 128
+              }
+            },
+            "cachedInputTokens": 128
+          }
+        },
+        {
+          "id": "crop_img-wrong_terms-1",
+          "intent": "crop_img",
+          "style": "wrong_terms",
+          "no_answer": false,
+          "request": "trim the edges off this picture",
+          "output": "```bash\nffmpeg -i input.ext -vf \"crop=in_w-out_w:in_h-out_h,scale=in_w:in_h\" -c:a copy output.ext\n```\n*Removes a specified number of pixels from all edges (left/right/top/bottom) and resizes the image to fit the trimmed dimensions. Replace `out_w` and `out_h` with the desired width/height after trimming (e.g., `crop=in_w-100:in_h-50` trims 100px from left/right and 50px from top/bottom).*",
+          "command": "ffmpeg -i input.ext -vf \"crop=in_w-out_w:in_h-out_h,scale=in_w:in_h\" -c:a copy output.ext",
+          "verdict": "good",
+          "nSteps": 1,
+          "nSearches": 1,
+          "searches": [
+            "ffmpeg Documentation > Video Filters > trim",
+            "ffmpeg Documentation > Video Filters > yaepblur",
+            "ffmpeg Documentation > Video Filters > edgedetect",
+            "ffmpeg Documentation > Audio Filters > silenceremove",
+            "ffmpeg Documentation > Video Filters > guided",
+            "ffmpeg Documentation > Video Filters > reverse",
+            "ffmpeg Documentation > Video Filters > greyedge",
+            "ffmpeg Documentation > Video Filters > fillborders"
+          ],
+          "usage": {
+            "inputTokens": 2360,
+            "inputTokenDetails": {
+              "noCacheTokens": 2232,
+              "cacheReadTokens": 128
+            },
+            "outputTokens": 131,
+            "outputTokenDetails": {
+              "textTokens": 131
+            },
+            "totalTokens": 2491,
+            "raw": {
+              "prompt_tokens": 2360,
+              "completion_tokens": 131,
+              "total_tokens": 2491,
+              "prompt_tokens_details": {
+                "cached_tokens": 128
+              }
+            },
+            "cachedInputTokens": 128
+          }
+        },
+        {
+          "id": "trim_audio-neutral-1",
+          "intent": "trim_audio",
+          "style": "neutral",
+          "no_answer": false,
+          "request": "extract the section from 0:30 to 1:00 from this audio file",
+          "output": "```bash\nffmpeg -i input.ext -ss 00:00:30 -to 00:01:00 -c copy output.ext\n```\n\nThis extracts the audio segment from **30 seconds to 1 minute** and saves it as a new file without re-encoding.",
+          "command": "ffmpeg -i input.ext -ss 00:00:30 -to 00:01:00 -c copy output.ext",
+          "verdict": "good",
+          "nSteps": 1,
+          "nSearches": 1,
+          "searches": [
+            "ffmpeg Documentation > Metadata",
+            "ffmpeg Documentation > Protocols > subfile",
+            "ffmpeg Documentation > Bitstream Filters > mov2textsub",
+            "ffmpeg Documentation > Demuxers > sbg",
+            "ffmpeg Documentation > Muxers > segment, stream_segment, ssegment > Options",
+            "ffmpeg Documentation > Audio Filters > dynaudnorm",
+            "ffmpeg Documentation > Muxers > hls > Options",
+            "ffmpeg Documentation > Audio Filters > silenceremove"
+          ],
+          "usage": {
+            "inputTokens": 3383,
+            "inputTokenDetails": {
+              "noCacheTokens": 3383
+            },
+            "outputTokens": 66,
+            "outputTokenDetails": {
+              "textTokens": 66
+            },
+            "totalTokens": 3449,
+            "raw": {
+              "prompt_tokens": 3383,
+              "completion_tokens": 66,
+              "total_tokens": 3449,
+              "prompt_tokens_details": {
+                "cached_tokens": 0
+              }
+            }
+          }
+        },
+        {
+          "id": "trim_audio-terse-1",
+          "intent": "trim_audio",
+          "style": "terse",
+          "no_answer": false,
+          "request": "cut 30s-1m of this audio",
+          "output": "```bash\nffmpeg -i input.ext -ss 00:00:30 -to 00:01:00 -c copy output.ext\n```\n\nThis extracts a 30-second segment of audio from 30 seconds to 1 minute (1m) of the original file.",
+          "command": "ffmpeg -i input.ext -ss 00:00:30 -to 00:01:00 -c copy output.ext",
+          "verdict": "good",
+          "nSteps": 1,
+          "nSearches": 1,
+          "searches": [
+            "ffmpeg Documentation > Audio Filters > asupercut",
+            "ffmpeg Documentation > Audio Filters > treble, highshelf",
+            "ffmpeg Documentation > Audio Filters > asubcut",
+            "ffmpeg Documentation > Audio Filters > bass, lowshelf",
+            "ffmpeg Documentation > Bitstream Filters > noise",
+            "ffmpeg Documentation > Audio Filters > dynaudnorm",
+            "ffmpeg Documentation > Audio Filters > aresample",
+            "ffmpeg Documentation > Audio Filters > tiltshelf"
+          ],
+          "usage": {
+            "inputTokens": 2819,
+            "inputTokenDetails": {
+              "noCacheTokens": 2691,
+              "cacheReadTokens": 128
+            },
+            "outputTokens": 67,
+            "outputTokenDetails": {
+              "textTokens": 67
+            },
+            "totalTokens": 2886,
+            "raw": {
+              "prompt_tokens": 2819,
+              "completion_tokens": 67,
+              "total_tokens": 2886,
+              "prompt_tokens_details": {
+                "cached_tokens": 128
+              }
+            },
+            "cachedInputTokens": 128
+          }
+        },
+        {
+          "id": "trim_audio-wrong_terms-1",
+          "intent": "trim_audio",
+          "style": "wrong_terms",
+          "no_answer": false,
+          "request": "snip out the part of this sound clip between half a minute and one minute",
+          "output": "```bash\nffmpeg -i input.ext -af \"atrim=start=30:end=60\" -c:a copy output.ext\n```\n\nThis extracts the audio clip between 30 seconds (half a minute) and 60 seconds (one minute).",
+          "command": "ffmpeg -i input.ext -af \"atrim=start=30:end=60\" -c:a copy output.ext",
+          "verdict": "fail",
+          "nSteps": 1,
+          "nSearches": 1,
+          "searches": [
+            "ffmpeg Documentation > Audio Filters > atrim",
+            "ffmpeg Documentation > Video Filters > trim",
+            "ffmpeg Documentation > Audio Filters > areverse",
+            "ffmpeg Documentation > Video Filters > reverse",
+            "ffmpeg Documentation > Audio Filters > aecho",
+            "ffmpeg Documentation > Audio Filters > adeclip",
+            "ffmpeg Documentation > Audio Filters > apsyclip",
+            "ffmpeg Documentation > Audio Filters > afade"
+          ],
+          "usage": {
+            "inputTokens": 2249,
+            "inputTokenDetails": {
+              "noCacheTokens": 2121,
+              "cacheReadTokens": 128
+            },
+            "outputTokens": 57,
+            "outputTokenDetails": {
+              "textTokens": 57
+            },
+            "totalTokens": 2306,
+            "raw": {
+              "prompt_tokens": 2249,
+              "completion_tokens": 57,
+              "total_tokens": 2306,
+              "prompt_tokens_details": {
+                "cached_tokens": 128
+              }
+            },
+            "cachedInputTokens": 128
+          }
+        },
+        {
+          "id": "compress_video-neutral-1",
+          "intent": "compress_video",
+          "style": "neutral",
+          "no_answer": false,
+          "request": "compress this video to make it a lot smaller",
+          "output": "```bash\nffmpeg -i input.ext -c:v libx264 -crf 28 -preset fast -c:a aac -b:a 128k output.mp4\n```\n\nThis command compresses the video significantly by using the H.264 codec with a high CRF value (28) for good quality/size balance, a fast preset for reasonable speed, and AAC audio at 128kbps.",
+          "command": "ffmpeg -i input.ext -c:v libx264 -crf 28 -preset fast -c:a aac -b:a 128k output.mp4",
+          "verdict": "good",
+          "nSteps": 1,
+          "nSearches": 1,
+          "searches": [
+            "ffmpeg Documentation > Video Encoders > ProRes > Speed considerations",
+            "ffmpeg Documentation > Video Encoders > libwebp > Options",
+            "ffmpeg Documentation > Video Filters > scale",
+            "ffmpeg Documentation > Video Sources > ddagrab",
+            "ffmpeg Documentation > Video Filters > crop",
+            "ffmpeg Documentation > Audio Filters > dynaudnorm",
+            "ffmpeg Documentation > Audio Filters > acompressor",
+            "ffmpeg Documentation > Detailed description"
+          ],
+          "usage": {
+            "inputTokens": 3728,
+            "inputTokenDetails": {
+              "noCacheTokens": 3600,
+              "cacheReadTokens": 128
+            },
+            "outputTokens": 98,
+            "outputTokenDetails": {
+              "textTokens": 98
+            },
+            "totalTokens": 3826,
+            "raw": {
+              "prompt_tokens": 3728,
+              "completion_tokens": 98,
+              "total_tokens": 3826,
+              "prompt_tokens_details": {
+                "cached_tokens": 128
+              }
+            },
+            "cachedInputTokens": 128
+          }
+        },
+        {
+          "id": "compress_video-verbose-1",
+          "intent": "compress_video",
+          "style": "verbose",
+          "no_answer": false,
+          "request": "this video file is way too big to email, can you shrink it a lot while keeping it watchable",
+          "output": "```bash\nffmpeg -i input.ext -vcodec libx264 -crf 28 -preset fast -b:a 128k -movflags +faststart output.mp4\n```\n\nThis command shrinks the video significantly while keeping it watchable by using the H.264 codec with a high compression level (`-crf 28`), a fast encoding speed (`-preset fast`), and a reasonable audio bitrate (`-b:a 128k`). The output is optimized for web playback with `-movflags +faststart`.",
+          "command": "ffmpeg -i input.ext -vcodec libx264 -crf 28 -preset fast -b:a 128k -movflags +faststart output.mp4",
+          "verdict": "good",
+          "nSteps": 1,
+          "nSearches": 1,
+          "searches": [
+            "ffmpeg Documentation > Options > Advanced options",
+            "ffmpeg Documentation > QSV Video Filters > vstack_qsv",
+            "ffmpeg Documentation > Muxers > MOV/MPEG-4/ISOMBFF muxers > Fragmentation",
+            "ffmpeg Documentation > Video Filters > scale > Options",
+            "ffmpeg Documentation > CUDA Video Filters > CUDA NPP > scale_npp",
+            "ffmpeg Documentation > Muxers > matroska > Options",
+            "ffmpeg Documentation > VAAPI Video Filters > vstack_vaapi",
+            "ffmpeg Documentation > Examples > Video and Audio file format conversion"
+          ],
+          "usage": {
+            "inputTokens": 3345,
+            "inputTokenDetails": {
+              "noCacheTokens": 3217,
+              "cacheReadTokens": 128
+            },
+            "outputTokens": 123,
+            "outputTokenDetails": {
+              "textTokens": 123
+            },
+            "totalTokens": 3468,
+            "raw": {
+              "prompt_tokens": 3345,
+              "completion_tokens": 123,
+              "total_tokens": 3468,
+              "prompt_tokens_details": {
+                "cached_tokens": 128
+              }
+            },
+            "cachedInputTokens": 128
+          }
+        },
+        {
+          "id": "compress_video-terse-1",
+          "intent": "compress_video",
+          "style": "terse",
+          "no_answer": false,
+          "request": "shrink this video",
+          "output": "```bash\nffmpeg -i input.ext -vf \"scale=-1:720:force_original_aspect_ratio=decrease\" -c:a copy output.ext\n```\n\nThis shrinks the video to a height of 720 pixels while maintaining the original aspect ratio (e.g., 1280x720 for 16:9 videos). The audio is copied unchanged.",
+          "command": "ffmpeg -i input.ext -vf \"scale=-1:720:force_original_aspect_ratio=decrease\" -c:a copy output.ext",
+          "verdict": "fail",
+          "nSteps": 1,
+          "nSearches": 1,
+          "searches": [
+            "ffmpeg Documentation > Video Filters > untile",
+            "ffmpeg Documentation > Video Filters > reverse",
+            "ffmpeg Documentation > Video Filters > scale > Options",
+            "ffmpeg Documentation > CUDA Video Filters > CUDA NPP > scale_npp",
+            "ffmpeg Documentation > Options > Video Options",
+            "ffmpeg Documentation > Video Filters > alphaextract",
+            "ffmpeg Documentation > QSV Video Filters > xstack_qsv",
+            "ffmpeg Documentation > Video Filters > limitdiff"
+          ],
+          "usage": {
+            "inputTokens": 2398,
+            "inputTokenDetails": {
+              "noCacheTokens": 2270,
+              "cacheReadTokens": 128
+            },
+            "outputTokens": 87,
+            "outputTokenDetails": {
+              "textTokens": 87
+            },
+            "totalTokens": 2485,
+            "raw": {
+              "prompt_tokens": 2398,
+              "completion_tokens": 87,
+              "total_tokens": 2485,
+              "prompt_tokens_details": {
+                "cached_tokens": 128
+              }
+            },
+            "cachedInputTokens": 128
+          }
+        },
+        {
+          "id": "compress_video-typo-1",
+          "intent": "compress_video",
+          "style": "typo",
+          "no_answer": false,
+          "request": "comrpess this video so its much smaler",
+          "output": "```bash\nffmpeg -i input.ext -c:v libx264 -crf 28 -preset fast -c:a aac -b:a 128k -movflags +faststart output.ext\n```\n\nThis command compresses the video using the H.264 codec with a good balance of quality and file size, while keeping the audio at a reasonable bitrate. The `-crf 28` value provides strong compression (higher numbers = smaller file, lower quality). Adjust `-crf` (e.g., 23 for better quality, 32 for smaller size) if needed.",
+          "command": "ffmpeg -i input.ext -c:v libx264 -crf 28 -preset fast -c:a aac -b:a 128k -movflags +faststart output.ext",
+          "verdict": "good",
+          "nSteps": 1,
+          "nSearches": 1,
+          "searches": [
+            "ffmpeg Documentation > Detailed description",
+            "ffmpeg Documentation > Options > Advanced options",
+            "ffmpeg Documentation > Video Filters > reverse",
+            "ffmpeg Documentation > Video Filters > repeatfields",
+            "ffmpeg Documentation > Audio Filters > acompressor",
+            "ffmpeg Documentation > Muxers > pdv",
+            "ffmpeg Documentation > Video Filters > tiltandshift",
+            "ffmpeg Documentation > Muxers > amv"
+          ],
+          "usage": {
+            "inputTokens": 1815,
+            "inputTokenDetails": {
+              "noCacheTokens": 1687,
+              "cacheReadTokens": 128
+            },
+            "outputTokens": 134,
+            "outputTokenDetails": {
+              "textTokens": 134
+            },
+            "totalTokens": 1949,
+            "raw": {
+              "prompt_tokens": 1815,
+              "completion_tokens": 134,
+              "total_tokens": 1949,
+              "prompt_tokens_details": {
+                "cached_tokens": 128
+              }
+            },
+            "cachedInputTokens": 128
+          }
+        },
+        {
+          "id": "compress_video-wrong_terms-1",
+          "intent": "compress_video",
+          "style": "wrong_terms",
+          "no_answer": false,
+          "request": "how can i reduce the size of this video file",
+          "output": "```bash\nffmpeg -i input.ext -c:v libx264 -crf 28 -preset fast -c:a aac -b:a 128k output.ext\n```\n\nThis reduces the video file size by re-encoding it with efficient compression (lower CRF value = smaller file, but higher quality loss) while keeping good quality and a reasonable encoding speed.",
+          "command": "ffmpeg -i input.ext -c:v libx264 -crf 28 -preset fast -c:a aac -b:a 128k output.ext",
+          "verdict": "good",
+          "nSteps": 1,
+          "nSearches": 1,
+          "searches": [
+            "ffmpeg Documentation > Options > Advanced options",
+            "ffmpeg Documentation > Video Filters > untile",
+            "ffmpeg Documentation > Muxers > asf, asf_stream > Options",
+            "ffmpeg Documentation > Video Filters > photosensitivity",
+            "ffmpeg Documentation > Video Sources > ddagrab",
+            "ffmpeg Documentation > Video Sources > frei0r_src",
+            "ffmpeg Documentation > Protocols > file",
+            "ffmpeg Documentation > Examples > Video and Audio file format conversion"
+          ],
+          "usage": {
+            "inputTokens": 2676,
+            "inputTokenDetails": {
+              "noCacheTokens": 2548,
+              "cacheReadTokens": 128
+            },
+            "outputTokens": 83,
+            "outputTokenDetails": {
+              "textTokens": 83
+            },
+            "totalTokens": 2759,
+            "raw": {
+              "prompt_tokens": 2676,
+              "completion_tokens": 83,
+              "total_tokens": 2759,
+              "prompt_tokens_details": {
+                "cached_tokens": 128
+              }
+            },
+            "cachedInputTokens": 128
+          }
+        },
+        {
+          "id": "thumb_video-neutral-1",
+          "intent": "thumb_video",
+          "style": "neutral",
+          "no_answer": false,
+          "request": "extract thumbnails out of this video",
+          "output": "```bash\nffmpeg -i input.ext -vf \"fps=1,format=rgb24,scale=640:-1\" -frames:v 10 output_%03d.png\n```\n\nThis extracts 10 evenly spaced thumbnails (one every second) from your video and saves them as PNG files named `output_001.png`, `output_002.png`, etc. Adjust the `10` to change how many thumbnails you want.",
+          "command": "ffmpeg -i input.ext -vf \"fps=1,format=rgb24,scale=640:-1\" -frames:v 10 output_%03d.png",
+          "verdict": "good",
+          "nSteps": 1,
+          "nSearches": 1,
+          "searches": [
+            "ffmpeg Documentation > Options > Main options",
+            "ffmpeg Documentation > Video Filters > alphaextract",
+            "ffmpeg Documentation > Video Filters > thumbnail",
+            "ffmpeg Documentation > Video Filters > extractplanes",
+            "ffmpeg Documentation > Bitstream Filters > hapqa_extract",
+            "ffmpeg Documentation > Bitstream Filters > mov2textsub",
+            "ffmpeg Documentation > Bitstream Filters > truehd_core",
+            "ffmpeg Documentation > Protocols > subfile"
+          ],
+          "usage": {
+            "inputTokens": 1292,
+            "inputTokenDetails": {
+              "noCacheTokens": 1164,
+              "cacheReadTokens": 128
+            },
+            "outputTokens": 104,
+            "outputTokenDetails": {
+              "textTokens": 104
+            },
+            "totalTokens": 1396,
+            "raw": {
+              "prompt_tokens": 1292,
+              "completion_tokens": 104,
+              "total_tokens": 1396,
+              "prompt_tokens_details": {
+                "cached_tokens": 128
+              }
+            },
+            "cachedInputTokens": 128
+          }
+        },
+        {
+          "id": "thumb_video-verbose-1",
+          "intent": "thumb_video",
+          "style": "verbose",
+          "no_answer": false,
+          "request": "grab a few still images from throughout this video to use as preview thumbnails",
+          "output": "```bash\nffmpeg -i input.ext -vf \"select='not(mod(n\\,10))',scale=640:-1:flags=lanczos,setpts=N/FRAME_RATE/TB\" -vsync vfr -frames:v 10 output_%03d.jpg\n```\n\nThis extracts 10 evenly spaced still images (one every 10th frame) from your video as JPEGs, resizing them to 640px wide while preserving aspect ratio.",
+          "command": "ffmpeg -i input.ext -vf \"select='not(mod(n\\,10))',scale=640:-1:flags=lanczos,setpts=N/FRAME_RATE/TB\" -vsync vfr -frames:v 10 output_%03d.jpg",
+          "verdict": "pass",
+          "nSteps": 1,
+          "nSearches": 1,
+          "searches": [
+            "ffmpeg Documentation > Video Filters > coreimage",
+            "ffmpeg Documentation > Input Devices > x11grab > Options",
+            "ffmpeg Documentation > Examples > Video and Audio grabbing",
+            "ffmpeg Documentation > Multimedia Filters > select, aselect",
+            "ffmpeg Documentation > OpenCL Video Filters > xfade_opencl",
+            "ffmpeg Documentation > Video Filters > haldclut > Hald CLUT with preview",
+            "ffmpeg Documentation > Muxers > flac",
+            "ffmpeg Documentation > Examples > Video and Audio file format conversion"
+          ],
+          "usage": {
+            "inputTokens": 3280,
+            "inputTokenDetails": {
+              "noCacheTokens": 3152,
+              "cacheReadTokens": 128
+            },
+            "outputTokens": 108,
+            "outputTokenDetails": {
+              "textTokens": 108
+            },
+            "totalTokens": 3388,
+            "raw": {
+              "prompt_tokens": 3280,
+              "completion_tokens": 108,
+              "total_tokens": 3388,
+              "prompt_tokens_details": {
+                "cached_tokens": 128
+              }
+            },
+            "cachedInputTokens": 128
+          }
+        },
+        {
+          "id": "thumb_video-terse-1",
+          "intent": "thumb_video",
+          "style": "terse",
+          "no_answer": false,
+          "request": "thumbnails from this video",
+          "output": "```bash\nffmpeg -i input.ext -vf \"fps=1,scale=640:-1\" -frames:v 20 output-%03d.jpg\n```\n\nThis extracts 20 evenly spaced thumbnails (one every 5% of the video) and saves them as JPEGs named `output-001.jpg`, `output-002.jpg`, etc. Adjust `frames:v 20` to change the number of thumbnails.",
+          "command": "ffmpeg -i input.ext -vf \"fps=1,scale=640:-1\" -frames:v 20 output-%03d.jpg",
+          "verdict": "good",
+          "nSteps": 1,
+          "nSearches": 1,
+          "searches": [
+            "ffmpeg Documentation > Video Filters > tiltandshift",
+            "ffmpeg Documentation > Video Filters > drawgraph",
+            "ffmpeg Documentation > Video Filters > freezeframes",
+            "ffmpeg Documentation > Examples > Video and Audio file format conversion",
+            "ffmpeg Documentation > Video Filters > tmidequalizer",
+            "ffmpeg Documentation > Video Filters > interlace, interlace_vulkan",
+            "ffmpeg Documentation > Video Filters > tinterlace",
+            "ffmpeg Documentation > Video Sources > allrgb, allyuv, color, colorchart, colorspectrum, haldclutsrc, nullsrc, pal75bars, pal100bars, rgbtestsrc, smptebars, smptehdbars, testsrc, testsrc2, yuvtestsrc"
+          ],
+          "usage": {
+            "inputTokens": 3904,
+            "inputTokenDetails": {
+              "noCacheTokens": 3776,
+              "cacheReadTokens": 128
+            },
+            "outputTokens": 102,
+            "outputTokenDetails": {
+              "textTokens": 102
+            },
+            "totalTokens": 4006,
+            "raw": {
+              "prompt_tokens": 3904,
+              "completion_tokens": 102,
+              "total_tokens": 4006,
+              "prompt_tokens_details": {
+                "cached_tokens": 128
+              }
+            },
+            "cachedInputTokens": 128
+          }
+        },
+        {
+          "id": "thumb_video-typo-1",
+          "intent": "thumb_video",
+          "style": "typo",
+          "no_answer": false,
+          "request": "extrac thumbnial from this vid",
+          "output": "```bash\nffmpeg -i input.ext -vf \"select=eq(n\\,1),scale=640:-1,setpts=N/FRAME_RATE/TB\" -frames:v 1 output.jpg\n```\n\nExtracts a single thumbnail image (640px wide) from the first frame of the video.",
+          "command": "ffmpeg -i input.ext -vf \"select=eq(n\\,1),scale=640:-1,setpts=N/FRAME_RATE/TB\" -frames:v 1 output.jpg",
+          "verdict": "pass",
+          "nSteps": 1,
+          "nSearches": 1,
+          "searches": [
+            "ffmpeg Documentation > Supported File Formats, Codecs or Features > Video Codecs",
+            "ffmpeg Documentation > Bitstream Filters > remove_extra",
+            "ffmpeg Documentation > Video Filters > vidstabtransform",
+            "ffmpeg Documentation > Video Filters > amplify",
+            "ffmpeg Documentation > Bitstream Filters > eac3_core",
+            "ffmpeg Documentation > Bitstream Filters > extract_extradata",
+            "ffmpeg Documentation > Video Filters > interlace, interlace_vulkan",
+            "ffmpeg Documentation > Video Filters > tinterlace"
+          ],
+          "usage": {
+            "inputTokens": 3340,
+            "inputTokenDetails": {
+              "noCacheTokens": 3212,
+              "cacheReadTokens": 128
+            },
+            "outputTokens": 68,
+            "outputTokenDetails": {
+              "textTokens": 68
+            },
+            "totalTokens": 3408,
+            "raw": {
+              "prompt_tokens": 3340,
+              "completion_tokens": 68,
+              "total_tokens": 3408,
+              "prompt_tokens_details": {
+                "cached_tokens": 128
+              }
+            },
+            "cachedInputTokens": 128
+          }
+        },
+        {
+          "id": "mute_video-neutral-1",
+          "intent": "mute_video",
+          "style": "neutral",
+          "no_answer": false,
+          "request": "remove the audio from this video",
+          "output": "```bash\nffmpeg -i input.ext -c:v copy -an output.ext\n```\n\nThis removes the audio track from the video while keeping the video intact.",
+          "command": "ffmpeg -i input.ext -c:v copy -an output.ext",
+          "verdict": "good",
+          "nSteps": 1,
+          "nSearches": 1,
+          "searches": [
+            "ffmpeg Documentation > Bitstream Filters > remove_extra",
+            "ffmpeg Documentation > Audio Filters > silenceremove",
+            "ffmpeg Documentation > Bitstream Filters > chomp",
+            "ffmpeg Documentation > Audio Filters > adeclick",
+            "ffmpeg Documentation > Audio Filters > adeclip",
+            "ffmpeg Documentation > Bitstream Filters > filter_units",
+            "ffmpeg Documentation > Bitstream Filters > extract_extradata",
+            "ffmpeg Documentation > Bitstream Filters > h264_metadata"
+          ],
+          "usage": {
+            "inputTokens": 2468,
+            "inputTokenDetails": {
+              "noCacheTokens": 2340,
+              "cacheReadTokens": 128
+            },
+            "outputTokens": 34,
+            "outputTokenDetails": {
+              "textTokens": 34
+            },
+            "totalTokens": 2502,
+            "raw": {
+              "prompt_tokens": 2468,
+              "completion_tokens": 34,
+              "total_tokens": 2502,
+              "prompt_tokens_details": {
+                "cached_tokens": 128
+              }
+            },
+            "cachedInputTokens": 128
+          }
+        },
+        {
+          "id": "mute_video-terse-1",
+          "intent": "mute_video",
+          "style": "terse",
+          "no_answer": false,
+          "request": "mute this clip",
+          "output": "```bash\nffmpeg -i input.ext -af \"volume=0\" -c:v copy output.ext\n```\n\nThis command mutes the audio in the clip while keeping the video unchanged.",
+          "command": "ffmpeg -i input.ext -af \"volume=0\" -c:v copy output.ext",
+          "verdict": "fail",
+          "nSteps": 1,
+          "nSearches": 1,
+          "searches": [
+            "ffmpeg Documentation > Audio Filters > areverse",
+            "ffmpeg Documentation > Video Filters > reverse",
+            "ffmpeg Documentation > Audio Filters > adeclip",
+            "ffmpeg Documentation > Audio Filters > apsyclip",
+            "ffmpeg Documentation > Audio Filters > silenceremove > Commands",
+            "ffmpeg Documentation > Audio Filters > alimiter",
+            "ffmpeg Documentation > Video Filters > colorspace",
+            "ffmpeg Documentation > Video Filters > libplacebo > Tone mapping"
+          ],
+          "usage": {
+            "inputTokens": 2168,
+            "inputTokenDetails": {
+              "noCacheTokens": 2040,
+              "cacheReadTokens": 128
+            },
+            "outputTokens": 40,
+            "outputTokenDetails": {
+              "textTokens": 40
+            },
+            "totalTokens": 2208,
+            "raw": {
+              "prompt_tokens": 2168,
+              "completion_tokens": 40,
+              "total_tokens": 2208,
+              "prompt_tokens_details": {
+                "cached_tokens": 128
+              }
+            },
+            "cachedInputTokens": 128
+          }
+        },
+        {
+          "id": "mute_video-wrong_terms-1",
+          "intent": "mute_video",
+          "style": "wrong_terms",
+          "no_answer": false,
+          "request": "take the sound off this video",
+          "output": "```bash\nffmpeg -i input.ext -c:v copy -an output.ext\n```\n\nThis removes the audio track from the video while keeping the video intact.",
+          "command": "ffmpeg -i input.ext -c:v copy -an output.ext",
+          "verdict": "good",
+          "nSteps": 1,
+          "nSearches": 1,
+          "searches": [
+            "ffmpeg Documentation > Video Filters > reverse",
+            "ffmpeg Documentation > Audio Filters > areverse",
+            "ffmpeg Documentation > Video Filters > libplacebo > Debugging / performance",
+            "ffmpeg Documentation > Video Filters > copy",
+            "ffmpeg Documentation > Audio Filters > silenceremove",
+            "ffmpeg Documentation > Audio Filters > crystalizer",
+            "ffmpeg Documentation > Audio Filters > acompressor",
+            "ffmpeg Documentation > Audio Filters > asubcut"
+          ],
+          "usage": {
+            "inputTokens": 1624,
+            "inputTokenDetails": {
+              "noCacheTokens": 1624
+            },
+            "outputTokens": 34,
+            "outputTokenDetails": {
+              "textTokens": 34
+            },
+            "totalTokens": 1658,
+            "raw": {
+              "prompt_tokens": 1624,
+              "completion_tokens": 34,
+              "total_tokens": 1658,
+              "prompt_tokens_details": {
+                "cached_tokens": 0
+              }
+            }
+          }
+        },
+        {
+          "id": "to_mp4-neutral-1",
+          "intent": "to_mp4",
+          "style": "neutral",
+          "no_answer": false,
+          "request": "convert this video to mp4 so it plays everywhere",
+          "output": "```bash\nffmpeg -i input.ext -c:v libx264 -crf 23 -preset medium -c:a aac -b:a 192k -pix_fmt yuv420p output.mp4\n```\n\nThis converts your video to a widely compatible MP4 file with H.264 video (good quality/size balance) and AAC audio (standard for MP4). The `yuv420p` pixel format ensures compatibility with most devices.",
+          "command": "ffmpeg -i input.ext -c:v libx264 -crf 23 -preset medium -c:a aac -b:a 192k -pix_fmt yuv420p output.mp4",
+          "verdict": "good",
+          "nSteps": 1,
+          "nSearches": 1,
+          "searches": [
+            "ffmpeg Documentation > Bitstream Filters > hevc_mp4toannexb",
+            "ffmpeg Documentation > Video Filters > format",
+            "ffmpeg Documentation > Bitstream Filters > aac_adtstoasc",
+            "ffmpeg Documentation > Bitstream Filters > h264_mp4toannexb",
+            "ffmpeg Documentation > Video Sources > ddagrab",
+            "ffmpeg Documentation > Options > Advanced options",
+            "ffmpeg Documentation > Description",
+            "ffmpeg Documentation > Video Filters > fps"
+          ],
+          "usage": {
+            "inputTokens": 2419,
+            "inputTokenDetails": {
+              "noCacheTokens": 2291,
+              "cacheReadTokens": 128
+            },
+            "outputTokens": 109,
+            "outputTokenDetails": {
+              "textTokens": 109
+            },
+            "totalTokens": 2528,
+            "raw": {
+              "prompt_tokens": 2419,
+              "completion_tokens": 109,
+              "total_tokens": 2528,
+              "prompt_tokens_details": {
+                "cached_tokens": 128
+              }
+            },
+            "cachedInputTokens": 128
+          }
+        },
+        {
+          "id": "to_mp4-verbose-1",
+          "intent": "to_mp4",
+          "style": "verbose",
+          "no_answer": false,
+          "request": "this video won't play on my phone, can you convert it into a standard mp4 that works on anything",
+          "output": "```bash\nffmpeg -i input.ext -c:v libx264 -crf 23 -preset medium -c:a aac -b:a 128k -movflags +faststart output.mp4\n```\n\nThis converts your video to a widely compatible MP4 file using H.264 video (with good quality/bitrate balance) and AAC audio, with streaming-friendly fast-start for quick playback on phones.",
+          "command": "ffmpeg -i input.ext -c:v libx264 -crf 23 -preset medium -c:a aac -b:a 128k -movflags +faststart output.mp4",
+          "verdict": "good",
+          "nSteps": 1,
+          "nSearches": 1,
+          "searches": [
+            "ffmpeg Documentation > Input Devices > kmsgrab",
+            "ffmpeg Documentation > Video Encoders > MediaCodec",
+            "ffmpeg Documentation > Muxers > MOV/MPEG-4/ISOMBFF muxers",
+            "ffmpeg Documentation > Output Devices > decklink",
+            "ffmpeg Documentation > Bitstream Filters > hevc_mp4toannexb",
+            "ffmpeg Documentation > Video Sources > ddagrab",
+            "ffmpeg Documentation > Bitstream Filters > h264_mp4toannexb",
+            "ffmpeg Documentation > Bitstream Filters > mjpeg2jpeg"
+          ],
+          "usage": {
+            "inputTokens": 3031,
+            "inputTokenDetails": {
+              "noCacheTokens": 2903,
+              "cacheReadTokens": 128
+            },
+            "outputTokens": 95,
+            "outputTokenDetails": {
+              "textTokens": 95
+            },
+            "totalTokens": 3126,
+            "raw": {
+              "prompt_tokens": 3031,
+              "completion_tokens": 95,
+              "total_tokens": 3126,
+              "prompt_tokens_details": {
+                "cached_tokens": 128
+              }
+            },
+            "cachedInputTokens": 128
+          }
+        },
+        {
+          "id": "to_mp4-typo-1",
+          "intent": "to_mp4",
+          "style": "typo",
+          "no_answer": false,
+          "request": "convert to mp4 plz it wont paly",
+          "output": "```bash\nffmpeg -i input.ext -c:v copy -c:a aac -b:a 192k -movflags +faststart output.mp4\n```\n\nThis converts your file to a widely compatible MP4 with AAC audio and enables fast web streaming.",
+          "command": "ffmpeg -i input.ext -c:v copy -c:a aac -b:a 192k -movflags +faststart output.mp4",
+          "verdict": "good",
+          "nSteps": 1,
+          "nSearches": 1,
+          "searches": [
+            "ffmpeg Documentation > Bitstream Filters > aac_adtstoasc",
+            "ffmpeg Documentation > Bitstream Filters > hevc_mp4toannexb",
+            "ffmpeg Documentation > Bitstream Filters > h264_mp4toannexb",
+            "ffmpeg Documentation > Video Filters > format",
+            "ffmpeg Documentation > Video Filters > drawvg > Pixel Formats",
+            "ffmpeg Documentation > Audio Filters > resample",
+            "ffmpeg Documentation > Bitstream Filters > text2movsub",
+            "ffmpeg Documentation > Input Devices > kmsgrab"
+          ],
+          "usage": {
+            "inputTokens": 1723,
+            "inputTokenDetails": {
+              "noCacheTokens": 1595,
+              "cacheReadTokens": 128
+            },
+            "outputTokens": 58,
+            "outputTokenDetails": {
+              "textTokens": 58
+            },
+            "totalTokens": 1781,
+            "raw": {
+              "prompt_tokens": 1723,
+              "completion_tokens": 58,
+              "total_tokens": 1781,
+              "prompt_tokens_details": {
+                "cached_tokens": 128
+              }
+            },
+            "cachedInputTokens": 128
+          }
+        },
+        {
+          "id": "speed_video-neutral-1",
+          "intent": "speed_video",
+          "style": "neutral",
+          "no_answer": false,
+          "request": "make this video play in slow motion",
+          "output": "```bash\nffmpeg -i input.ext -vf \"setpts=2.0*PTS\" -af \"atempo=0.5\" output.ext\n```\n\nThis command slows down the video playback speed to half its original speed (50% slower motion). Adjust the `2.0` and `0.5` values to change the slow-motion effect (e.g., `setpts=3.0*PTS` + `atempo=0.33` for 3x slower).",
+          "command": "ffmpeg -i input.ext -vf \"setpts=2.0*PTS\" -af \"atempo=0.5\" output.ext",
+          "verdict": "good",
+          "nSteps": 1,
+          "nSearches": 1,
+          "searches": [
+            "ffmpeg Documentation > Video Filters > mcdeint",
+            "ffmpeg Documentation > Muxers > apng > Options",
+            "ffmpeg Documentation > Video Filters > tiltandshift",
+            "ffmpeg Documentation > Video Encoders > libx264, libx264rgb > Options",
+            "ffmpeg Documentation > Multimedia Filters > realtime, arealtime",
+            "ffmpeg Documentation > Codec Options",
+            "ffmpeg Documentation > Video Filters > fade",
+            "ffmpeg Documentation > Video Filters > rotate"
+          ],
+          "usage": {
+            "inputTokens": 3173,
+            "inputTokenDetails": {
+              "noCacheTokens": 3045,
+              "cacheReadTokens": 128
+            },
+            "outputTokens": 109,
+            "outputTokenDetails": {
+              "textTokens": 109
+            },
+            "totalTokens": 3282,
+            "raw": {
+              "prompt_tokens": 3173,
+              "completion_tokens": 109,
+              "total_tokens": 3282,
+              "prompt_tokens_details": {
+                "cached_tokens": 128
+              }
+            },
+            "cachedInputTokens": 128
+          }
+        },
+        {
+          "id": "speed_video-terse-1",
+          "intent": "speed_video",
+          "style": "terse",
+          "no_answer": false,
+          "request": "2x speed this",
+          "output": "```bash\nffmpeg -i input.ext -filter:v \"setpts=0.5*PTS\" -af \"atempo=2.0\" output.ext\n```\n\nThis command doubles the playback speed of both the video and audio.",
+          "command": "ffmpeg -i input.ext -filter:v \"setpts=0.5*PTS\" -af \"atempo=2.0\" output.ext",
+          "verdict": "good",
+          "nSteps": 1,
+          "nSearches": 1,
+          "searches": [
+            "ffmpeg Documentation > Video Filters > super2xsai",
+            "ffmpeg Documentation > Options > Advanced options",
+            "ffmpeg Documentation > Input Devices > libcdio > Options",
+            "ffmpeg Documentation > Multimedia Filters > realtime, arealtime",
+            "ffmpeg Documentation > Video Encoders > libvpx > Options",
+            "ffmpeg Documentation > Video Encoders > ProRes > Speed considerations",
+            "ffmpeg Documentation > Muxers > fifo",
+            "ffmpeg Documentation > Options > Advanced Video options"
+          ],
+          "usage": {
+            "inputTokens": 2560,
+            "inputTokenDetails": {
+              "noCacheTokens": 2432,
+              "cacheReadTokens": 128
+            },
+            "outputTokens": 50,
+            "outputTokenDetails": {
+              "textTokens": 50
+            },
+            "totalTokens": 2610,
+            "raw": {
+              "prompt_tokens": 2560,
+              "completion_tokens": 50,
+              "total_tokens": 2610,
+              "prompt_tokens_details": {
+                "cached_tokens": 128
+              }
+            },
+            "cachedInputTokens": 128
+          }
+        },
+        {
+          "id": "speed_video-wrong_terms-1",
+          "intent": "speed_video",
+          "style": "wrong_terms",
+          "no_answer": false,
+          "request": "make this clip go in fast forward",
+          "output": "```bash\nffmpeg -i input.ext -filter:v \"setpts=0.5*PTS\" -filter:a \"atempo=2\" output.ext\n```\n\nThis command speeds up the video by **2x** (fast forward) while keeping the audio pitch correct. Adjust `0.5` (video) and `2` (audio) to change the speed.",
+          "command": "ffmpeg -i input.ext -filter:v \"setpts=0.5*PTS\" -filter:a \"atempo=2\" output.ext",
+          "verdict": "good",
+          "nSteps": 1,
+          "nSearches": 1,
+          "searches": [
+            "ffmpeg Documentation > Audio Filters > adeclip",
+            "ffmpeg Documentation > Video Filters > reverse",
+            "ffmpeg Documentation > Audio Filters > areverse",
+            "ffmpeg Documentation > External libraries > eXtra-fast Essential Video Encoder (XEVE)",
+            "ffmpeg Documentation > Video Filters > vignette",
+            "ffmpeg Documentation > Video Filters > lensfun",
+            "ffmpeg Documentation > Video Filters > fade",
+            "ffmpeg Documentation > Video Filters > drawtext"
+          ],
+          "usage": {
+            "inputTokens": 2391,
+            "inputTokenDetails": {
+              "noCacheTokens": 2263,
+              "cacheReadTokens": 128
+            },
+            "outputTokens": 79,
+            "outputTokenDetails": {
+              "textTokens": 79
+            },
+            "totalTokens": 2470,
+            "raw": {
+              "prompt_tokens": 2391,
+              "completion_tokens": 79,
+              "total_tokens": 2470,
+              "prompt_tokens_details": {
+                "cached_tokens": 128
+              }
+            },
+            "cachedInputTokens": 128
+          }
+        },
+        {
+          "id": "thumb_image-neutral-1",
+          "intent": "thumb_image",
+          "style": "neutral",
+          "no_answer": false,
+          "request": "make a small thumbnail version of this photo",
+          "output": "```bash\nffmpeg -i input.ext -vf \"scale=300:-1:flags=lanczos\" -frames:v 1 output.ext\n```\n\nThis creates a small thumbnail (300px wide, height adjusted proportionally) of your photo using high-quality scaling.",
+          "command": "ffmpeg -i input.ext -vf \"scale=300:-1:flags=lanczos\" -frames:v 1 output.ext",
+          "verdict": "good",
+          "nSteps": 1,
+          "nSearches": 1,
+          "searches": [
+            "ffmpeg Documentation > Video Filters > thumbnail",
+            "ffmpeg Documentation > CUDA Video Filters > CUDA",
+            "ffmpeg Documentation > Video Filters > removegrain",
+            "ffmpeg Documentation > Muxers > argo_asf > Options",
+            "ffmpeg Documentation > Muxers > chromaprint > Options",
+            "ffmpeg Documentation > CUDA Video Filters > CUDA > thumbnail_cuda",
+            "ffmpeg Documentation > Video Filters > lensfun",
+            "ffmpeg Documentation > Video Sources > coreimagesrc"
+          ],
+          "usage": {
+            "inputTokens": 1883,
+            "inputTokenDetails": {
+              "noCacheTokens": 1755,
+              "cacheReadTokens": 128
+            },
+            "outputTokens": 62,
+            "outputTokenDetails": {
+              "textTokens": 62
+            },
+            "totalTokens": 1945,
+            "raw": {
+              "prompt_tokens": 1883,
+              "completion_tokens": 62,
+              "total_tokens": 1945,
+              "prompt_tokens_details": {
+                "cached_tokens": 128
+              }
+            },
+            "cachedInputTokens": 128
+          }
+        },
+        {
+          "id": "thumb_image-wrong_terms-1",
+          "intent": "thumb_image",
+          "style": "wrong_terms",
+          "no_answer": false,
+          "request": "extract thumbnails out of this image",
+          "output": "```\nffmpeg -i input.ext -vf \"select='not(eq(n\\,0))',thumbnail=1,format=yuv420p\" -frames:v 1 output_%03d.png\n```\n\nThis extracts **one representative thumbnail** from the image (or video) and saves it as a PNG file. If the input is a single image, it will create a thumbnail of that image. If it's a video, it will pick the most representative frame.",
+          "command": "ffmpeg -i input.ext -vf \"select='not(eq(n\\,0))',thumbnail=1,format=yuv420p\" -frames:v 1 output_%03d.png",
+          "verdict": "fail",
+          "nSteps": 1,
+          "nSearches": 1,
+          "searches": [
+            "ffmpeg Documentation > Video Filters > field",
+            "ffmpeg Documentation > Options > Main options",
+            "ffmpeg Documentation > Bitstream Filters > hapqa_extract",
+            "ffmpeg Documentation > Video Filters > thumbnail",
+            "ffmpeg Documentation > Video Filters > extractplanes",
+            "ffmpeg Documentation > Protocols > subfile",
+            "ffmpeg Documentation > Video Filters > alphaextract",
+            "ffmpeg Documentation > Video Filters > crop"
+          ],
+          "usage": {
+            "inputTokens": 1893,
+            "inputTokenDetails": {
+              "noCacheTokens": 1765,
+              "cacheReadTokens": 128
+            },
+            "outputTokens": 100,
+            "outputTokenDetails": {
+              "textTokens": 100
+            },
+            "totalTokens": 1993,
+            "raw": {
+              "prompt_tokens": 1893,
+              "completion_tokens": 100,
+              "total_tokens": 1993,
+              "prompt_tokens_details": {
+                "cached_tokens": 128
+              }
+            },
+            "cachedInputTokens": 128
+          }
+        },
+        {
+          "id": "theme-neutral-1",
+          "intent": "theme",
+          "style": "neutral",
+          "no_answer": true,
+          "request": "analyze this video to extract the theme",
+          "output": "This is out of scope for ffmpeg. FFmpeg can analyze technical aspects of a video (e.g., color ranges, shakiness, or frame composition), but it cannot determine the *theme* or interpret the content of a video. For that, you would need tools like AI-based video analysis or human review.",
+          "command": "",
+          "verdict": "abstain_ok",
+          "nSteps": 1,
+          "nSearches": 1,
+          "searches": [
+            "ffmpeg Documentation > Video Filters > vidstabdetect",
+            "ffmpeg Documentation > Video Filters > alphaextract",
+            "ffmpeg Documentation > Video Filters > extractplanes",
+            "ffmpeg Documentation > Bitstream Filters > mov2textsub",
+            "ffmpeg Documentation > Examples > Video and Audio file format conversion",
+            "ffmpeg Documentation > Video Filters > field",
+            "ffmpeg Documentation > Bitstream Filters > hapqa_extract",
+            "ffmpeg Documentation > Video Filters > colordetect"
+          ],
+          "usage": {
+            "inputTokens": 1659,
+            "inputTokenDetails": {
+              "noCacheTokens": 1531,
+              "cacheReadTokens": 128
+            },
+            "outputTokens": 66,
+            "outputTokenDetails": {
+              "textTokens": 66
+            },
+            "totalTokens": 1725,
+            "raw": {
+              "prompt_tokens": 1659,
+              "completion_tokens": 66,
+              "total_tokens": 1725,
+              "prompt_tokens_details": {
+                "cached_tokens": 128
+              }
+            },
+            "cachedInputTokens": 128
+          }
+        },
+        {
+          "id": "theme-verbose-1",
+          "intent": "theme",
+          "style": "verbose",
+          "no_answer": true,
+          "request": "watch this video and tell me what the overall theme and mood is",
+          "output": "This request is out of scope for ffmpeg. FFmpeg is a tool for processing media files (cutting, encoding, filtering, etc.), but it cannot analyze or interpret the *content* of a video (e.g., themes, moods, or narratives). For that, you would need AI tools like **Whisper** (for audio) or **computer vision models** (for visuals).",
+          "command": "",
+          "verdict": "abstain_ok",
+          "nSteps": 1,
+          "nSearches": 1,
+          "searches": [
+            "ffmpeg Documentation > Video Filters > vectorscope",
+            "ffmpeg Documentation > Video Filters > tiltandshift",
+            "ffmpeg Documentation > Audio Filters > astats",
+            "ffmpeg Documentation > Video Filters > thistogram",
+            "ffmpeg Documentation > Video Filters > waveform",
+            "ffmpeg Documentation > Video Filters > drawbox",
+            "ffmpeg Documentation > Options > Video Options",
+            "ffmpeg Documentation > Codec Options"
+          ],
+          "usage": {
+            "inputTokens": 4039,
+            "inputTokenDetails": {
+              "noCacheTokens": 3911,
+              "cacheReadTokens": 128
+            },
+            "outputTokens": 83,
+            "outputTokenDetails": {
+              "textTokens": 83
+            },
+            "totalTokens": 4122,
+            "raw": {
+              "prompt_tokens": 4039,
+              "completion_tokens": 83,
+              "total_tokens": 4122,
+              "prompt_tokens_details": {
+                "cached_tokens": 128
+              }
+            },
+            "cachedInputTokens": 128
+          }
+        },
+        {
+          "id": "summarize-neutral-1",
+          "intent": "summarize",
+          "style": "neutral",
+          "no_answer": true,
+          "request": "summarize what happens in this video",
+          "output": "This request is out of scope for ffmpeg. ffmpeg can analyze or manipulate video frames, but it cannot understand or summarize the *content* of a video (e.g., what happens in it). It cannot interpret scenes, actions, or events like a human would.",
+          "command": "",
+          "verdict": "abstain_ok",
+          "nSteps": 1,
+          "nSearches": 1,
+          "searches": [
+            "ffmpeg Documentation > Video Filters > tiltandshift",
+            "ffmpeg Documentation > Video Filters > freezedetect",
+            "ffmpeg Documentation > Input Devices > decklink > Options",
+            "ffmpeg Documentation > Video Filters > fade",
+            "ffmpeg Documentation > Video Filters > thistogram",
+            "ffmpeg Documentation > Video Filters > corr",
+            "ffmpeg Documentation > Video Filters > fieldmatch > p/c/n",
+            "ffmpeg Documentation > Video Filters > siti"
+          ],
+          "usage": {
+            "inputTokens": 2984,
+            "inputTokenDetails": {
+              "noCacheTokens": 2856,
+              "cacheReadTokens": 128
+            },
+            "outputTokens": 56,
+            "outputTokenDetails": {
+              "textTokens": 56
+            },
+            "totalTokens": 3040,
+            "raw": {
+              "prompt_tokens": 2984,
+              "completion_tokens": 56,
+              "total_tokens": 3040,
+              "prompt_tokens_details": {
+                "cached_tokens": 128
+              }
+            },
+            "cachedInputTokens": 128
+          }
+        }
+      ]
+    },
+    "ministral-14b__tool": {
+      "model": "ministral-14b",
+      "modelId": "ministral-14b-latest",
+      "mode": "tool",
+      "k": 8,
+      "steps": 5,
+      "updated": "2026-06-22T07:53:23.955Z",
+      "summary": {
+        "real": 37,
+        "correct": 33,
+        "good": 31,
+        "noAns": 3,
+        "abstained": 3
+      },
+      "records": [
+        {
+          "id": "gif-neutral-1",
+          "intent": "gif",
+          "style": "neutral",
+          "no_answer": false,
+          "request": "convert this video to a small gif",
+          "output": "```bash\nffmpeg -i input.ext -vf \"fps=10,scale=320:-1:flags=lanczos,palettegen\" -y palette.png && ffmpeg -i input.ext -i palette.png -lavfi \"fps=10,scale=320:-1:flags=lanczos[x];[x][1:v]paletteuse\" -loop 0 output.gif\n```\n\n**Converts the video to a small, smooth 10fps GIF with a maximum width of 320 pixels, using a generated color palette for better quality.**",
+          "command": "ffmpeg -i input.ext -vf \"fps=10,scale=320:-1:flags=lanczos,palettegen\" -y palette.png && ffmpeg -i input.ext -i palette.png -lavfi \"fps=10,scale=320:-1:flags=lanczos[x];[x][1:v]paletteuse\" -loop 0 output.gif",
+          "verdict": "good",
+          "nSteps": 2,
+          "nSearches": 2,
+          "searches": [
+            "convert video to gif",
+            "gif encoder and common ffmpeg flags"
+          ],
+          "usage": {
+            "inputTokens": 1431,
+            "inputTokenDetails": {
+              "noCacheTokens": 1303,
+              "cacheReadTokens": 128
+            },
+            "outputTokens": 133,
+            "outputTokenDetails": {
+              "textTokens": 133
+            },
+            "totalTokens": 1564,
+            "raw": {
+              "prompt_tokens": 1431,
+              "completion_tokens": 133,
+              "total_tokens": 1564,
+              "prompt_tokens_details": {
+                "cached_tokens": 128
+              }
+            },
+            "cachedInputTokens": 128
+          }
+        },
+        {
+          "id": "gif-verbose-1",
+          "intent": "gif",
+          "style": "verbose",
+          "no_answer": false,
+          "request": "i'd like to turn this screen recording into a small gif i can share in chat without it being a huge file",
+          "output": "```bash\nffmpeg -i input.ext -vf \"fps=10,scale=320:-1:flags=lanczos,palettegen\" -y palette.png && ffmpeg -i input.ext -i palette.png -filter_complex \"fps=10,scale=320:-1:flags=lanczos[x];[x][1:v]paletteuse\" -lavfi \"delogo=show_logo=0:x=w/2:y=h/2:w=1:h=1\" -vf \"split[s0][s1];[s0]palettegen=stats_mode=diff[p];[s1][p]paletteuse=dither=sierra2_4a\" -loop 0 output.gif\n```\n\n**Correction:** Here's a simpler and more effective command for your needs:\n\n```bash\nffmpeg -i input.ext -vf \"fps=10,scale=320:-1:flags=lanczos,palettegen\" -y palette.png && ffmpeg -i input.ext -i palette.png -filter_complex \"fps=10,scale=320:-1:flags=lanczos[x];[x][1:v]paletteuse=dither=bayer:bayer_scale=0.5\" output.gif\n```\n\nThis creates a small, optimized GIF with a maximum width of 320 pixels, 10 frames per second, and reduced file size using a Bayer dithering technique.",
+          "command": "ffmpeg -i input.ext -vf \"fps=10,scale=320:-1:flags=lanczos,palettegen\" -y palette.png && ffmpeg -i input.ext -i palette.png -filter_complex \"fps=10,scale=320:-1:flags=lanczos[x];[x][1:v]paletteuse\" -lavfi \"delogo=show_logo=0:x=w/2:y=h/2:w=1:h=1\" -vf \"split[s0][s1];[s0]palettegen=stats_mode=diff[p];[s1][p]paletteuse=dither=sierra2_4a\" -loop 0 output.gif",
+          "verdict": "good",
+          "nSteps": 2,
+          "nSearches": 3,
+          "searches": [
+            "create small gif from video",
+            "optimize gif size ffmpeg",
+            "palettegen and paletteuse for gif"
+          ],
+          "usage": {
+            "inputTokens": 2116,
+            "inputTokenDetails": {
+              "noCacheTokens": 1860,
+              "cacheReadTokens": 256
+            },
+            "outputTokens": 327,
+            "outputTokenDetails": {
+              "textTokens": 327
+            },
+            "totalTokens": 2443,
+            "raw": {
+              "prompt_tokens": 2116,
+              "completion_tokens": 327,
+              "total_tokens": 2443,
+              "prompt_tokens_details": {
+                "cached_tokens": 256
+              }
+            },
+            "cachedInputTokens": 256
+          }
+        },
+        {
+          "id": "gif-terse-1",
+          "intent": "gif",
+          "style": "terse",
+          "no_answer": false,
+          "request": "this video -> gif, small",
+          "output": "```bash\nffmpeg -i input.ext -vf \"fps=10,scale=320:-1:flags=lanczos,palettegen=max_colors=256:reserve_transparent=1\" -y palette.png && ffmpeg -i input.ext -i palette.png -lavfi \"paletteuse=dither=sierra2_4a\" -loop 0 -vf \"split[s0][s1];[s0]paletteuse=dither=sierra2_4a[out0];[s1]paletteuse=transparency=1:transparency_color=black[out1];[out0][out1]overlay=shortest=1\" output.gif\n```\n\n**Converts the video to a small, optimized GIF with reduced colors and dithering for quality.** This command first generates a palette, then creates a GIF with transparency and dithering to reduce file size while maintaining visual quality. The GIF loops infinitely. Adjust `fps` or `scale` values if needed.",
+          "command": "ffmpeg -i input.ext -vf \"fps=10,scale=320:-1:flags=lanczos,palettegen=max_colors=256:reserve_transparent=1\" -y palette.png && ffmpeg -i input.ext -i palette.png -lavfi \"paletteuse=dither=sierra2_4a\" -loop 0 -vf \"split[s0][s1];[s0]paletteuse=dither=sierra2_4a[out0];[s1]paletteuse=transparency=1:transparency_color=black[out1];[out0][out1]overlay=shortest=1\" output.gif",
+          "verdict": "good",
+          "nSteps": 2,
+          "nSearches": 4,
+          "searches": [
+            "convert video to gif with small file size",
+            "ffmpeg gif output options",
+            "ffmpeg palettegen and palettempele",
+            "ffmpeg optimize gif for small size"
+          ],
+          "usage": {
+            "inputTokens": 2728,
+            "inputTokenDetails": {
+              "noCacheTokens": 2600,
+              "cacheReadTokens": 128
+            },
+            "outputTokens": 225,
+            "outputTokenDetails": {
+              "textTokens": 225
+            },
+            "totalTokens": 2953,
+            "raw": {
+              "prompt_tokens": 2728,
+              "completion_tokens": 225,
+              "total_tokens": 2953,
+              "prompt_tokens_details": {
+                "cached_tokens": 128
+              }
+            },
+            "cachedInputTokens": 128
+          }
+        },
+        {
+          "id": "gif-typo-1",
+          "intent": "gif",
+          "style": "typo",
+          "no_answer": false,
+          "request": "convert this vidoe to a samll gif",
+          "output": "```bash\nffmpeg -i input.ext -vf \"fps=10,scale=320:-1:flags=lanczos,palettegen\" -y palette.png && ffmpeg -i input.ext -i palette.png -lavfi \"paletteuse=dither=sierra2_4a\" -loop 0 output.gif\n```\n\nThis command creates a small, optimized GIF by:\n1. Extracting a color palette from the video (reducing file size).\n2. Converting the video to a GIF with reduced frames (10 fps) and dithering for smoother colors.\n3. Looping the GIF infinitely. Adjust `scale=320:-1` to change the width (e.g., `200:-1` for smaller size).",
+          "command": "ffmpeg -i input.ext -vf \"fps=10,scale=320:-1:flags=lanczos,palettegen\" -y palette.png && ffmpeg -i input.ext -i palette.png -lavfi \"paletteuse=dither=sierra2_4a\" -loop 0 output.gif",
+          "verdict": "good",
+          "nSteps": 2,
+          "nSearches": 4,
+          "searches": [
+            "convert video to gif with small file size",
+            "ffmpeg gif output options and encoders",
+            "ffmpeg palettegen and palettempegen for gif",
+            "ffmpeg optimize gif size"
+          ],
+          "usage": {
+            "inputTokens": 2681,
+            "inputTokenDetails": {
+              "noCacheTokens": 2297,
+              "cacheReadTokens": 384
+            },
+            "outputTokens": 169,
+            "outputTokenDetails": {
+              "textTokens": 169
+            },
+            "totalTokens": 2850,
+            "raw": {
+              "prompt_tokens": 2681,
+              "completion_tokens": 169,
+              "total_tokens": 2850,
+              "prompt_tokens_details": {
+                "cached_tokens": 384
+              }
+            },
+            "cachedInputTokens": 384
+          }
+        },
+        {
+          "id": "gif-wrong_terms-1",
+          "intent": "gif",
+          "style": "wrong_terms",
+          "no_answer": false,
+          "request": "make this clip into an animated picture, keep it low size",
+          "output": "```bash\nffmpeg -i input.ext -vf \"fps=10,scale=320:-1:flags=lanczos,palettegen\" -y palette.png && ffmpeg -i input.ext -i palette.png -lavfi \"paletteuse\" -loop 0 -vf \"split[s0][s1];[s0]paletteuse=dither=sierra2_4a[out0];[s1][out0]overlay[out]\" -vfthreads 4 -c:v gif -flags +transdiff -f gif output.gif\n```\n\nCreates a small, low-size animated GIF from the clip by reducing the frame rate to 10 FPS, scaling the width to 320 pixels, optimizing the color palette, and enabling dithering for smoother transitions. The GIF loops infinitely.",
+          "command": "ffmpeg -i input.ext -vf \"fps=10,scale=320:-1:flags=lanczos,palettegen\" -y palette.png && ffmpeg -i input.ext -i palette.png -lavfi \"paletteuse\" -loop 0 -vf \"split[s0][s1];[s0]paletteuse=dither=sierra2_4a[out0];[s1][out0]overlay[out]\" -vfthreads 4 -c:v gif -flags +transdiff -f gif output.gif",
+          "verdict": "good",
+          "nSteps": 2,
+          "nSearches": 3,
+          "searches": [
+            "create animated GIF from video",
+            "reduce file size for animated GIF",
+            "ffmpeg palettegen and palettemuse filters"
+          ],
+          "usage": {
+            "inputTokens": 2275,
+            "inputTokenDetails": {
+              "noCacheTokens": 2019,
+              "cacheReadTokens": 256
+            },
+            "outputTokens": 184,
+            "outputTokenDetails": {
+              "textTokens": 184
+            },
+            "totalTokens": 2459,
+            "raw": {
+              "prompt_tokens": 2275,
+              "completion_tokens": 184,
+              "total_tokens": 2459,
+              "prompt_tokens_details": {
+                "cached_tokens": 256
+              }
+            },
+            "cachedInputTokens": 256
+          }
+        },
+        {
+          "id": "mp3-neutral-1",
+          "intent": "mp3",
+          "style": "neutral",
+          "no_answer": false,
+          "request": "convert this to a regular mp3",
+          "output": "```bash\nffmpeg -i input.ext -c:a libmp3lame -q:a 2 output.mp3\n```\n\nConverts the audio from the input file to a standard MP3 file using the LAME encoder with medium quality. Adjust `-q:a 2` (range 0-9, where 0 is best quality) as needed.",
+          "command": "ffmpeg -i input.ext -c:a libmp3lame -q:a 2 output.mp3",
+          "verdict": "good",
+          "nSteps": 2,
+          "nSearches": 2,
+          "searches": [
+            "convert to mp3 encoder",
+            "audio codec mp3"
+          ],
+          "usage": {
+            "inputTokens": 1696,
+            "inputTokenDetails": {
+              "noCacheTokens": 1568,
+              "cacheReadTokens": 128
+            },
+            "outputTokens": 75,
+            "outputTokenDetails": {
+              "textTokens": 75
+            },
+            "totalTokens": 1771,
+            "raw": {
+              "prompt_tokens": 1696,
+              "completion_tokens": 75,
+              "total_tokens": 1771,
+              "prompt_tokens_details": {
+                "cached_tokens": 128
+              }
+            },
+            "cachedInputTokens": 128
+          }
+        },
+        {
+          "id": "mp3-verbose-1",
+          "intent": "mp3",
+          "style": "verbose",
+          "no_answer": false,
+          "request": "i just want the audio from this video as an mp3 i can put on my phone",
+          "output": "```bash\nffmpeg -i input.ext -vn -c:a libmp3lame -q:a 2 output.mp3\n```\n\nThis extracts the audio from the video and saves it as an MP3 file for your phone.",
+          "command": "ffmpeg -i input.ext -vn -c:a libmp3lame -q:a 2 output.mp3",
+          "verdict": "good",
+          "nSteps": 3,
+          "nSearches": 2,
+          "searches": [
+            "extract audio to mp3",
+            "extract audio stream to mp3 using ffmpeg"
+          ],
+          "usage": {
+            "inputTokens": 1937,
+            "inputTokenDetails": {
+              "noCacheTokens": 1681,
+              "cacheReadTokens": 256
+            },
+            "outputTokens": 49,
+            "outputTokenDetails": {
+              "textTokens": 49
+            },
+            "totalTokens": 1986,
+            "raw": {
+              "prompt_tokens": 1937,
+              "completion_tokens": 49,
+              "total_tokens": 1986,
+              "prompt_tokens_details": {
+                "cached_tokens": 256
+              }
+            },
+            "cachedInputTokens": 256
+          }
+        },
+        {
+          "id": "mp3-terse-1",
+          "intent": "mp3",
+          "style": "terse",
+          "no_answer": false,
+          "request": "to mp3",
+          "output": "```bash\nffmpeg -i input.ext -c:a libmp3lame -q:a 2 output.mp3\n```\n\nConverts the audio from the input file to an MP3 file with good quality. Adjust `-q:a` (0-9, where 0 is best quality) as needed.",
+          "command": "ffmpeg -i input.ext -c:a libmp3lame -q:a 2 output.mp3",
+          "verdict": "good",
+          "nSteps": 2,
+          "nSearches": 1,
+          "searches": [
+            "convert to MP3 audio"
+          ],
+          "usage": {
+            "inputTokens": 932,
+            "inputTokenDetails": {
+              "noCacheTokens": 612,
+              "cacheReadTokens": 320
+            },
+            "outputTokens": 65,
+            "outputTokenDetails": {
+              "textTokens": 65
+            },
+            "totalTokens": 997,
+            "raw": {
+              "prompt_tokens": 932,
+              "completion_tokens": 65,
+              "total_tokens": 997,
+              "prompt_tokens_details": {
+                "cached_tokens": 320
+              }
+            },
+            "cachedInputTokens": 320
+          }
+        },
+        {
+          "id": "mp3-typo-1",
+          "intent": "mp3",
+          "style": "typo",
+          "no_answer": false,
+          "request": "convet this song to mp3 pls",
+          "output": "```bash\nffmpeg -i input.ext -c:a libmp3lame -q:a 2 output.mp3\n```\n\nConverts the audio file to an MP3 with good quality using the LAME encoder. Adjust `-q:a 2` (range 0-9, where 0 is best quality) as needed.",
+          "command": "ffmpeg -i input.ext -c:a libmp3lame -q:a 2 output.mp3",
+          "verdict": "good",
+          "nSteps": 2,
+          "nSearches": 1,
+          "searches": [
+            "convert audio to mp3 encoder"
+          ],
+          "usage": {
+            "inputTokens": 942,
+            "inputTokenDetails": {
+              "noCacheTokens": 622,
+              "cacheReadTokens": 320
+            },
+            "outputTokens": 70,
+            "outputTokenDetails": {
+              "textTokens": 70
+            },
+            "totalTokens": 1012,
+            "raw": {
+              "prompt_tokens": 942,
+              "completion_tokens": 70,
+              "total_tokens": 1012,
+              "prompt_tokens_details": {
+                "cached_tokens": 320
+              }
+            },
+            "cachedInputTokens": 320
+          }
+        },
+        {
+          "id": "mp3-wrong_terms-1",
+          "intent": "mp3",
+          "style": "wrong_terms",
+          "no_answer": false,
+          "request": "rip the sound out of this and save it as a normal music file",
+          "output": "```bash\nffmpeg -i input.ext -vn -c:a libmp3lame -q:a 2 output.mp3\n```\n\nThis extracts the audio from the input file and saves it as an MP3 file. The `-vn` flag disables video, and `-c:a libmp3lame` ensures the audio is encoded as MP3 with good quality.",
+          "command": "ffmpeg -i input.ext -vn -c:a libmp3lame -q:a 2 output.mp3",
+          "verdict": "good",
+          "nSteps": 2,
+          "nSearches": 3,
+          "searches": [
+            "extract audio to mp3",
+            "extract audio stream",
+            "map audio stream to output"
+          ],
+          "usage": {
+            "inputTokens": 2438,
+            "inputTokenDetails": {
+              "noCacheTokens": 2182,
+              "cacheReadTokens": 256
+            },
+            "outputTokens": 78,
+            "outputTokenDetails": {
+              "textTokens": 78
+            },
+            "totalTokens": 2516,
+            "raw": {
+              "prompt_tokens": 2438,
+              "completion_tokens": 78,
+              "total_tokens": 2516,
+              "prompt_tokens_details": {
+                "cached_tokens": 256
+              }
+            },
+            "cachedInputTokens": 256
+          }
+        },
+        {
+          "id": "crop_img-neutral-1",
+          "intent": "crop_img",
+          "style": "neutral",
+          "no_answer": false,
+          "request": "crop this image to a square",
+          "output": "```bash\nffmpeg -i input.ext -vf \"crop=min(h,w):min(h,w)\" -c:a copy output.ext\n```\n\nThis crops the image to the largest possible square while preserving the aspect ratio.",
+          "command": "ffmpeg -i input.ext -vf \"crop=min(h,w):min(h,w)\" -c:a copy output.ext",
+          "verdict": "good",
+          "nSteps": 2,
+          "nSearches": 2,
+          "searches": [
+            "crop filter",
+            "crop image to square"
+          ],
+          "usage": {
+            "inputTokens": 2034,
+            "inputTokenDetails": {
+              "noCacheTokens": 1778,
+              "cacheReadTokens": 256
+            },
+            "outputTokens": 47,
+            "outputTokenDetails": {
+              "textTokens": 47
+            },
+            "totalTokens": 2081,
+            "raw": {
+              "prompt_tokens": 2034,
+              "completion_tokens": 47,
+              "total_tokens": 2081,
+              "prompt_tokens_details": {
+                "cached_tokens": 256
+              }
+            },
+            "cachedInputTokens": 256
+          }
+        },
+        {
+          "id": "crop_img-verbose-1",
+          "intent": "crop_img",
+          "style": "verbose",
+          "no_answer": false,
+          "request": "can you cut this photo down so it's just the centered middle part, like a square crop",
+          "output": "```bash\nffmpeg -i input.ext -vf \"crop=min(iw,ih):min(iw,ih):(iw-min(iw,ih))/2:(ih-min(iw,ih))/2\" output.ext\n```\n\nThis crops the image to a square centered on the middle part of the photo.",
+          "command": "ffmpeg -i input.ext -vf \"crop=min(iw,ih):min(iw,ih):(iw-min(iw,ih))/2:(ih-min(iw,ih))/2\" output.ext",
+          "verdict": "good",
+          "nSteps": 2,
+          "nSearches": 2,
+          "searches": [
+            "crop filter",
+            "how to crop an image to a square centered part"
+          ],
+          "usage": {
+            "inputTokens": 2030,
+            "inputTokenDetails": {
+              "noCacheTokens": 1774,
+              "cacheReadTokens": 256
+            },
+            "outputTokens": 67,
+            "outputTokenDetails": {
+              "textTokens": 67
+            },
+            "totalTokens": 2097,
+            "raw": {
+              "prompt_tokens": 2030,
+              "completion_tokens": 67,
+              "total_tokens": 2097,
+              "prompt_tokens_details": {
+                "cached_tokens": 256
+              }
+            },
+            "cachedInputTokens": 256
+          }
+        },
+        {
+          "id": "crop_img-typo-1",
+          "intent": "crop_img",
+          "style": "typo",
+          "no_answer": false,
+          "request": "crop this pictrue to a squere",
+          "output": "```bash\nffmpeg -i input.ext -vf \"crop=min(h,w):min(h,w)\" output.ext\n```\n\nThis crops the image to the largest possible square while preserving its content.",
+          "command": "ffmpeg -i input.ext -vf \"crop=min(h,w):min(h,w)\" output.ext",
+          "verdict": "good",
+          "nSteps": 2,
+          "nSearches": 2,
+          "searches": [
+            "crop filter",
+            "crop to square"
+          ],
+          "usage": {
+            "inputTokens": 1908,
+            "inputTokenDetails": {
+              "noCacheTokens": 1652,
+              "cacheReadTokens": 256
+            },
+            "outputTokens": 42,
+            "outputTokenDetails": {
+              "textTokens": 42
+            },
+            "totalTokens": 1950,
+            "raw": {
+              "prompt_tokens": 1908,
+              "completion_tokens": 42,
+              "total_tokens": 1950,
+              "prompt_tokens_details": {
+                "cached_tokens": 256
+              }
+            },
+            "cachedInputTokens": 256
+          }
+        },
+        {
+          "id": "crop_img-wrong_terms-1",
+          "intent": "crop_img",
+          "style": "wrong_terms",
+          "no_answer": false,
+          "request": "trim the edges off this picture",
+          "output": "```bash\nffmpeg -i input.ext -vf \"crop=out_w=iw-100:out_h=ih-100\" output.ext\n```\n\nThis trims 50 pixels from the left and right edges and 50 pixels from the top and bottom of the image (adjust the values as needed for your specific trim). If you want to trim a different amount, replace the `100` with your desired pixel value. For example, `crop=out_w=iw-50:out_h=ih-50` trims 25 pixels from each side.",
+          "command": "ffmpeg -i input.ext -vf \"crop=out_w=iw-100:out_h=ih-100\" output.ext",
+          "verdict": "good",
+          "nSteps": 2,
+          "nSearches": 1,
+          "searches": [
+            "crop filter"
+          ],
+          "usage": {
+            "inputTokens": 1129,
+            "inputTokenDetails": {
+              "noCacheTokens": 873,
+              "cacheReadTokens": 256
+            },
+            "outputTokens": 130,
+            "outputTokenDetails": {
+              "textTokens": 130
+            },
+            "totalTokens": 1259,
+            "raw": {
+              "prompt_tokens": 1129,
+              "completion_tokens": 130,
+              "total_tokens": 1259,
+              "prompt_tokens_details": {
+                "cached_tokens": 256
+              }
+            },
+            "cachedInputTokens": 256
+          }
+        },
+        {
+          "id": "trim_audio-neutral-1",
+          "intent": "trim_audio",
+          "style": "neutral",
+          "no_answer": false,
+          "request": "extract the section from 0:30 to 1:00 from this audio file",
+          "output": "```bash\nffmpeg -i input.ext -ss 00:00:30 -to 00:01:00 -c copy output.ext\n```\n\nThis extracts the audio section from **30 seconds to 1 minute** and saves it as a new file without re-encoding.",
+          "command": "ffmpeg -i input.ext -ss 00:00:30 -to 00:01:00 -c copy output.ext",
+          "verdict": "good",
+          "nSteps": 3,
+          "nSearches": 2,
+          "searches": [
+            "extract audio segment by time range",
+            "ss (seek) option for audio extraction"
+          ],
+          "usage": {
+            "inputTokens": 2119,
+            "inputTokenDetails": {
+              "noCacheTokens": 1863,
+              "cacheReadTokens": 256
+            },
+            "outputTokens": 66,
+            "outputTokenDetails": {
+              "textTokens": 66
+            },
+            "totalTokens": 2185,
+            "raw": {
+              "prompt_tokens": 2119,
+              "completion_tokens": 66,
+              "total_tokens": 2185,
+              "prompt_tokens_details": {
+                "cached_tokens": 256
+              }
+            },
+            "cachedInputTokens": 256
+          }
+        },
+        {
+          "id": "trim_audio-terse-1",
+          "intent": "trim_audio",
+          "style": "terse",
+          "no_answer": false,
+          "request": "cut 30s-1m of this audio",
+          "output": "```bash\nffmpeg -i input.ext -af \"atrim=start=30:end=60\" -c:a copy output.ext\n```\n\nThis cuts the audio file to keep only the segment from **30 seconds to 1 minute** (60 seconds) without re-encoding.",
+          "command": "ffmpeg -i input.ext -af \"atrim=start=30:end=60\" -c:a copy output.ext",
+          "verdict": "fail",
+          "nSteps": 2,
+          "nSearches": 2,
+          "searches": [
+            "cut audio segment using timestamps",
+            "ffmpeg select start and end time"
+          ],
+          "usage": {
+            "inputTokens": 2138,
+            "inputTokenDetails": {
+              "noCacheTokens": 1882,
+              "cacheReadTokens": 256
+            },
+            "outputTokens": 63,
+            "outputTokenDetails": {
+              "textTokens": 63
+            },
+            "totalTokens": 2201,
+            "raw": {
+              "prompt_tokens": 2138,
+              "completion_tokens": 63,
+              "total_tokens": 2201,
+              "prompt_tokens_details": {
+                "cached_tokens": 256
+              }
+            },
+            "cachedInputTokens": 256
+          }
+        },
+        {
+          "id": "trim_audio-wrong_terms-1",
+          "intent": "trim_audio",
+          "style": "wrong_terms",
+          "no_answer": false,
+          "request": "snip out the part of this sound clip between half a minute and one minute",
+          "output": "```bash\nffmpeg -i input.ext -ss 00:00:30 -to 00:01:00 -c copy output.ext\n```\n\nThis extracts the audio segment from **30 seconds to 1 minute** and saves it as a new file without re-encoding.",
+          "command": "ffmpeg -i input.ext -ss 00:00:30 -to 00:01:00 -c copy output.ext",
+          "verdict": "good",
+          "nSteps": 3,
+          "nSearches": 2,
+          "searches": [
+            "extract audio segment by time range",
+            "trim audio by time range using ffmpeg"
+          ],
+          "usage": {
+            "inputTokens": 2152,
+            "inputTokenDetails": {
+              "noCacheTokens": 872,
+              "cacheReadTokens": 1280
+            },
+            "outputTokens": 66,
+            "outputTokenDetails": {
+              "textTokens": 66
+            },
+            "totalTokens": 2218,
+            "raw": {
+              "prompt_tokens": 2152,
+              "completion_tokens": 66,
+              "total_tokens": 2218,
+              "prompt_tokens_details": {
+                "cached_tokens": 1280
+              }
+            },
+            "cachedInputTokens": 1280
+          }
+        },
+        {
+          "id": "compress_video-neutral-1",
+          "intent": "compress_video",
+          "style": "neutral",
+          "no_answer": false,
+          "request": "compress this video to make it a lot smaller",
+          "output": "```bash\nffmpeg -i input.ext -c:v libx264 -preset fast -crf 28 -c:a aac -b:a 128k -movflags +faststart output.mp4\n```\n\nThis command compresses the video significantly by using the H.264 codec with a balance of speed and compression (`-preset fast`), a moderate quality setting (`-crf 28`), and reduces the audio bitrate to 128 kbps. The `+faststart` flag makes the video seekable while streaming.",
+          "command": "ffmpeg -i input.ext -c:v libx264 -preset fast -crf 28 -c:a aac -b:a 128k -movflags +faststart output.mp4",
+          "verdict": "good",
+          "nSteps": 2,
+          "nSearches": 3,
+          "searches": [
+            "video compression with ffmpeg",
+            "reduce file size with ffmpeg",
+            "libx264 encoder presets for small file size"
+          ],
+          "usage": {
+            "inputTokens": 2901,
+            "inputTokenDetails": {
+              "noCacheTokens": 2645,
+              "cacheReadTokens": 256
+            },
+            "outputTokens": 122,
+            "outputTokenDetails": {
+              "textTokens": 122
+            },
+            "totalTokens": 3023,
+            "raw": {
+              "prompt_tokens": 2901,
+              "completion_tokens": 122,
+              "total_tokens": 3023,
+              "prompt_tokens_details": {
+                "cached_tokens": 256
+              }
+            },
+            "cachedInputTokens": 256
+          }
+        },
+        {
+          "id": "compress_video-verbose-1",
+          "intent": "compress_video",
+          "style": "verbose",
+          "no_answer": false,
+          "request": "this video file is way too big to email, can you shrink it a lot while keeping it watchable",
+          "output": "Here’s a single command to significantly shrink your video while keeping it watchable by reducing resolution, using an efficient codec, and balancing quality and file size:\n\n```bash\nffmpeg -i input.ext -vf \"scale=-2:720\" -c:v libx264 -crf 28 -preset fast -c:a aac -b:a 128k -movflags +faststart output.mp4\n```\n\nThis command:\n- Reduces the video resolution to a maximum height of 720 pixels (width scales proportionally).\n- Encodes the video with H.264 (`libx264`) using a **CRF of 28** (good balance of quality and small file size).\n- Uses the **`fast` preset** for a balance between encoding speed and compression efficiency.\n- Encodes audio to AAC at **128 kbps** for small but decent sound quality.\n- Outputs an MP4 file with **fast start** for quick web playback.",
+          "command": "ffmpeg -i input.ext -vf \"scale=-2:720\" -c:v libx264 -crf 28 -preset fast -c:a aac -b:a 128k -movflags +faststart output.mp4",
+          "verdict": "good",
+          "nSteps": 2,
+          "nSearches": 3,
+          "searches": [
+            "reduce file size while maintaining quality",
+            "ffmpeg lossy compression for video",
+            "libx264 encoder preset and crf"
+          ],
+          "usage": {
+            "inputTokens": 2771,
+            "inputTokenDetails": {
+              "noCacheTokens": 2515,
+              "cacheReadTokens": 256
+            },
+            "outputTokens": 216,
+            "outputTokenDetails": {
+              "textTokens": 216
+            },
+            "totalTokens": 2987,
+            "raw": {
+              "prompt_tokens": 2771,
+              "completion_tokens": 216,
+              "total_tokens": 2987,
+              "prompt_tokens_details": {
+                "cached_tokens": 256
+              }
+            },
+            "cachedInputTokens": 256
+          }
+        },
+        {
+          "id": "compress_video-terse-1",
+          "intent": "compress_video",
+          "style": "terse",
+          "no_answer": false,
+          "request": "shrink this video",
+          "output": "```bash\nffmpeg -i input.ext -vf \"scale=1280:-1\" output.ext\n```\n\nThis shrinks the video to a width of 1280 pixels while maintaining the original aspect ratio. The height is automatically adjusted to fit.",
+          "command": "ffmpeg -i input.ext -vf \"scale=1280:-1\" output.ext",
+          "verdict": "fail",
+          "nSteps": 2,
+          "nSearches": 2,
+          "searches": [
+            "resize video to smaller resolution",
+            "scale filter for video"
+          ],
+          "usage": {
+            "inputTokens": 2165,
+            "inputTokenDetails": {
+              "noCacheTokens": 1909,
+              "cacheReadTokens": 256
+            },
+            "outputTokens": 57,
+            "outputTokenDetails": {
+              "textTokens": 57
+            },
+            "totalTokens": 2222,
+            "raw": {
+              "prompt_tokens": 2165,
+              "completion_tokens": 57,
+              "total_tokens": 2222,
+              "prompt_tokens_details": {
+                "cached_tokens": 256
+              }
+            },
+            "cachedInputTokens": 256
+          }
+        },
+        {
+          "id": "compress_video-typo-1",
+          "intent": "compress_video",
+          "style": "typo",
+          "no_answer": false,
+          "request": "comrpess this video so its much smaler",
+          "output": "Here’s a command to significantly compress a video while maintaining reasonable quality using the **libx264** encoder with **CRF (Constant Rate Factor)** mode, which balances quality and file size:\n\n```bash\nffmpeg -i input.ext -c:v libx264 -crf 28 -preset medium -c:a aac -b:a 128k output.mp4\n```\n\n**What it does:**\nThis command compresses the video into a much smaller file by encoding it with H.264 (a widely compatible format) at a quality setting of **CRF 28** (lower values = better quality, higher = smaller file). The `-preset medium` balances speed and compression efficiency, and the audio is compressed to AAC at 128kbps. The result is a smaller file while keeping good visual quality.",
+          "command": "ffmpeg -i input.ext -c:v libx264 -crf 28 -preset medium -c:a aac -b:a 128k output.mp4",
+          "verdict": "good",
+          "nSteps": 2,
+          "nSearches": 4,
+          "searches": [
+            "video compression with ffmpeg",
+            "reduce file size with ffmpeg",
+            "H.264 encoder for small file size",
+            "CRF and bitrate options"
+          ],
+          "usage": {
+            "inputTokens": 3729,
+            "inputTokenDetails": {
+              "noCacheTokens": 3473,
+              "cacheReadTokens": 256
+            },
+            "outputTokens": 182,
+            "outputTokenDetails": {
+              "textTokens": 182
+            },
+            "totalTokens": 3911,
+            "raw": {
+              "prompt_tokens": 3729,
+              "completion_tokens": 182,
+              "total_tokens": 3911,
+              "prompt_tokens_details": {
+                "cached_tokens": 256
+              }
+            },
+            "cachedInputTokens": 256
+          }
+        },
+        {
+          "id": "compress_video-wrong_terms-1",
+          "intent": "compress_video",
+          "style": "wrong_terms",
+          "no_answer": false,
+          "request": "how can i reduce the size of this video file",
+          "output": "```bash\nffmpeg -i input.ext -c:v libx264 -crf 28 -preset fast -c:a aac -b:a 128k output.mp4\n```\n\nThis command reduces the video file size by re-encoding the video with **libx264** (a balanced quality/size encoder) using a **CRF of 28** (good quality/size tradeoff) and a **fast preset** (faster encoding, slightly larger file than slower presets). The audio is re-encoded to **AAC at 128kbps** for smaller size. Adjust `-crf` (lower = better quality, larger file) or `-preset` (slower = smaller file) as needed.",
+          "command": "ffmpeg -i input.ext -c:v libx264 -crf 28 -preset fast -c:a aac -b:a 128k output.mp4",
+          "verdict": "good",
+          "nSteps": 4,
+          "nSearches": 6,
+          "searches": [
+            "reduce video file size",
+            "ffmpeg video compression",
+            "ffmpeg CRF and bitrate settings",
+            "libx264 CRF and bitrate settings",
+            "ffmpeg reduce file size without re-encoding",
+            "ffmpeg copy streams without re-encoding"
+          ],
+          "usage": {
+            "inputTokens": 5251,
+            "inputTokenDetails": {
+              "noCacheTokens": 4995,
+              "cacheReadTokens": 256
+            },
+            "outputTokens": 163,
+            "outputTokenDetails": {
+              "textTokens": 163
+            },
+            "totalTokens": 5414,
+            "raw": {
+              "prompt_tokens": 5251,
+              "completion_tokens": 163,
+              "total_tokens": 5414,
+              "prompt_tokens_details": {
+                "cached_tokens": 256
+              }
+            },
+            "cachedInputTokens": 256
+          }
+        },
+        {
+          "id": "thumb_video-neutral-1",
+          "intent": "thumb_video",
+          "style": "neutral",
+          "no_answer": false,
+          "request": "extract thumbnails out of this video",
+          "output": "```bash\nffmpeg -i input.ext -vf \"fps=1\" -q:v 2 output_%03d.jpg\n```\n\nExtracts one thumbnail (image) per second from the video as JPEG files named `output_001.jpg`, `output_002.jpg`, etc. Adjust `fps=1` to change how often thumbnails are taken (e.g., `fps=2` for two thumbnails per second). The `-q:v 2` ensures good quality (lower values = better quality).",
+          "command": "ffmpeg -i input.ext -vf \"fps=1\" -q:v 2 output_%03d.jpg",
+          "verdict": "good",
+          "nSteps": 4,
+          "nSearches": 5,
+          "searches": [
+            "extract thumbnails from video",
+            "ffmpeg extract frames as images",
+            "extract thumbnails from video",
+            "ffmpeg extract frames as images",
+            "ffmpeg extract frames at specific timestamps"
+          ],
+          "usage": {
+            "inputTokens": 2354,
+            "inputTokenDetails": {
+              "noCacheTokens": 818,
+              "cacheReadTokens": 1536
+            },
+            "outputTokens": 115,
+            "outputTokenDetails": {
+              "textTokens": 115
+            },
+            "totalTokens": 2469,
+            "raw": {
+              "prompt_tokens": 2354,
+              "completion_tokens": 115,
+              "total_tokens": 2469,
+              "prompt_tokens_details": {
+                "cached_tokens": 1536
+              }
+            },
+            "cachedInputTokens": 1536
+          }
+        },
+        {
+          "id": "thumb_video-verbose-1",
+          "intent": "thumb_video",
+          "style": "verbose",
+          "no_answer": false,
+          "request": "grab a few still images from throughout this video to use as preview thumbnails",
+          "output": "```bash\nffmpeg -i input.ext -vf \"select='not(mod(n\\,5))',scale=640:-1:flags=lanczos,setpts=N/FRAME_RATE/TB\" -vsync vfr -frames:v 10 output_%03d.jpg\n```\n\nExtracts 10 still images from the video, evenly spaced throughout its duration. Adjust the `5` in `mod(n\\,5)` to change how many frames apart the images are taken.",
+          "command": "ffmpeg -i input.ext -vf \"select='not(mod(n\\,5))',scale=640:-1:flags=lanczos,setpts=N/FRAME_RATE/TB\" -vsync vfr -frames:v 10 output_%03d.jpg",
+          "verdict": "pass",
+          "nSteps": 2,
+          "nSearches": 3,
+          "searches": [
+            "extract still images from video at specific times",
+            "ffmpeg select frames using filter",
+            "ffmpeg select frames at regular intervals"
+          ],
+          "usage": {
+            "inputTokens": 2570,
+            "inputTokenDetails": {
+              "noCacheTokens": 2314,
+              "cacheReadTokens": 256
+            },
+            "outputTokens": 106,
+            "outputTokenDetails": {
+              "textTokens": 106
+            },
+            "totalTokens": 2676,
+            "raw": {
+              "prompt_tokens": 2570,
+              "completion_tokens": 106,
+              "total_tokens": 2676,
+              "prompt_tokens_details": {
+                "cached_tokens": 256
+              }
+            },
+            "cachedInputTokens": 256
+          }
+        },
+        {
+          "id": "thumb_video-terse-1",
+          "intent": "thumb_video",
+          "style": "terse",
+          "no_answer": false,
+          "request": "thumbnails from this video",
+          "output": "```bash\nffmpeg -i input.ext -vf \"fps=1,format=yuv420p\" -frames:v 10 output_%03d.png\n```\n\nExtracts 10 evenly spaced thumbnails (frames) from the video and saves them as PNG files named `output_001.png`, `output_002.png`, etc. Adjust the `-frames:v` value to change the number of thumbnails.",
+          "command": "ffmpeg -i input.ext -vf \"fps=1,format=yuv420p\" -frames:v 10 output_%03d.png",
+          "verdict": "good",
+          "nSteps": 4,
+          "nSearches": 3,
+          "searches": [
+            "extract thumbnails from video",
+            "ffmpeg extract thumbnails from video",
+            "ffmpeg select frames at specific times or intervals"
+          ],
+          "usage": {
+            "inputTokens": 2285,
+            "inputTokenDetails": {
+              "noCacheTokens": 2029,
+              "cacheReadTokens": 256
+            },
+            "outputTokens": 96,
+            "outputTokenDetails": {
+              "textTokens": 96
+            },
+            "totalTokens": 2381,
+            "raw": {
+              "prompt_tokens": 2285,
+              "completion_tokens": 96,
+              "total_tokens": 2381,
+              "prompt_tokens_details": {
+                "cached_tokens": 256
+              }
+            },
+            "cachedInputTokens": 256
+          }
+        },
+        {
+          "id": "thumb_video-typo-1",
+          "intent": "thumb_video",
+          "style": "typo",
+          "no_answer": false,
+          "request": "extrac thumbnial from this vid",
+          "output": "```bash\nffmpeg -i input.ext -vf \"select=eq(n\\,5),scale=500:500:force_original_aspect_ratio=decrease,pad=500:500:(ow-iw)/2:(oh-ih)/2\" -vframes 1 output.ext\n```\n\nExtracts the 5th frame (adjust the number as needed) from the video and saves it as a thumbnail image. Replace `5` with the frame number you want. The output is scaled to 500x500 pixels while maintaining the aspect ratio.",
+          "command": "ffmpeg -i input.ext -vf \"select=eq(n\\,5),scale=500:500:force_original_aspect_ratio=decrease,pad=500:500:(ow-iw)/2:(oh-ih)/2\" -vframes 1 output.ext",
+          "verdict": "pass",
+          "nSteps": 3,
+          "nSearches": 2,
+          "searches": [
+            "extract thumbnail from video",
+            "select a specific frame from video"
+          ],
+          "usage": {
+            "inputTokens": 1822,
+            "inputTokenDetails": {
+              "noCacheTokens": 1566,
+              "cacheReadTokens": 256
+            },
+            "outputTokens": 128,
+            "outputTokenDetails": {
+              "textTokens": 128
+            },
+            "totalTokens": 1950,
+            "raw": {
+              "prompt_tokens": 1822,
+              "completion_tokens": 128,
+              "total_tokens": 1950,
+              "prompt_tokens_details": {
+                "cached_tokens": 256
+              }
+            },
+            "cachedInputTokens": 256
+          }
+        },
+        {
+          "id": "mute_video-neutral-1",
+          "intent": "mute_video",
+          "style": "neutral",
+          "no_answer": false,
+          "request": "remove the audio from this video",
+          "output": "```bash\nffmpeg -i input.ext -c:v copy -an output.ext\n```\n\nThis removes the audio from the video while keeping the original video quality intact.",
+          "command": "ffmpeg -i input.ext -c:v copy -an output.ext",
+          "verdict": "good",
+          "nSteps": 3,
+          "nSearches": 2,
+          "searches": [
+            "remove audio from video",
+            "disable or remove audio stream from input file"
+          ],
+          "usage": {
+            "inputTokens": 1783,
+            "inputTokenDetails": {
+              "noCacheTokens": 1527,
+              "cacheReadTokens": 256
+            },
+            "outputTokens": 35,
+            "outputTokenDetails": {
+              "textTokens": 35
+            },
+            "totalTokens": 1818,
+            "raw": {
+              "prompt_tokens": 1783,
+              "completion_tokens": 35,
+              "total_tokens": 1818,
+              "prompt_tokens_details": {
+                "cached_tokens": 256
+              }
+            },
+            "cachedInputTokens": 256
+          }
+        },
+        {
+          "id": "mute_video-terse-1",
+          "intent": "mute_video",
+          "style": "terse",
+          "no_answer": false,
+          "request": "mute this clip",
+          "output": "```bash\nffmpeg -i input.ext -af \"volume=0.0001\" -c:v copy output.ext\n```\n\nThis command mutes the audio in the clip while keeping the video unchanged.",
+          "command": "ffmpeg -i input.ext -af \"volume=0.0001\" -c:v copy output.ext",
+          "verdict": "fail",
+          "nSteps": 3,
+          "nSearches": 2,
+          "searches": [
+            "mute audio in ffmpeg",
+            "how to mute audio in ffmpeg using volume filter"
+          ],
+          "usage": {
+            "inputTokens": 1865,
+            "inputTokenDetails": {
+              "noCacheTokens": 1609,
+              "cacheReadTokens": 256
+            },
+            "outputTokens": 45,
+            "outputTokenDetails": {
+              "textTokens": 45
+            },
+            "totalTokens": 1910,
+            "raw": {
+              "prompt_tokens": 1865,
+              "completion_tokens": 45,
+              "total_tokens": 1910,
+              "prompt_tokens_details": {
+                "cached_tokens": 256
+              }
+            },
+            "cachedInputTokens": 256
+          }
+        },
+        {
+          "id": "mute_video-wrong_terms-1",
+          "intent": "mute_video",
+          "style": "wrong_terms",
+          "no_answer": false,
+          "request": "take the sound off this video",
+          "output": "```bash\nffmpeg -i input.ext -c:v copy -an output.ext\n```\n\nThis command removes the audio from the video while keeping the video stream unchanged.",
+          "command": "ffmpeg -i input.ext -c:v copy -an output.ext",
+          "verdict": "good",
+          "nSteps": 5,
+          "nSearches": 4,
+          "searches": [
+            "remove audio from video",
+            "remove audio track from video",
+            "copy video stream without audio",
+            "ffmpeg map only video stream to output"
+          ],
+          "usage": {
+            "inputTokens": 3192,
+            "inputTokenDetails": {
+              "noCacheTokens": 2872,
+              "cacheReadTokens": 320
+            },
+            "outputTokens": 35,
+            "outputTokenDetails": {
+              "textTokens": 35
+            },
+            "totalTokens": 3227,
+            "raw": {
+              "prompt_tokens": 3192,
+              "completion_tokens": 35,
+              "total_tokens": 3227,
+              "prompt_tokens_details": {
+                "cached_tokens": 320
+              }
+            },
+            "cachedInputTokens": 320
+          }
+        },
+        {
+          "id": "to_mp4-neutral-1",
+          "intent": "to_mp4",
+          "style": "neutral",
+          "no_answer": false,
+          "request": "convert this video to mp4 so it plays everywhere",
+          "output": "```bash\nffmpeg -i input.ext -c:v libx264 -crf 23 -preset medium -c:a aac -b:a 192k -movflags +faststart output.mp4\n```\n\nThis command converts the video to an MP4 file using the H.264 codec (widely compatible) and AAC audio, ensuring it plays on most devices. The `-crf 23` flag balances quality and file size, and `-movflags +faststart` enables streaming.",
+          "command": "ffmpeg -i input.ext -c:v libx264 -crf 23 -preset medium -c:a aac -b:a 192k -movflags +faststart output.mp4",
+          "verdict": "good",
+          "nSteps": 3,
+          "nSearches": 2,
+          "searches": [
+            "convert video to mp4 compatible with most devices",
+            "convert video to mp4 with h264 and aac for broad compatibility"
+          ],
+          "usage": {
+            "inputTokens": 2120,
+            "inputTokenDetails": {
+              "noCacheTokens": 1864,
+              "cacheReadTokens": 256
+            },
+            "outputTokens": 113,
+            "outputTokenDetails": {
+              "textTokens": 113
+            },
+            "totalTokens": 2233,
+            "raw": {
+              "prompt_tokens": 2120,
+              "completion_tokens": 113,
+              "total_tokens": 2233,
+              "prompt_tokens_details": {
+                "cached_tokens": 256
+              }
+            },
+            "cachedInputTokens": 256
+          }
+        },
+        {
+          "id": "to_mp4-verbose-1",
+          "intent": "to_mp4",
+          "style": "verbose",
+          "no_answer": false,
+          "request": "this video won't play on my phone, can you convert it into a standard mp4 that works on anything",
+          "output": "```bash\nffmpeg -i input.ext -c:v libx264 -preset medium -crf 23 -c:a aac -b:a 192k -movflags +faststart output.mp4\n```\n\nThis command converts the video to a widely compatible MP4 file using the H.264 video codec and AAC audio, ensuring it will play on most phones and devices. The `-movflags +faststart` option enables streaming support for quicker playback.",
+          "command": "ffmpeg -i input.ext -c:v libx264 -preset medium -crf 23 -c:a aac -b:a 192k -movflags +faststart output.mp4",
+          "verdict": "good",
+          "nSteps": 2,
+          "nSearches": 3,
+          "searches": [
+            "convert video to standard mp4 compatible with most devices",
+            "H.264 encoder for mp4",
+            "AAC audio encoder for mp4"
+          ],
+          "usage": {
+            "inputTokens": 2852,
+            "inputTokenDetails": {
+              "noCacheTokens": 2596,
+              "cacheReadTokens": 256
+            },
+            "outputTokens": 104,
+            "outputTokenDetails": {
+              "textTokens": 104
+            },
+            "totalTokens": 2956,
+            "raw": {
+              "prompt_tokens": 2852,
+              "completion_tokens": 104,
+              "total_tokens": 2956,
+              "prompt_tokens_details": {
+                "cached_tokens": 256
+              }
+            },
+            "cachedInputTokens": 256
+          }
+        },
+        {
+          "id": "to_mp4-typo-1",
+          "intent": "to_mp4",
+          "style": "typo",
+          "no_answer": false,
+          "request": "convert to mp4 plz it wont paly",
+          "output": "```bash\nffmpeg -i input.ext -c:v copy -c:a aac -strict experimental output.mp4\n```\n\nThis command copies the video stream without re-encoding and converts the audio to AAC format to ensure compatibility, creating a playable MP4 file. If the original file has no audio, it will skip that step.",
+          "command": "ffmpeg -i input.ext -c:v copy -c:a aac -strict experimental output.mp4",
+          "verdict": "good",
+          "nSteps": 2,
+          "nSearches": 2,
+          "searches": [
+            "convert any format to mp4",
+            "ffmpeg automatic format detection and remuxing"
+          ],
+          "usage": {
+            "inputTokens": 2172,
+            "inputTokenDetails": {
+              "noCacheTokens": 1852,
+              "cacheReadTokens": 320
+            },
+            "outputTokens": 71,
+            "outputTokenDetails": {
+              "textTokens": 71
+            },
+            "totalTokens": 2243,
+            "raw": {
+              "prompt_tokens": 2172,
+              "completion_tokens": 71,
+              "total_tokens": 2243,
+              "prompt_tokens_details": {
+                "cached_tokens": 320
+              }
+            },
+            "cachedInputTokens": 320
+          }
+        },
+        {
+          "id": "speed_video-neutral-1",
+          "intent": "speed_video",
+          "style": "neutral",
+          "no_answer": false,
+          "request": "make this video play in slow motion",
+          "output": "```bash\nffmpeg -i input.ext -vf \"setpts=2.0*PTS\" -af \"atempo=0.5\" -c:v libx264 -crf 23 -preset medium -c:a aac -b:a 192k output.ext\n```\n\nThis command slows down the video to half its original speed (2x slow motion) while also slowing down the audio to match. Adjust the `2.0` and `0.5` values to change the slow-motion effect.",
+          "command": "ffmpeg -i input.ext -vf \"setpts=2.0*PTS\" -af \"atempo=0.5\" -c:v libx264 -crf 23 -preset medium -c:a aac -b:a 192k output.ext",
+          "verdict": "good",
+          "nSteps": 2,
+          "nSearches": 2,
+          "searches": [
+            "slow motion video filter",
+            "setpts filter for slow motion"
+          ],
+          "usage": {
+            "inputTokens": 1933,
+            "inputTokenDetails": {
+              "noCacheTokens": 1677,
+              "cacheReadTokens": 256
+            },
+            "outputTokens": 117,
+            "outputTokenDetails": {
+              "textTokens": 117
+            },
+            "totalTokens": 2050,
+            "raw": {
+              "prompt_tokens": 1933,
+              "completion_tokens": 117,
+              "total_tokens": 2050,
+              "prompt_tokens_details": {
+                "cached_tokens": 256
+              }
+            },
+            "cachedInputTokens": 256
+          }
+        },
+        {
+          "id": "speed_video-terse-1",
+          "intent": "speed_video",
+          "style": "terse",
+          "no_answer": false,
+          "request": "2x speed this",
+          "output": "```bash\nffmpeg -i input.ext -filter:a \"atempo=2.0\" -filter:v \"setpts=0.5*PTS\" output.ext\n```\n\nThis command doubles the speed of both the audio and video in the file.",
+          "command": "ffmpeg -i input.ext -filter:a \"atempo=2.0\" -filter:v \"setpts=0.5*PTS\" output.ext",
+          "verdict": "good",
+          "nSteps": 2,
+          "nSearches": 2,
+          "searches": [
+            "change playback speed",
+            "atempo filter"
+          ],
+          "usage": {
+            "inputTokens": 1653,
+            "inputTokenDetails": {
+              "noCacheTokens": 1333,
+              "cacheReadTokens": 320
+            },
+            "outputTokens": 53,
+            "outputTokenDetails": {
+              "textTokens": 53
+            },
+            "totalTokens": 1706,
+            "raw": {
+              "prompt_tokens": 1653,
+              "completion_tokens": 53,
+              "total_tokens": 1706,
+              "prompt_tokens_details": {
+                "cached_tokens": 320
+              }
+            },
+            "cachedInputTokens": 320
+          }
+        },
+        {
+          "id": "speed_video-wrong_terms-1",
+          "intent": "speed_video",
+          "style": "wrong_terms",
+          "no_answer": false,
+          "request": "make this clip go in fast forward",
+          "output": "```bash\nffmpeg -i input.ext -vf \"setpts=0.5*PTS\" -af \"asetrate=44100*0.5\" -c:v libx264 -crf 23 -preset fast -c:a aac -b:a 192k output.ext\n```\n\nThis command speeds up the video and audio to half their original speed (2x fast forward). Adjust the `0.5` values to control the speed (e.g., `0.75` for 1.33x speed).",
+          "command": "ffmpeg -i input.ext -vf \"setpts=0.5*PTS\" -af \"asetrate=44100*0.5\" -c:v libx264 -crf 23 -preset fast -c:a aac -b:a 192k output.ext",
+          "verdict": "good",
+          "nSteps": 3,
+          "nSearches": 3,
+          "searches": [
+            "speed up video with ffmpeg",
+            "set playback rate filter",
+            "set playback speed with setpts filter"
+          ],
+          "usage": {
+            "inputTokens": 2253,
+            "inputTokenDetails": {
+              "noCacheTokens": 1933,
+              "cacheReadTokens": 320
+            },
+            "outputTokens": 125,
+            "outputTokenDetails": {
+              "textTokens": 125
+            },
+            "totalTokens": 2378,
+            "raw": {
+              "prompt_tokens": 2253,
+              "completion_tokens": 125,
+              "total_tokens": 2378,
+              "prompt_tokens_details": {
+                "cached_tokens": 320
+              }
+            },
+            "cachedInputTokens": 320
+          }
+        },
+        {
+          "id": "thumb_image-neutral-1",
+          "intent": "thumb_image",
+          "style": "neutral",
+          "no_answer": false,
+          "request": "make a small thumbnail version of this photo",
+          "output": "```bash\nffmpeg -i input.ext -vf \"scale=320:240\" -frames:v 1 output.ext\n```\n\nThis creates a small thumbnail-sized version (320x240 pixels) of the photo.",
+          "command": "ffmpeg -i input.ext -vf \"scale=320:240\" -frames:v 1 output.ext",
+          "verdict": "good",
+          "nSteps": 2,
+          "nSearches": 2,
+          "searches": [
+            "resize image to smaller thumbnail",
+            "scale filter for images"
+          ],
+          "usage": {
+            "inputTokens": 1999,
+            "inputTokenDetails": {
+              "noCacheTokens": 1679,
+              "cacheReadTokens": 320
+            },
+            "outputTokens": 54,
+            "outputTokenDetails": {
+              "textTokens": 54
+            },
+            "totalTokens": 2053,
+            "raw": {
+              "prompt_tokens": 1999,
+              "completion_tokens": 54,
+              "total_tokens": 2053,
+              "prompt_tokens_details": {
+                "cached_tokens": 320
+              }
+            },
+            "cachedInputTokens": 320
+          }
+        },
+        {
+          "id": "thumb_image-wrong_terms-1",
+          "intent": "thumb_image",
+          "style": "wrong_terms",
+          "no_answer": false,
+          "request": "extract thumbnails out of this image",
+          "output": "This request is out of scope for ffmpeg. FFmpeg cannot extract thumbnails from an *image* because an image is not a media file containing frames or time-based data. If you meant to extract thumbnails from a **video file**, let me know!",
+          "command": "This request is out of scope for ffmpeg. FFmpeg cannot extract thumbnails from an *image* because an image is not a media file containing frames or time-based data. If you meant to extract thumbnails from a **video file**, let me know!",
+          "verdict": "fail",
+          "nSteps": 1,
+          "nSearches": 0,
+          "searches": [],
+          "usage": {
+            "inputTokens": 313,
+            "inputTokenDetails": {
+              "noCacheTokens": 57,
+              "cacheReadTokens": 256
+            },
+            "outputTokens": 54,
+            "outputTokenDetails": {
+              "textTokens": 54
+            },
+            "totalTokens": 367,
+            "raw": {
+              "prompt_tokens": 313,
+              "completion_tokens": 54,
+              "total_tokens": 367,
+              "prompt_tokens_details": {
+                "cached_tokens": 256
+              }
+            },
+            "cachedInputTokens": 256
+          }
+        },
+        {
+          "id": "theme-neutral-1",
+          "intent": "theme",
+          "style": "neutral",
+          "no_answer": true,
+          "request": "analyze this video to extract the theme",
+          "output": "This request is out of scope for ffmpeg. FFmpeg is a tool for processing media files (cutting, converting formats, adjusting audio/video streams, etc.), but it cannot analyze or understand the *content* or *theme* of a video. For that, you would need specialized tools like machine learning models or dedicated video analysis software.",
+          "command": "",
+          "verdict": "abstain_ok",
+          "nSteps": 1,
+          "nSearches": 0,
+          "searches": [],
+          "usage": {
+            "inputTokens": 314,
+            "inputTokenDetails": {
+              "noCacheTokens": 58,
+              "cacheReadTokens": 256
+            },
+            "outputTokens": 70,
+            "outputTokenDetails": {
+              "textTokens": 70
+            },
+            "totalTokens": 384,
+            "raw": {
+              "prompt_tokens": 314,
+              "completion_tokens": 70,
+              "total_tokens": 384,
+              "prompt_tokens_details": {
+                "cached_tokens": 256
+              }
+            },
+            "cachedInputTokens": 256
+          }
+        },
+        {
+          "id": "theme-verbose-1",
+          "intent": "theme",
+          "style": "verbose",
+          "no_answer": true,
+          "request": "watch this video and tell me what the overall theme and mood is",
+          "output": "This request is out of scope for ffmpeg. FFmpeg is a tool for processing media files (e.g., cutting, converting formats, adjusting audio/video quality), but it cannot analyze or interpret the *content*, *theme*, or *mood* of a video. For that, you would need specialized AI tools or human analysis.",
+          "command": "",
+          "verdict": "abstain_ok",
+          "nSteps": 1,
+          "nSearches": 0,
+          "searches": [],
+          "usage": {
+            "inputTokens": 319,
+            "inputTokenDetails": {
+              "noCacheTokens": 63,
+              "cacheReadTokens": 256
+            },
+            "outputTokens": 69,
+            "outputTokenDetails": {
+              "textTokens": 69
+            },
+            "totalTokens": 388,
+            "raw": {
+              "prompt_tokens": 319,
+              "completion_tokens": 69,
+              "total_tokens": 388,
+              "prompt_tokens_details": {
+                "cached_tokens": 256
+              }
+            },
+            "cachedInputTokens": 256
+          }
+        },
+        {
+          "id": "summarize-neutral-1",
+          "intent": "summarize",
+          "style": "neutral",
+          "no_answer": true,
+          "request": "summarize what happens in this video",
+          "output": "This is out of scope for ffmpeg. FFmpeg is a tool for processing media files (cutting, converting formats, changing quality, etc.), but it cannot analyze or summarize the *content* of a video (e.g., what happens in it). For that, you would need specialized AI tools or video analysis software.",
+          "command": "",
+          "verdict": "abstain_ok",
+          "nSteps": 1,
+          "nSearches": 0,
+          "searches": [],
+          "usage": {
+            "inputTokens": 314,
+            "inputTokenDetails": {
+              "noCacheTokens": 58,
+              "cacheReadTokens": 256
+            },
+            "outputTokens": 67,
+            "outputTokenDetails": {
+              "textTokens": 67
+            },
+            "totalTokens": 381,
+            "raw": {
+              "prompt_tokens": 314,
+              "completion_tokens": 67,
+              "total_tokens": 381,
+              "prompt_tokens_details": {
+                "cached_tokens": 256
+              }
+            },
+            "cachedInputTokens": 256
+          }
+        }
+      ]
     }
   }
 }

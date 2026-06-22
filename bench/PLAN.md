@@ -201,6 +201,13 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done
 
 ## Run log (newest first)
 
+- 2026-06-22 — **+ ministral-14b.** Added 14b to the gen matrix: **89% correct in
+  BOTH rag and tool** (33/37), abstain 3/3. Key: at 14b the tool path no longer
+  hurts (it used **2.5 searches/query** vs 1.2–1.5 for 3b/8b and self-corrected
+  cleanly) — so "static RAG > tool" was a *small-model* effect, not a general one.
+  Size ladder (rag correct): 3b 76% → 8b 86% → 14b 89% (diminishing returns past
+  8b; 8b still the value pick). 14b fixed trim_audio-terse + thumb_video-verbose.
+
 - 2026-06-22 — **Generation experiment (gen/).** Wired ministral-3b / ministral-8b
   via the Vercel AI SDK against our retrieval (bge+bm25 RRF, all-glued macro), two
   ways: `mode=rag` (top-k=8 stuffed once) vs `mode=tool` (model drives a

@@ -43,18 +43,33 @@ fs.mkdirSync(outDir, { recursive: true });
 for (const [name, id] of PICKS) {
   const q = byId[id];
   const docs = await retriever.search(q.text, K);
-  const userMsg = `User request: "${q.text}"\n\nRelevant ffmpeg documentation:\n\n${fmtDocs(docs)}\n\nNow give the single ffmpeg command.`;
-  const blob =
+
+  // RAG version: system + raw request + retrieved docs
+  const ragUser = `User request: "${q.text}"\n\nRelevant ffmpeg documentation:\n\n${fmtDocs(docs)}\n\nNow give the single ffmpeg command.`;
+  const ragBlob =
 `# Paste everything below into the chat. (System instructions first, then the request + retrieved docs.)
-# Query id: ${id}  |  intent: ${q.intent}  |  retrieved k=${K} (bge-small + BM25 RRF, all-glued corpus)
+# Query id: ${id}  |  intent: ${q.intent}  |  RAG, retrieved k=${K} (bge-small + BM25 RRF, all-glued)
 # Doc sections retrieved: ${docs.map((d) => d.anchor).join(", ")}
 # ============================================================================
 
 ${SYSTEM}
 
-${userMsg}
+${ragUser}
 `;
-  const file = path.join(outDir, `${name}.txt`);
-  fs.writeFileSync(file, blob);
-  console.log(`wrote ${file}  (${blob.length} chars, ${docs.length} docs)`);
+  fs.writeFileSync(path.join(outDir, `${name}.txt`), ragBlob);
+
+  // NO-RAG control: system + raw request only (no docs) — does the model already know?
+  const noragUser = `User request: "${q.text}"\n\nNow give the single ffmpeg command.`;
+  const noragBlob =
+`# Paste everything below into the chat. (System instructions first, then the request — NO docs.)
+# Query id: ${id}  |  intent: ${q.intent}  |  NO-RAG control (model's own knowledge only)
+# ============================================================================
+
+${SYSTEM}
+
+${noragUser}
+`;
+  fs.writeFileSync(path.join(outDir, `${name}_norag.txt`), noragBlob);
+
+  console.log(`wrote ${name}.txt (rag, ${docs.length} docs) + ${name}_norag.txt (control)`);
 }

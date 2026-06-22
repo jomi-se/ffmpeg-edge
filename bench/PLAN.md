@@ -201,6 +201,21 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done
 
 ## Run log (newest first)
 
+- 2026-06-22 — **CONTROL: Gemini Flash Lite WITHOUT rag (no docs).** Same 4 prompts,
+  docs removed. **3/4 byte-identical to the RAG outputs** (gif, to_mp4, slowmo) — the
+  capable model already knows ffmpeg for common tasks; RAG added nothing. **The
+  compress case FLIPPED: no-RAG was BETTER.** With junk RAG docs it answered
+  `scale=iw/2:ih/2` (fail); with no docs it answered `libx265 -crf 28` (correct).
+  ⇒ **Bad retrieval is worse than no retrieval** — junk context pulled a capable
+  model away from the right answer it already had. Implications: (1) RAG's value is
+  concentrated in SMALL/local models (which we're removing); for a capable BYO model,
+  common conversions need no RAG. (2) If we feed docs to a capable model, gate on
+  relevance — inject nothing rather than junk (a relevance threshold would have saved
+  compress). (3) Shifts pivot value toward recipes UI + ffmpeg.wasm, with "paste into
+  your own AI" as a light helper. CAVEAT: 1 model × 4 EASY tasks. Open follow-up: test
+  OBSCURE ops the model likely doesn't know — the only place RAG could still pay for
+  a big model. Prompts: gen/build_manual_prompts.mjs now emits *_norag.txt controls.
+
 - 2026-06-22 — **Anecdote: RAG prompts pasted into Gemini Flash Lite (BYO-model
   path).** Hand-tested 4 RAG-injected prompts (gen/build_manual_prompts.mjs, k=8)
   in **Gemini Flash Lite** (Google's cheapest tier). 3/4 correct AND higher quality

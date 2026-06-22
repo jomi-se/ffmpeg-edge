@@ -201,6 +201,22 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done
 
 ## Run log (newest first)
 
+- 2026-06-22 — **🔑 BIG ONE: NORAG control on our OWN models — RAG was HURTING them.**
+  We had never tested the local models without docs (every run injected them). Added
+  `--mode norag` (system + raw request, no docs, no tool). Result: **3b norag 86% vs
+  rag 70% (−16 from docs!), 8b 92% vs 89%, 14b 92% vs 92%.** The ministral models
+  already know common ffmpeg; injecting docs is neutral (14b) to actively harmful
+  (3b −16, can't separate good pages from junk). Per-intent (8b): docs helped only
+  thumb_image (+1) and HURT trim_audio (3/3→1/3); everything else tied. **Across the
+  FULL scoreboard, NORAG is best-or-tied for every model** (3b 86 beats rag/tool/
+  hybrid; 8b/14b 92 tied-best). ⇒ For common tasks the winning architecture is the
+  SIMPLEST: just ask the model — no retrieval, no tools, no hybrid. Overturns the
+  side-quest premise ("models need docs"). Matches the Gemini Flash Lite control
+  exactly. Pivot implication: "describe → paste into your AI" likely needs no RAG for
+  everyday conversions; app value = recipes + ffmpeg.wasm. CAVEAT/last stand for RAG:
+  only COMMON ops tested; obscure long-tail ops (sidechaincompress, xfade, drawtext
+  timecodes, silenceremove…) are the one place docs could still beat memory — untested.
+
 - 2026-06-22 — **CONTROL: Gemini Flash Lite WITHOUT rag (no docs).** Same 4 prompts,
   docs removed. **3/4 byte-identical to the RAG outputs** (gif, to_mp4, slowmo) — the
   capable model already knows ffmpeg for common tasks; RAG added nothing. **The

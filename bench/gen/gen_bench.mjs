@@ -47,7 +47,7 @@ const limit = arg("limit", null);
 const variant = arg("variant", "v1"); // v1=base prompt, v2/v3=coached tool prompt
 const tag = arg("tag", null);         // optional run-key suffix (e.g. k-sweep: k5)
 if (!MODELS[modelKey]) throw new Error(`unknown model ${modelKey}; have ${Object.keys(MODELS)}`);
-if (!["rag", "tool", "hybrid"].includes(mode)) throw new Error(`mode must be rag|tool|hybrid`);
+if (!["rag", "tool", "hybrid", "norag"].includes(mode)) throw new Error(`mode must be rag|tool|hybrid|norag`);
 
 const mistral = createMistral({ apiKey: process.env.MISTRAL_API_KEY });
 const model = mistral(MODELS[modelKey]);
@@ -136,8 +136,8 @@ Rules:
   scope for ffmpeg and stop.`;
 
 const TOOL_PROMPTS = { v2: SYSTEM_TOOL_V2, v3: SYSTEM_TOOL_V3 };
-// tool + hybrid both expose the search tool, so both use the coached prompt.
-const systemFor = () => (mode !== "rag" && TOOL_PROMPTS[variant]) || SYSTEM;
+// Only tool + hybrid expose the search tool, so only they use the coached prompt.
+const systemFor = () => ((mode === "tool" || mode === "hybrid") && TOOL_PROMPTS[variant]) || SYSTEM;
 
 const fmtDocs = (docs) =>
   docs.map((d, i) => `### Doc ${i + 1}: ${d.path}\n${d.text}`).join("\n\n");
@@ -193,7 +193,13 @@ async function callWithRetry(opts, tries = 6) {
 async function runOne(q) {
   const localLog = [];
   let result, retrievedPaths = [];
-  if (mode === "rag") {
+  if (mode === "norag") {
+    // Control: the model's own knowledge only — no docs, no tool.
+    result = await callWithRetry({
+      model, system: systemFor(), temperature: 0,
+      prompt: `User request: "${q.text}"\n\nNow give the single ffmpeg command.`,
+    });
+  } else if (mode === "rag") {
     const docs = await retriever.search(q.text, K);
     retrievedPaths = docs.map((d) => d.path);
     result = await callWithRetry({

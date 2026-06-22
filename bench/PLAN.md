@@ -201,6 +201,21 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done
 
 ## Run log (newest first)
 
+- 2026-06-22 — **Why does RAG win? k-sweep + hybrid (raw-first + refine).** Two
+  hypotheses for RAG > tool: (H2) RAG just feeds more chunks; (H1) searching with
+  the user's RAW words beats the model's paraphrased queries. **H2 rejected** —
+  RAG saturates at k=5: 8b k3/5/8/12 = 81/92/89/89, 14b = 84/89/92/89 (flat plateau
+  from k=5; quantity isn't the lever, recall is the ceiling). **H1 supported** via
+  new `hybrid` mode (seed with raw-prompt retrieval like RAG, THEN give the tool to
+  refine): 8b hybrid = 89% with only 0.35 extra searches (8/37) — i.e. seeded with
+  the raw-prompt docs it stops searching and matches RAG; refining adds nothing.
+  14b hybrid = 81% but with 3.68 extra searches (34/37!) — it can't stop searching
+  even holding the right docs, and that DROPS it below RAG (92) and pure tool-v3 (89).
+  **Conclusion: RAG wins because raw-prompt retrieval is a better query than model
+  paraphrase; the model's contribution to retrieval is neutral (8b) to negative
+  (14b over-searches).** Cost seals it: RAG k=5 ~1.7k tok/q vs 14b hybrid ~14.8k (9x).
+  Product call stands: **RAG (raw prompt, k=5-8), no agentic retrieval.**
+
 - 2026-06-22 — **Prompt v3 (lighter coaching) + rate-limit hardening.** User
   rewrote the coached prompt: kept the doc taxonomy + decomposition hint, DROPPED
   the prescriptive rules (2-4 searches / don't-repeat / technical-not-casual).

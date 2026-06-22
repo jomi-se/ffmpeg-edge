@@ -44,9 +44,10 @@ const mode = arg("mode", "rag");
 const K = +arg("k", 8);
 const STEPS = +arg("steps", 5);
 const limit = arg("limit", null);
-const variant = arg("variant", "v1"); // v1=base prompt, v2=coached tool prompt
+const variant = arg("variant", "v1"); // v1=base prompt, v2/v3=coached tool prompt
+const tag = arg("tag", null);         // optional run-key suffix (e.g. k-sweep: k5)
 if (!MODELS[modelKey]) throw new Error(`unknown model ${modelKey}; have ${Object.keys(MODELS)}`);
-if (!["rag", "tool"].includes(mode)) throw new Error(`mode must be rag|tool`);
+if (!["rag", "tool", "hybrid"].includes(mode)) throw new Error(`mode must be rag|tool|hybrid`);
 
 const mistral = createMistral({ apiKey: process.env.MISTRAL_API_KEY });
 const model = mistral(MODELS[modelKey]);
@@ -135,7 +136,8 @@ Rules:
   scope for ffmpeg and stop.`;
 
 const TOOL_PROMPTS = { v2: SYSTEM_TOOL_V2, v3: SYSTEM_TOOL_V3 };
-const systemFor = () => (mode === "tool" && TOOL_PROMPTS[variant]) || SYSTEM;
+// tool + hybrid both expose the search tool, so both use the coached prompt.
+const systemFor = () => (mode !== "rag" && TOOL_PROMPTS[variant]) || SYSTEM;
 
 const fmtDocs = (docs) =>
   docs.map((d, i) => `### Doc ${i + 1}: ${d.path}\n${d.text}`).join("\n\n");
@@ -198,6 +200,18 @@ async function runOne(q) {
       model, system: systemFor(), temperature: 0,
       prompt: `User request: "${q.text}"\n\nRelevant ffmpeg documentation:\n\n${fmtDocs(docs)}\n\nNow give the single ffmpeg command.`,
     });
+  } else if (mode === "hybrid") {
+    // Seed with the raw-prompt retrieval (like RAG), then let the model search
+    // again only if it needs options not covered. Tests "raw-prompt-first + refine".
+    const docs = await retriever.search(q.text, K);
+    const seedPaths = docs.map((d) => d.path);
+    result = await callWithRetry({
+      model, system: systemFor(), temperature: 0,
+      tools: { search_ffmpeg_docs: makeSearchTool(localLog) },
+      stopWhen: stepCountIs(STEPS),
+      prompt: `User request: "${q.text}"\n\nDocumentation sections retrieved for this request:\n\n${fmtDocs(docs)}\n\nIf these cover what you need, give the command. If you need other flags/encoders/filters not shown here, use the search tool first, then give the single ffmpeg command.`,
+    });
+    retrievedPaths = [...seedPaths, ...localLog];
   } else {
     result = await callWithRetry({
       model, system: systemFor(), temperature: 0,
@@ -214,8 +228,9 @@ async function runOne(q) {
     id: q.id, intent: q.intent, style: q.style, no_answer: !!q.no_answer,
     request: q.text, output: result.text, command: g.command, verdict: g.verdict,
     nSteps: result.steps?.length ?? 1,
-    nSearches: mode === "tool" ? localLog.length : 1,
-    searches: mode === "tool" ? [...localLog] : retrievedPaths,
+    // for hybrid, nSearches = EXTRA searches beyond the seed (the key signal)
+    nSearches: mode === "rag" ? 1 : localLog.length,
+    searches: mode === "rag" ? retrievedPaths : [...localLog],
     tokensIn: tu?.inputTokens ?? null, tokensOut: tu?.outputTokens ?? null,
     tokensTotal: tu?.totalTokens ?? null,
   };
@@ -259,6 +274,7 @@ console.log(`correct command: ${correct}/${real.length} (${pct(correct, real.len
 console.log(`abstained on no-answer: ${abstained}/${noAns.length}`);
 const avgS = real.reduce((a, r) => a + (r.nSearches || 0), 0) / Math.max(1, real.length);
 if (mode === "tool") console.log(`avg searches/query: ${avgS.toFixed(2)}`);
+if (mode === "hybrid") console.log(`avg EXTRA searches/query (beyond seed): ${avgS.toFixed(2)}  (${real.filter((r) => r.nSearches > 0).length}/${real.length} queries searched again)`);
 console.log(`tokens: total=${tokTot}  in=${tokIn}  out=${tokOut}  (~${tokens.perQuery}/query)`);
 
 // per-style
@@ -272,7 +288,9 @@ for (const s of styles) {
 // merge into results.json
 const outPath = path.join(HERE, "results.json");
 const all = fs.existsSync(outPath) ? JSON.parse(fs.readFileSync(outPath, "utf8")) : { runs: {} };
-const runKey = variant === "v1" ? `${modelKey}__${mode}` : `${modelKey}__${mode}__${variant}`;
+let runKey = `${modelKey}__${mode}`;
+if (mode !== "rag" && variant !== "v1") runKey += `__${variant}`;
+if (tag) runKey += `__${tag}`;
 all.runs[runKey] = {
   model: modelKey, modelId: MODELS[modelKey], mode, variant, k: K, steps: STEPS,
   updated: new Date().toISOString(),

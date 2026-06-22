@@ -21,3 +21,6 @@ node_modules/
 package-lock.json
 results/report_preview.png
 results/*.png
+
+# Generation-experiment run log (regenerable; transcripts live in gen/results.json)
+gen/run.log

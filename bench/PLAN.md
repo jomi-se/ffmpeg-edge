@@ -201,6 +201,21 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done
 
 ## Run log (newest first)
 
+- 2026-06-22 — **Generation experiment (gen/).** Wired ministral-3b / ministral-8b
+  via the Vercel AI SDK against our retrieval (bge+bm25 RRF, all-glued macro), two
+  ways: `mode=rag` (top-k=8 stuffed once) vs `mode=tool` (model drives a
+  `search_ffmpeg_docs` tool, ≤5 steps). 40 queries, temp 0, auto-graded by a
+  per-intent flag rubric (`gen/rubric.mjs`) + saved transcripts (`gen/results.json`).
+  **Correct-command rate: 3b/rag 76%, 8b/rag 86%, 3b/tool 73%, 8b/tool 81%.**
+  No-answer abstention near-perfect (mostly 3/3). Findings: (1) **static RAG ≥ tool**
+  for these — the tool path gave the small 3b room to wander (gif 2/5→0/5 with odd
+  filtergraphs) and averaged only 1.2–1.5 searches; (2) 8b > 3b on hard phrasings
+  (wrong_terms 7/8 vs 4/8 in rag); (3) failures cluster on `wrong_terms`/`terse`,
+  same leak buckets as retrieval. **Rubric caveat:** undercounts valid `atrim=`
+  (trim) and `volume=0` (mute) — real correctness a few points higher. Verdict:
+  for one-shot command generation, static RAG + 8b is the sweet spot; tool-calling
+  did not pay for its extra calls at this model size. Next: user's call.
+
 - 2026-06-22 — **Label fix + INT8.** Fixed to_mp4 target (demuxer→muxer): to_mp4
   0.00→1.00 (bm25/hybrid; bge-solo still 0.00 — BM25 carries it), lifting the
   leader bge+bm25 to **0.49/0.78** and confirming BM25 is NOT redundant. INT8:

@@ -4,6 +4,9 @@
   "type": "module",
   "description": "Edge RAG retrieval benchmark — Node + transformers.js (build == browser runtime).",
   "dependencies": {
-    "@huggingface/transformers": "^3.3.0"
+    "@ai-sdk/mistral": "^3.0.40",
+    "@huggingface/transformers": "^3.3.0",
+    "ai": "^6.0.208",
+    "dotenv": "^17.4.2"
   }
 }

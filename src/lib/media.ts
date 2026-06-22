@@ -65,7 +65,7 @@ export async function getMediaElementMetadata(
   const element = file.type.startsWith("audio/")
     ? document.createElement("audio")
     : document.createElement("video");
-  const objectUrl = URL.createObjectURL(file);
+  const objectUrl = createLocalMediaObjectUrl(file);
 
   try {
     await new Promise<void>((resolve, reject) => {
@@ -89,6 +89,19 @@ export async function getMediaElementMetadata(
   }
 
   return metadata;
+}
+
+function createLocalMediaObjectUrl(file: File): string {
+  const mediaBlob = file.slice(0, file.size, file.type);
+  const objectUrl = URL.createObjectURL(mediaBlob);
+  const encodedObjectUrl = encodeURI(objectUrl);
+
+  if (!objectUrl.startsWith("blob:") || encodedObjectUrl !== objectUrl) {
+    URL.revokeObjectURL(objectUrl);
+    throw new Error("Browser did not create a local media blob URL");
+  }
+
+  return encodedObjectUrl;
 }
 
 export async function ensureFfmpeg(

@@ -186,6 +186,13 @@ async function loadCore(
     );
   }
 
+  // Capture the core's own init output (emscripten printErr, pthread spawn
+  // failures, abort messages) into the app log. Without this, a load that hangs
+  // or aborts only reports to the DevTools console — unreachable on mobile.
+  const onCoreLog = ({ type, message }: { type: string; message: string }) =>
+    recordLoadDebug(`core init [${type}]`, { message });
+  ffmpeg.on("log", onCoreLog);
+
   onLoadStatus?.(`Starting ${label} FFmpeg core.`);
   const startupStarted = performance.now();
   try {
@@ -207,9 +214,11 @@ async function loadCore(
       },
       "error",
     );
+    ffmpeg.off("log", onCoreLog);
     ffmpeg.terminate();
     throw error;
   }
+  ffmpeg.off("log", onCoreLog);
   recordLoadDebug(`${label} FFmpeg startup finished`, {
     elapsedMs: Math.round(performance.now() - startupStarted),
   });

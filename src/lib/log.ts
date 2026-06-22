@@ -5,7 +5,7 @@
  * memory and are surfaced through the UI / Copy button — never sent anywhere.
  */
 
-export type LogCategory = "app" | "model" | "ffmpeg" | "sw";
+export type LogCategory = "app" | "ffmpeg" | "sw";
 export type LogLevel = "info" | "warn" | "error";
 
 export interface LogEvent {
@@ -17,12 +17,11 @@ export interface LogEvent {
   data?: unknown;
 }
 
-export const logCategories: LogCategory[] = ["app", "model", "ffmpeg", "sw"];
+export const logCategories: LogCategory[] = ["app", "ffmpeg", "sw"];
 
 const MAX_PER_CATEGORY = 800;
 const buffers: Record<LogCategory, LogEvent[]> = {
   app: [],
-  model: [],
   ffmpeg: [],
   sw: [],
 };

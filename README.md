@@ -1,18 +1,18 @@
 # Local Media Converter
 
-Local Media Converter converts audio, video, and images in your browser with FFmpeg. Files stay on your device, while optional local planning helps turn intent into editable FFmpeg command arguments.
+Local Media Converter converts audio, video, and images in your browser with FFmpeg. Files stay on your device. A set of one-click recipes covers the common conversions; for anything else, an optional helper builds a prompt you can paste into your own AI and parse the reply back into an editable command.
 
 ## What It Does
 
 - Runs `ffmpeg.wasm` and `ffprobe` in the browser for audio, video, and image files.
 - Uses a COOP/COEP service worker so browsers that support `SharedArrayBuffer` can load the multithreaded FFmpeg core.
-- Retrieves local FFmpeg documentation chunks with Orama before planning a command.
-- Optionally loads a local WebLLM model for command planning. Qwen 3.5 0.8B is the mobile-friendly default, and Gemma 4 E2B remains available for desktop-class devices. If the model is unavailable, deterministic FFmpeg templates keep the app usable.
-- Shows the planned FFmpeg arguments as editable chips.
-- Captures FFmpeg logs, progress, and exit codes, then feeds failures back into the planner for correction.
+- Offers one-click recipes for the common conversions (compress, resize, GIF, extract audio, convert image formats, and more), filtered to the loaded file's type.
+- Shows the resulting FFmpeg arguments as editable chips so anything can be fine-tuned before running.
+- "Ask an AI" flow: describe what you want, copy the generated prompt into ChatGPT/Claude/etc., then paste the reply back to turn it into a runnable command. No model is downloaded or run in-app.
+- Captures FFmpeg logs, progress, and exit codes.
 - Saves successful outputs to the Origin Private File System when the browser supports OPFS.
 - Processes files locally. The app does not upload source media to a server.
-- Downloads runtime assets from public CDNs: FFmpeg core files from unpkg and optional WebLLM model files from Hugging Face. Those assets are cached by the browser/service worker where possible.
+- Downloads runtime assets from public CDNs: FFmpeg core files from unpkg, cached by the browser/service worker where possible.
 
 ## Development
 
@@ -21,9 +21,7 @@ npm install
 npm run dev
 ```
 
-The dev server must be opened over `http://localhost` or HTTPS for the browser APIs used by FFmpeg, WebLLM, service workers, and OPFS. Local WebLLM model loading also needs WebGPU; plain HTTP preview hosts usually cannot load it.
-
-The default planner model id is `Qwen3.5-0.8B-q4f16_1-MLC`, which is part of the installed WebLLM prebuilt model list and is recommended for mobile devices. The desktop preset is `gemma-4-E2B-it-q4f16_1-MLC`; it is loaded through a custom WebLLM app config pointed at the `welcoma/gemma-4-E2B-it-q4f16_1-MLC` Hugging Face artifact because this Gemma 4 E2B variant is not part of the installed WebLLM prebuilt model list. The app config prefers WebLLM's Cache API artifact cache and falls back to IndexedDB only when `globalThis.caches` is unavailable.
+The dev server must be opened over `http://localhost` or HTTPS for the browser APIs used by FFmpeg, service workers, and OPFS.
 
 ## Production Build
 
@@ -42,4 +40,4 @@ After the service worker activates, reload once if the page reports that `crossO
 
 ## Attribution
 
-This project is built around [FFmpeg](https://ffmpeg.org/) and [ffmpeg.wasm](https://ffmpegwasm.netlify.app/). FFmpeg is the media engine; the local planner only proposes commands for users to inspect and run.
+This project is built around [FFmpeg](https://ffmpeg.org/) and [ffmpeg.wasm](https://ffmpegwasm.netlify.app/). FFmpeg is the media engine; recipes and any pasted-in command are always shown as editable args for users to inspect and run.

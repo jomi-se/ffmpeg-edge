@@ -3,7 +3,9 @@
 ## Project Context
 
 Local Media Converter is a browser-native media workstation that keeps FFmpeg visible, credited, and
-inspectable while local AI helps turn user intent into editable FFmpeg command arguments.
+inspectable. One-click recipes cover the common conversions; an optional "ask an AI" flow builds a
+copyable prompt for the user's own AI and parses the reply back into editable FFmpeg arguments. No
+model runs in-app.
 
 This is a static Vite/React application intended to run locally during development and deploy as a
 GitHub Pages-compatible static site. Privacy is a core product rule: source media should be processed
@@ -13,8 +15,7 @@ locally in the browser and should not be uploaded to an application server.
 
 - **Application**: Vite + React + TypeScript.
 - **Media engine**: `@ffmpeg/ffmpeg`, `@ffmpeg/util`, `ffmpeg.wasm`, and `ffprobe`.
-- **AI planning**: WebLLM with Qwen 3.5 0.8B by default, Gemma 4 E2B as a desktop preset, plus deterministic fallback templates.
-- **Docs retrieval**: Orama over local FFmpeg documentation chunks.
+- **Conversions**: static recipes in `src/lib/recipes.ts`; optional bring-your-own-AI prompt build/parse in `src/lib/prompt.ts`. No in-browser model or doc retrieval.
 - **Storage**: Origin Private File System (OPFS) for saved outputs where supported; browser Cache API
   via the COOP/COEP service worker for runtime artifacts.
 - **Styling**: Plain CSS in `src/styles.css`.
@@ -40,7 +41,7 @@ locally in the browser and should not be uploaded to an application server.
 - Build production assets with `npm run build`.
 - Preview production output with `npm run preview`.
 - The dev or preview server must be opened from `http://localhost`, a Vite-allowed host, or HTTPS for
-  service workers, OPFS, WebGPU/WebLLM, and cross-origin isolation behavior.
+  service workers, OPFS, and cross-origin isolation behavior.
 - If a local preview needs to be accessed through Tailscale, keep
   `artifex-box.tail246db1.ts.net` allowed in `vite.config.ts`.
 - Dependency installs, browser binary installs, or any command that needs network or access outside
@@ -57,9 +58,6 @@ Run the smallest useful gate during iteration, then run the full local gate befo
 3. `npm --silent run format:check`
 
 Use `npm --silent run verify` for the full local gate.
-
-Treat the Vite large-chunk warning from WebLLM as expected unless the task specifically concerns
-bundle splitting or model-loading performance.
 
 ## Git & Workflow
 
@@ -88,36 +86,34 @@ bundle splitting or model-loading performance.
    - When changing FFmpeg core loading, verify both single-thread fallback and multithreaded
      `SharedArrayBuffer` intent are still represented.
 
-4. **Planner is advisory**
-   - The AI planner proposes FFmpeg args; the editable chip UI and derived command args remain the
-     authority for what runs. Do not add an always-visible raw command editor unless explicitly
-     requested.
-   - Invalid or unavailable WebLLM planning must fall back gracefully to deterministic templates.
-   - Keep model defaults aligned with README. The current default is
-     `Qwen3.5-0.8B-q4f16_1-MLC`; the desktop Gemma preset is
-     `gemma-4-E2B-it-q4f16_1-MLC` loaded through a custom WebLLM app config.
+4. **Recipes and pasted commands are advisory**
+   - Recipes and any AI-pasted command produce FFmpeg args; the editable chip UI and derived command
+     args remain the authority for what runs. Do not add an always-visible raw command editor unless
+     explicitly requested.
+   - A pasted AI reply must be validated with `validateCommandArgs` before it can run; surface a
+     friendly error rather than running an invalid command.
+   - Do not reintroduce an in-browser model or doc retrieval. The product deliberately runs no model
+     in-app; a benchmark established that models already know the common conversions, so retrieval
+     added cost without accuracy.
 
 5. **Separate pure command logic from browser side effects**
    - Keep command parsing, chip generation, and output-name inference in `src/lib/command.ts`.
    - Keep FFmpeg runtime, file writes, and probe/run behavior in `src/lib/media.ts`.
    - Keep OPFS behavior in `src/lib/storage.ts`.
-   - Keep retrieval/model planning in `src/lib/planner.ts` and local doc chunks in
-     `src/lib/ffmpegDocs.ts`.
+   - Keep the recipe catalog in `src/lib/recipes.ts` and the AI prompt build/parse in
+     `src/lib/prompt.ts`.
 
-## AI Feedback Loops & Observability
+## Observability
 
 - Preserve FFmpeg log capture and progress display for every run.
-- Preserve the self-correction loop that feeds recent stderr/log output back into planning.
 - User-facing failures should be compact in the main UI but expose actionable detail through logs or
   session messages.
-- For planner changes, verify the fallback path still works without loading WebLLM.
-- For model changes, verify the model id, app config, and README agree.
 
 ## Frontend Standards
 
 - Build the actual tool surface first, not a marketing page.
-- Keep controls dense, readable, and work-focused: upload/probe, planner, command chips, run
-  progress, outputs, docs, and logs should remain easy to scan.
+- Keep controls dense, readable, and work-focused: upload/probe, recipes, command chips, run
+  progress, outputs, and logs should remain easy to scan.
 - Use lucide icons for icon buttons where available.
 - Do not introduce decorative UI that competes with command inspection or logs.
 - Maintain responsive layouts for desktop and mobile-width previews. Text should not overflow its
@@ -128,8 +124,8 @@ bundle splitting or model-loading performance.
 
 - TypeScript should stay strict and explicit. Avoid `any` unless a browser API boundary truly
   requires it.
-- Prefer small pure helpers for command and planner decisions.
-- Use structured APIs for browser storage, service workers, and FFmpeg/WebLLM configuration rather
+- Prefer small pure helpers for command and recipe decisions.
+- Use structured APIs for browser storage, service workers, and FFmpeg configuration rather
   than ad hoc string manipulation when reasonable.
 - Add comments only when they explain non-obvious browser/runtime constraints.
 - When changing service-worker behavior, keep cache failures non-fatal unless the fetch itself truly
@@ -138,7 +134,7 @@ bundle splitting or model-loading performance.
 
 ## Testing & Bug Fixes
 
-- For command parsing/planning bugs, prefer adding focused tests if a test harness exists. If no
+- For command parsing/recipe/prompt-parsing bugs, prefer adding focused tests if a test harness exists. If no
   harness exists yet, document the manual reproduction and run the full local validation gate.
 - For FFmpeg runtime bugs, capture the command args, input type, relevant logs, and whether the
   browser was cross-origin isolated.
@@ -154,4 +150,4 @@ bundle splitting or model-loading performance.
 - The service worker must be registered with a relative base path from `index.html`.
 - If deployment or hosting instructions change, update [README.md](/home/dev/ffmpeg-edge/README.md).
 
-Last reviewed: 2026-05-16
+Last reviewed: 2026-06-22

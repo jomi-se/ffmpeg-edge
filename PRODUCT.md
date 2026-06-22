@@ -10,7 +10,7 @@ Both technical users familiar with FFmpeg wanting a fast, local workflow, and no
 
 ## Product Purpose
 
-To provide a secure, browser-native media converter that processes files locally. It uses optional local AI to translate intent into FFmpeg commands, replacing sketchy online converters while keeping the underlying FFmpeg engine visible, inspectable, and editable.
+To provide a secure, browser-native media converter that processes files locally. One-click recipes cover the common conversions; for anything unusual, an optional helper builds a prompt for the user's own AI and parses the reply back into a command — keeping the underlying FFmpeg engine visible, inspectable, and editable.
 
 ## Brand Personality
 

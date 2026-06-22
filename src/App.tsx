@@ -1,10 +1,7 @@
 import {
-  ArrowUp,
   Check,
   ChevronLeft,
   Copy,
-  Cpu,
-  Database,
   Download,
   FileAudio,
   FileImage,
@@ -12,10 +9,10 @@ import {
   LoaderCircle,
   Play,
   Settings2,
+  Sparkles,
   TerminalSquare,
   Trash2,
   Upload,
-  Wand2,
 } from "lucide-react";
 import {
   useEffect,
@@ -26,10 +23,8 @@ import {
   useSyncExternalStore,
 } from "react";
 import {
-  argsToCommand,
   commandToChips,
   parseCommandLine,
-  suggestedOutputName,
   validateCommandArgs,
 } from "./lib/command";
 import {
@@ -40,16 +35,8 @@ import {
   runFfmpegCommand,
   type MediaMetadata,
 } from "./lib/media";
-import {
-  defaultModelId,
-  ensureLocalModel,
-  isModelCached,
-  logModelState,
-  modelPresets,
-  planCommand,
-  probeWebGpu,
-  type WebGpuStatus,
-} from "./lib/planner";
+import { recipesForFile, type Recipe } from "./lib/recipes";
+import { buildAiPrompt, parseFfmpegReply } from "./lib/prompt";
 import {
   formatEvent,
   formatEvents,
@@ -62,12 +49,8 @@ import {
 } from "./lib/log";
 import { hasOPFSSupport, saveOutput } from "./lib/storage";
 
-const starterPrompt =
-  "Compress for sharing, keep broad compatibility, and preserve reasonable quality.";
-
 const categoryLabels: Record<LogCategory, string> = {
   app: "App flow",
-  model: "Model",
   ffmpeg: "FFmpeg",
   sw: "Service worker",
 };
@@ -77,29 +60,16 @@ export function App() {
 
   const [file, setFile] = useState<File | null>(null);
   const [metadata, setMetadata] = useState<MediaMetadata | null>(null);
-  const [prompt, setPrompt] = useState(starterPrompt);
 
-  const [args, setArgs] = useState<string[]>([
-    "-i",
-    "$INPUT",
-    "-c:v",
-    "libx264",
-    "-preset",
-    "medium",
-    "-crf",
-    "24",
-    "-c:a",
-    "aac",
-    "-b:a",
-    "128k",
-    "$OUTPUT",
-  ]);
-  const [lastPlannedPrompt, setLastPlannedPrompt] = useState<string | null>(
-    null,
-  );
-  const [useModel, setUseModel] = useState(false);
-  const [modelId, setModelId] = useState(defaultModelId);
-  const [modelStatus, setModelStatus] = useState("Not loaded");
+  const [args, setArgs] = useState<string[]>([]);
+  const [activeRecipeId, setActiveRecipeId] = useState<string | null>(null);
+
+  const [aiOpen, setAiOpen] = useState(false);
+  const [aiRequest, setAiRequest] = useState("");
+  const [aiReply, setAiReply] = useState("");
+  const [aiError, setAiError] = useState<string | null>(null);
+  const [promptCopied, setPromptCopied] = useState(false);
+
   const [busy, setBusy] = useState<string | null>(null);
   const [progress, setProgress] = useState(0);
   const [outputUrl, setOutputUrl] = useState<string | null>(null);
@@ -108,29 +78,25 @@ export function App() {
     "FFmpeg loads automatically when you run a command.",
   );
   const [runtimeStatus, setRuntimeStatus] = useState(getFfmpegRuntimeStatus());
-  const [webGpu, setWebGpu] = useState<WebGpuStatus | null>(null);
   const [logCategory, setLogCategory] = useState<LogCategory>("app");
   const [logsCopied, setLogsCopied] = useState(false);
   const activeFileRef = useRef<File | null>(null);
-  const promptRef = useRef<HTMLTextAreaElement | null>(null);
+  const aiRequestRef = useRef<HTMLTextAreaElement | null>(null);
   const logRef = useRef<HTMLDivElement | null>(null);
 
   // Live view of the unified event log.
   const logVersion = useSyncExternalStore(subscribe, getLogVersion);
   const events = useMemo(() => getLog(logCategory), [logCategory, logVersion]);
-  const ffmpegLogCount = useMemo(() => getLog("ffmpeg").length, [logVersion]);
 
   const chips = useMemo(() => commandToChips(args), [args]);
   const fileKind = getFileKind(file);
-  const selectedModelPreset =
-    modelPresets.find((preset) => preset.id === modelId) ?? modelPresets[0];
-  const webGpuLabel = describeWebGpu(webGpu);
-  const planning = !!busy && busy.includes("Planning");
+  const recipes = useMemo(() => (file ? recipesForFile(file) : []), [file]);
+  const hasCommand = args.length > 0;
   const validation = useMemo(
-    () => (file ? validateCommandArgs(args, file.name) : null),
-    [args, file],
+    () => (file && hasCommand ? validateCommandArgs(args, file.name) : null),
+    [args, file, hasCommand],
   );
-  const canRun = !!file && args.length > 0 && !busy && validation?.ok !== false;
+  const canRun = !!file && hasCommand && !busy && validation?.ok !== false;
 
   useEffect(() => {
     const interval = window.setInterval(() => {
@@ -142,65 +108,16 @@ export function App() {
     return () => window.clearInterval(interval);
   }, []);
 
-  // On startup: probe WebGPU and, if the model is already cached AND a GPU
-  // adapter is available, auto-load + enable it (never triggers a download).
   useEffect(() => {
-    let active = true;
-    (async () => {
-      log.info("app", "App started", { userAgent: navigator.userAgent });
-      const gpu = await probeWebGpu();
-      if (!active) return;
-      setWebGpu(gpu);
-      if (!gpu.adapterAvailable) return;
-
-      const cached = await isModelCached(defaultModelId).catch(() => false);
-      if (!active || !cached) {
-        if (active && !cached) {
-          log.info("app", "Model not cached; skipping auto-load", {
-            modelId: defaultModelId,
-          });
-        }
-        return;
-      }
-
-      log.info("app", "Cached model detected; auto-loading", {
-        modelId: defaultModelId,
-      });
-      setModelStatus("Auto-loading cached model…");
-      try {
-        await ensureLocalModel(defaultModelId, (report) => {
-          if (active) {
-            setModelStatus(
-              `${Math.round(report.progress * 100)}% ${report.text}`,
-            );
-          }
-        });
-        if (!active) return;
-        setUseModel(true);
-        setModelStatus("Local model ready (auto-loaded from cache)");
-        log.info("app", "Cached model auto-loaded", {
-          modelId: defaultModelId,
-        });
-      } catch (error) {
-        if (!active) return;
-        setModelStatus(`Auto-load failed: ${errorMessage(error)}`);
-        log.error("app", "Cached model auto-load failed", {
-          error: errorMessage(error),
-        });
-      }
-    })();
-    return () => {
-      active = false;
-    };
+    log.info("app", "App started", { userAgent: navigator.userAgent });
   }, []);
 
   useLayoutEffect(() => {
-    const promptInput = promptRef.current;
-    if (!promptInput) return;
-
-    promptInput.style.height = "auto";
-    promptInput.style.height = `${promptInput.scrollHeight}px`;
-  }, [prompt]);
+    const input = aiRequestRef.current;
+    if (!input) return;
+    input.style.height = "auto";
+    input.style.height = `${input.scrollHeight}px`;
+  }, [aiRequest, aiOpen]);
 
   // Keep the log view pinned to the newest entries.
   useEffect(() => {
@@ -214,25 +131,17 @@ export function App() {
     setFfmpegStatus(message);
   }
 
-  function handleModelPresetChange(nextModelId: string) {
-    const preset =
-      modelPresets.find((candidate) => candidate.id === nextModelId) ??
-      modelPresets[0];
-    setModelId(preset.id);
-    setUseModel(false);
-    setModelStatus(
-      `${preset.name} selected. Load it to plan with the local model.`,
-    );
-    log.info("app", "Model preset changed", { modelId: preset.id });
-  }
-
   async function handleFile(nextFile: File | null) {
     activeFileRef.current = nextFile;
     setFile(nextFile);
     setMetadata(null);
     setOutputUrl(null);
     setOutputName(null);
-    setLastPlannedPrompt(null);
+    setArgs([]);
+    setActiveRecipeId(null);
+    setAiOpen(false);
+    setAiReply("");
+    setAiError(null);
 
     if (!nextFile) {
       return;
@@ -243,7 +152,6 @@ export function App() {
       size: nextFile.size,
       type: nextFile.type,
     });
-    setArgs(defaultArgsForFile(nextFile));
     setBusy("Reading metadata");
     try {
       const data = await getMediaElementMetadata(nextFile);
@@ -266,91 +174,45 @@ export function App() {
     }
   }
 
-  async function handlePlan(promptOverride?: string) {
-    const activePrompt = promptOverride ?? prompt;
-    if (!activePrompt.trim()) return;
-
-    log.info("app", "Plan requested", {
-      modelId,
-      promptLength: activePrompt.length,
-      useModel,
-    });
-    setBusy(
-      useModel ? "Planning with local model" : "Planning with local docs",
-    );
-
-    try {
-      const result = await planCommand({
-        prompt: activePrompt,
-        file: file ?? undefined,
-        metadata,
-        useLocalModel: useModel,
-        modelId,
-        onModelProgress: (report) =>
-          setModelStatus(
-            `${Math.round(report.progress * 100)}% ${report.text}`,
-          ),
-        onPlanStatus: (status) => setModelStatus(status),
-      });
-      setArgs(result.args);
-      setLastPlannedPrompt(activePrompt.trim());
-      setPrompt("");
-      log.info("app", "Plan ready", {
-        args: result.args,
-        commandLine: result.commandLine,
-        source: result.source,
-      });
-      if (result.warning) {
-        log.warn("app", result.warning);
-      }
-    } catch (error) {
-      log.error("app", "Planning failed", {
-        error: errorMessage(error),
-        stack: error instanceof Error ? error.stack : undefined,
-      });
-      setLogCategory("model");
-      setIsFlipped(true);
-    } finally {
-      setBusy(null);
-    }
+  function applyRecipe(recipe: Recipe) {
+    if (!file) return;
+    setArgs(recipe.build(file));
+    setActiveRecipeId(recipe.id);
+    setOutputUrl(null);
+    setOutputName(null);
+    log.info("app", "Recipe applied", { recipe: recipe.id });
   }
 
-  async function handleLoadModel() {
-    log.info("app", "Load local model requested", { modelId });
-    setBusy("Checking WebGPU");
-    setModelStatus("Checking WebGPU support…");
-    const gpu = await probeWebGpu();
-    setWebGpu(gpu);
+  async function handleCopyPrompt() {
+    const text = buildAiPrompt({ request: aiRequest, file, metadata });
+    await copyToClipboard(text);
+    setPromptCopied(true);
+    window.setTimeout(() => setPromptCopied(false), 1500);
+    log.info("app", "AI prompt copied", { requestLength: aiRequest.length });
+  }
 
-    if (!gpu.apiPresent || !gpu.adapterAvailable) {
-      setBusy(null);
-      const detail = gpu.error ?? "WebGPU is not usable in this browser.";
-      setModelStatus(`Cannot load model: ${detail}`);
-      log.error("app", "Cannot load model: WebGPU unusable", { detail });
-      return;
-    }
-    if (!gpu.shaderF16) {
-      log.warn("app", "GPU adapter missing shader-f16; load may fail", {
-        detail: gpu.error,
-      });
-    }
-
-    setBusy("Loading local model");
-    setModelStatus(`Starting ${selectedModelPreset.name} load`);
+  function handleUseReply() {
+    setAiError(null);
     try {
-      await ensureLocalModel(modelId, (report) => {
-        setModelStatus(`${Math.round(report.progress * 100)}% ${report.text}`);
-      });
-      setUseModel(true);
-      setModelStatus("Local model ready");
-      log.info("app", "Local model loaded", { modelId });
+      const { args: parsed } = parseFfmpegReply(aiReply);
+      const check = file ? validateCommandArgs(parsed, file.name) : null;
+      if (check && !check.ok) {
+        setAiError(check.errors[0]);
+        log.warn("app", "Pasted command failed validation", {
+          errors: check.errors,
+        });
+        return;
+      }
+      setArgs(parsed);
+      setActiveRecipeId(null);
+      setOutputUrl(null);
+      setOutputName(null);
+      log.info("app", "Command parsed from AI reply", { args: parsed });
     } catch (error) {
-      setModelStatus(`Model load failed: ${errorMessage(error)}`);
-      log.error("app", "Local model load failed", {
+      setAiError(errorMessage(error));
+      log.warn("app", "Could not parse AI reply", {
         error: errorMessage(error),
       });
-    } finally {
-      setBusy(null);
     }
   }
 
@@ -369,21 +231,12 @@ export function App() {
   }
 
   async function handleSnapshotState() {
-    const gpu = await probeWebGpu();
-    setWebGpu(gpu);
-    logModelState();
     logFfmpegState();
     const serviceWorkerStatus = await getServiceWorkerDebugStatus();
     log.info("app", "Environment snapshot", {
       browser: getBrowserRuntimeStatus(),
       serviceWorker: serviceWorkerStatus,
-      ui: {
-        ffmpegStatus,
-        modelStatus,
-        preset: selectedModelPreset.name,
-        selectedModel: modelId,
-        useModel,
-      },
+      ui: { ffmpegStatus },
       userAgent: navigator.userAgent,
     });
   }
@@ -391,22 +244,7 @@ export function App() {
   async function handleCopyLogs() {
     const text = formatEvents(getLog(logCategory));
     if (!text) return;
-    try {
-      await navigator.clipboard.writeText(text);
-    } catch {
-      // Clipboard API can be unavailable (e.g. non-secure context); fall back.
-      const textarea = document.createElement("textarea");
-      textarea.value = text;
-      textarea.style.position = "fixed";
-      textarea.style.opacity = "0";
-      document.body.appendChild(textarea);
-      textarea.select();
-      try {
-        document.execCommand("copy");
-      } finally {
-        document.body.removeChild(textarea);
-      }
-    }
+    await copyToClipboard(text);
     setLogsCopied(true);
     window.setTimeout(() => setLogsCopied(false), 1500);
   }
@@ -464,14 +302,6 @@ export function App() {
     } finally {
       setBusy(null);
     }
-  }
-
-  async function handleSelfCorrect() {
-    const failure = formatEvents(getLog("ffmpeg").slice(-20));
-    const correctionPrompt = `The FFmpeg command failed. Current command: ${argsToCommand(args)}\nError log:\n${failure}\nReturn a corrected command.`;
-    setPrompt(correctionPrompt);
-    setIsFlipped(false);
-    await handlePlan(correctionPrompt);
   }
 
   function editChip(indexToken: string, token: string) {
@@ -566,18 +396,43 @@ export function App() {
               </div>
             )}
 
+            {/* Recipes */}
+            {file && recipes.length > 0 && (
+              <div className="recipes-section">
+                <h2 className="text-muted">Pick a conversion</h2>
+                <div className="recipe-grid">
+                  {recipes.map((recipe) => (
+                    <button
+                      key={recipe.id}
+                      className={`recipe-card ${
+                        recipe.id === activeRecipeId ? "active" : ""
+                      }`}
+                      onClick={() => applyRecipe(recipe)}
+                      disabled={!!busy}
+                    >
+                      <span className="recipe-label">{recipe.label}</span>
+                      <span className="recipe-desc text-muted text-sm">
+                        {recipe.description}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {file && recipes.length === 0 && (
+              <p className="text-muted text-sm">
+                No built-in recipes for this file type. Use “Ask an AI” below to
+                describe what you want.
+              </p>
+            )}
+
             {/* Command & Run */}
-            {file && (
+            {file && hasCommand && (
               <div className="command-section">
                 <div className="command-header">
                   <h2 className="text-muted">Review FFmpeg args</h2>
                 </div>
-                {lastPlannedPrompt && (
-                  <p className="command-prompt-echo">
-                    <Wand2 size={13} />
-                    <span>{lastPlannedPrompt}</span>
-                  </p>
-                )}
                 <div className="chip-grid">
                   {chips.map((chip) => (
                     <button
@@ -635,62 +490,65 @@ export function App() {
               </div>
             )}
 
-            {/* Chat Bubble / Planner */}
-            <div className="planner">
-              <div className="planner-meta">
-                <span
-                  className={`mode-badge ${useModel ? "mode-model" : "mode-builtin"}`}
-                  title={
-                    useModel
-                      ? `Planning with the local model (${modelStatus})`
-                      : "Planning with the built-in deterministic planner"
-                  }
-                >
-                  {planning ? (
-                    <LoaderCircle className="spin" size={12} />
-                  ) : (
-                    <Cpu size={12} />
-                  )}
-                  {planning
-                    ? "Planning…"
-                    : useModel
-                      ? `Local model · ${selectedModelPreset.name}`
-                      : "Built-in planner"}
-                </span>
-              </div>
-              <div className="planner-bubble">
-                <textarea
-                  ref={promptRef}
-                  placeholder="Describe the output you want, for example: compress to 720p"
-                  value={prompt}
-                  onChange={(e) => setPrompt(e.target.value)}
-                  onFocus={() => {
-                    if (prompt === starterPrompt) {
-                      setPrompt("");
-                    }
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && !e.shiftKey) {
-                      e.preventDefault();
-                      handlePlan();
-                    }
-                  }}
-                  disabled={!!busy}
-                />
+            {/* Ask an AI (progressive disclosure) */}
+            {file && (
+              <div className="ai-assist">
                 <button
-                  className="btn-send"
-                  onClick={() => handlePlan()}
-                  disabled={!!busy || !prompt.trim()}
-                  title="Plan FFmpeg args"
+                  className="ai-toggle"
+                  onClick={() => setAiOpen((open) => !open)}
                 >
-                  {planning ? (
-                    <LoaderCircle className="spin" size={16} />
-                  ) : (
-                    <ArrowUp size={16} strokeWidth={3} />
-                  )}
+                  <Sparkles size={14} />
+                  Not sure what to do? Ask an AI
                 </button>
+                {aiOpen && (
+                  <div className="ai-body">
+                    <textarea
+                      ref={aiRequestRef}
+                      className="ai-input"
+                      placeholder="Describe what you want, e.g. make this smaller for WhatsApp"
+                      value={aiRequest}
+                      onChange={(e) => setAiRequest(e.target.value)}
+                    />
+                    <div className="action-row">
+                      <button
+                        className="btn-primary"
+                        onClick={handleCopyPrompt}
+                        disabled={!aiRequest.trim()}
+                      >
+                        {promptCopied ? (
+                          <Check size={16} />
+                        ) : (
+                          <Copy size={16} />
+                        )}
+                        {promptCopied ? "Copied" : "Copy prompt for AI"}
+                      </button>
+                    </div>
+                    <p className="text-muted text-sm">
+                      Paste that into ChatGPT, Claude, or any AI, then paste its
+                      reply back here.
+                    </p>
+                    <textarea
+                      className="ai-input"
+                      placeholder="Paste the AI's reply (the FFmpeg command) here"
+                      value={aiReply}
+                      onChange={(e) => setAiReply(e.target.value)}
+                    />
+                    <div className="action-row">
+                      <button
+                        className="btn-primary"
+                        onClick={handleUseReply}
+                        disabled={!aiReply.trim()}
+                      >
+                        Use this command
+                      </button>
+                    </div>
+                    {aiError && (
+                      <div className="text-sm validation-error">{aiError}</div>
+                    )}
+                  </div>
+                )}
               </div>
-            </div>
+            )}
           </div>
 
           {/* BACK FACE */}
@@ -711,46 +569,6 @@ export function App() {
             </div>
 
             <div className="settings-grid">
-              <div className="setting-group">
-                <label>Local planner model</label>
-                <select
-                  className="input-select"
-                  value={modelId}
-                  onChange={(event) =>
-                    handleModelPresetChange(event.target.value)
-                  }
-                  disabled={!!busy}
-                >
-                  {modelPresets.map((preset) => (
-                    <option key={preset.id} value={preset.id}>
-                      {preset.name} - {preset.recommendation}
-                    </option>
-                  ))}
-                </select>
-                <div className="setting-checkbox">
-                  <input
-                    type="checkbox"
-                    id="use-model"
-                    checked={useModel}
-                    onChange={(event) => setUseModel(event.target.checked)}
-                    disabled={!!busy}
-                  />
-                  <label htmlFor="use-model">
-                    Use local model for planning
-                  </label>
-                </div>
-                <button
-                  className="btn-primary btn-setting"
-                  disabled={!!busy}
-                  onClick={handleLoadModel}
-                >
-                  <Database size={16} /> Load local model
-                </button>
-                <div className="text-muted text-sm mt-1">
-                  Status: {modelStatus}
-                </div>
-              </div>
-
               <div className="setting-group">
                 <label>FFmpeg runtime</label>
                 <div className="status-grid">
@@ -773,10 +591,6 @@ export function App() {
                   <div className="status-item">
                     <dt>Mode</dt>
                     <dd>{formatCoreMode(runtimeStatus.coreMode)}</dd>
-                  </div>
-                  <div className="status-item">
-                    <dt>WebGPU</dt>
-                    <dd title={webGpu?.error ?? undefined}>{webGpuLabel}</dd>
                   </div>
                 </div>
                 <button
@@ -838,15 +652,6 @@ export function App() {
                   >
                     <TerminalSquare size={16} /> Snapshot state
                   </button>
-                  {ffmpegLogCount > 0 && (
-                    <button
-                      className="btn-primary btn-setting"
-                      disabled={!!busy}
-                      onClick={handleSelfCorrect}
-                    >
-                      <Wand2 size={16} /> Replan from logs
-                    </button>
-                  )}
                 </div>
               </div>
             </div>
@@ -867,18 +672,28 @@ function getFileKind(
   return "unknown";
 }
 
-function describeWebGpu(status: WebGpuStatus | null): string {
-  if (!status) return "Checking…";
-  if (!status.apiPresent) return "Unavailable";
-  if (!status.adapterAvailable) return "No GPU adapter";
-  if (!status.shaderF16) return "No shader-f16";
-  return "Available";
+async function copyToClipboard(text: string): Promise<void> {
+  try {
+    await navigator.clipboard.writeText(text);
+  } catch {
+    // Clipboard API can be unavailable (e.g. non-secure context); fall back.
+    const textarea = document.createElement("textarea");
+    textarea.value = text;
+    textarea.style.position = "fixed";
+    textarea.style.opacity = "0";
+    document.body.appendChild(textarea);
+    textarea.select();
+    try {
+      document.execCommand("copy");
+    } finally {
+      document.body.removeChild(textarea);
+    }
+  }
 }
 
 function getBrowserRuntimeStatus() {
   return {
     secureContext: window.isSecureContext,
-    webGpu: "gpu" in navigator,
     cacheApi: "caches" in window,
     indexedDb: "indexedDB" in window,
   };
@@ -906,44 +721,6 @@ function formatCoreMode(
   if (coreMode === "not-loaded") return "Ready to load";
   if (coreMode === "single-thread") return "Single-thread";
   return "Multithread";
-}
-
-function defaultArgsForFile(file: File): string[] {
-  if (file.type.startsWith("image/")) {
-    return [
-      "-i",
-      "$INPUT",
-      "-vf",
-      "scale=1600:-1",
-      suggestedOutputName(file.name, "webp"),
-    ];
-  }
-  if (file.type.startsWith("audio/")) {
-    return [
-      "-i",
-      "$INPUT",
-      "-c:a",
-      "libmp3lame",
-      "-b:a",
-      "192k",
-      suggestedOutputName(file.name, "mp3"),
-    ];
-  }
-  return [
-    "-i",
-    "$INPUT",
-    "-c:v",
-    "libx264",
-    "-preset",
-    "medium",
-    "-crf",
-    "24",
-    "-c:a",
-    "aac",
-    "-b:a",
-    "128k",
-    suggestedOutputName(file.name, "mp4"),
-  ];
 }
 
 function formatBytes(bytes: number): string {

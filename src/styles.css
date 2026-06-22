@@ -297,28 +297,6 @@ h2 {
   align-items: baseline;
 }
 
-.command-prompt-echo {
-  margin: calc(var(--space-2) * -1) 0 0;
-  display: flex;
-  align-items: flex-start;
-  gap: var(--space-2);
-  padding: var(--space-2) var(--space-3);
-  background: var(--bg);
-  border: 1px solid var(--line);
-  border-left: 2px solid var(--accent);
-  border-radius: var(--radius-sm);
-  color: var(--muted);
-  font-size: 0.8125rem;
-  font-style: italic;
-  overflow-wrap: anywhere;
-}
-
-.command-prompt-echo svg {
-  flex-shrink: 0;
-  margin-top: 2px;
-  color: var(--accent);
-}
-
 .chip-grid {
   display: flex;
   flex-wrap: wrap;
@@ -390,80 +368,108 @@ h2 {
   cursor: not-allowed;
 }
 
-/* Chat Bubble (Planner) */
-.planner {
+/* Recipes */
+.recipes-section {
+  min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
+  gap: var(--space-4);
 }
 
-.planner-meta {
+.recipe-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.recipe-card {
   display: flex;
-  justify-content: flex-end;
+  flex-direction: column;
+  gap: var(--space-1);
+  text-align: left;
+  padding: var(--space-3) var(--space-4);
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  transition:
+    border-color 0.2s,
+    background 0.2s;
 }
 
-.mode-badge {
+.recipe-card:hover:not(:disabled) {
+  border-color: var(--muted);
+}
+
+.recipe-card.active {
+  border-color: var(--accent);
+  background: color-mix(in oklch, var(--accent) 6%, transparent);
+}
+
+.recipe-card:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.recipe-label {
+  font-weight: 500;
+}
+
+.recipe-desc {
+  line-height: 1.4;
+}
+
+/* Ask an AI */
+.ai-assist {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.ai-toggle {
   display: inline-flex;
   align-items: center;
-  gap: var(--space-1);
-  padding: var(--space-1) var(--space-3);
-  border-radius: var(--radius-full);
-  font-size: 0.75rem;
-  font-weight: 500;
-  border: 1px solid var(--line);
+  gap: var(--space-2);
+  align-self: flex-start;
+  background: transparent;
+  border: none;
+  padding: var(--space-1) 0;
   color: var(--muted);
+  font-size: 0.875rem;
+  transition: color 0.2s;
 }
 
-.mode-badge.mode-model {
+.ai-toggle:hover {
+  color: var(--ink);
+}
+
+.ai-toggle svg {
   color: var(--accent);
-  border-color: color-mix(in oklch, var(--accent) 40%, var(--line));
-  background: color-mix(in oklch, var(--accent) 8%, transparent);
 }
 
-.planner-bubble {
+.ai-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.ai-input {
   width: 100%;
   min-width: 0;
   background: var(--bg);
   border: 1px solid var(--line);
-  border-radius: var(--radius-lg);
-  padding: var(--space-2);
-  display: flex;
-  align-items: flex-end;
-  gap: var(--space-2);
-  position: relative;
-}
-
-.planner-bubble textarea {
-  min-width: 0;
-  flex: 1;
-  background: transparent;
-  border: none;
-  padding: var(--space-2);
-  resize: none;
-  min-height: 44px;
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+  resize: vertical;
+  min-height: 72px;
   max-height: min(34dvh, 240px);
   line-height: 1.5;
   outline: none;
-  overflow-y: auto;
 }
 
-.planner-bubble .btn-send {
-  background: var(--accent);
-  color: var(--button-ink);
-  border: none;
-  width: 44px;
-  height: 44px;
-  border-radius: var(--radius-full);
-  display: grid;
-  place-items: center;
-  flex-shrink: 0;
-  margin-bottom: var(--space-1);
-}
-
-.planner-bubble .btn-send:disabled {
-  background: var(--line);
-  color: var(--muted);
-  cursor: not-allowed;
+.ai-input:focus-visible {
+  border-color: var(--accent);
 }
 
 /* Back Face Layout */
@@ -481,15 +487,6 @@ h2 {
 .setting-group label {
   font-weight: 500;
   font-size: 0.875rem;
-}
-
-select.input-select {
-  min-width: 0;
-  width: 100%;
-  padding: var(--space-2) var(--space-3);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-sm);
-  background: var(--bg);
 }
 
 .status-grid {
@@ -681,17 +678,6 @@ select.input-select {
   width: 40px;
 }
 
-.setting-checkbox {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  margin-top: var(--space-2);
-}
-
-.setting-checkbox label {
-  font-weight: normal;
-}
-
 .btn-setting {
   background: var(--ink);
   color: var(--surface);
@@ -759,14 +745,6 @@ select.input-select {
   .chip span:last-child {
     min-width: 0;
     overflow-wrap: anywhere;
-  }
-
-  .planner-bubble {
-    border-radius: var(--radius-md);
-  }
-
-  .planner-bubble textarea {
-    min-height: 72px;
   }
 
   .status-grid {

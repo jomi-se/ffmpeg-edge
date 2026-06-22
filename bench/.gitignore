@@ -22,5 +22,7 @@ package-lock.json
 results/report_preview.png
 results/*.png
 
-# Generation-experiment run log (regenerable; transcripts live in gen/results.json)
-gen/run.log
+# Generation-experiment run logs (regenerable; transcripts live in gen/results.json)
+gen/run*.log
+# Regenerable via gen/build_manual_prompts.mjs
+gen/manual_prompts/

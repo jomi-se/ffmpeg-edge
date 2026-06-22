@@ -201,6 +201,19 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done
 
 ## Run log (newest first)
 
+- 2026-06-22 — **Anecdote: RAG prompts pasted into Gemini Flash Lite (BYO-model
+  path).** Hand-tested 4 RAG-injected prompts (gen/build_manual_prompts.mjs, k=8)
+  in **Gemini Flash Lite** (Google's cheapest tier). 3/4 correct AND higher quality
+  than our local 8B: to_mp4 → `libx264 -pix_fmt yuv420p -c:a aac -movflags +faststart`
+  (compatibility polish we never saw locally); gif → single-graph `split…palettegen…
+  paletteuse` (canonical form); slowmo → `setpts=2.0*PTS` + `atempo=0.5` (audio-synced).
+  The one miss = `compress` ("shrink this video") → `scale=iw/2:ih/2`, NO -crf — the
+  exact same miss as local 8B/14B, on the same weak-retrieval (junk docs) query.
+  Read: (1) the copy-paste-into-your-own-AI path is strong — even a budget cloud
+  model beats shipping a local model; (2) the residual hard case is intent
+  AMBIGUITY ("shrink"=smaller file vs lower res), a UI/disambiguation problem, not
+  retrieval or model size. n=1 model × 4 prompts — anecdotal, directional only.
+
 - 2026-06-22 — **Why does RAG win? k-sweep + hybrid (raw-first + refine).** Two
   hypotheses for RAG > tool: (H2) RAG just feeds more chunks; (H1) searching with
   the user's RAW words beats the model's paraphrased queries. **H2 rejected** —

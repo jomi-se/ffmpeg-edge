@@ -401,31 +401,245 @@ function kindForFlag(flag: string): CommandChipKind {
   return "flag";
 }
 
-function labelForFlag(flag: string, value: string): string {
-  const labels: Record<string, string> = {
-    "-c:v": "Video codec",
-    "-codec:v": "Video codec",
-    "-c:a": "Audio codec",
-    "-codec:a": "Audio codec",
-    "-vf": "Video filter",
-    "-filter:v": "Video filter",
-    "-af": "Audio filter",
-    "-filter:a": "Audio filter",
-    "-crf": "Quality",
-    "-b:v": "Video bitrate",
-    "-b:a": "Audio bitrate",
-    "-preset": "Preset",
-    "-ss": "Start",
-    "-t": "Duration",
-    "-to": "End",
-    "-f": "Format",
-    "-r": "Frame rate",
-    "-ar": "Sample rate",
-    "-ac": "Channels",
-    "-s": "Size",
-    "-map": "Stream map",
-    "-pix_fmt": "Pixel format",
-  };
+const FLAG_LABELS: Record<string, string> = {
+  "-c:v": "Video codec",
+  "-codec:v": "Video codec",
+  "-c:a": "Audio codec",
+  "-codec:a": "Audio codec",
+  "-vf": "Video filter",
+  "-filter:v": "Video filter",
+  "-af": "Audio filter",
+  "-filter:a": "Audio filter",
+  "-crf": "Quality",
+  "-q:v": "Quality",
+  "-q:a": "Quality",
+  "-b:v": "Video bitrate",
+  "-b:a": "Audio bitrate",
+  "-preset": "Preset",
+  "-ss": "Start",
+  "-t": "Duration",
+  "-to": "End",
+  "-f": "Format",
+  "-r": "Frame rate",
+  "-ar": "Sample rate",
+  "-ac": "Channels",
+  "-s": "Size",
+  "-map": "Stream map",
+  "-pix_fmt": "Pixel format",
+  "-frames:v": "Frames",
+  "-frames:a": "Frames",
+  "-an": "No audio",
+  "-vn": "No video",
+  "-sn": "No subtitles",
+  "-y": "Overwrite",
+};
 
-  return `${labels[flag] ?? flag}: ${value}`;
+/** Human label for a flag, falling back to the raw flag. */
+export function flagLabel(flag: string): string {
+  return FLAG_LABELS[flag] ?? flag;
+}
+
+function labelForFlag(flag: string, value: string): string {
+  return `${flagLabel(flag)}: ${value}`;
+}
+
+/** Split a chip token like "-crf 24" into its flag and value parts. */
+export function splitChipToken(token: string): {
+  flag?: string;
+  value: string;
+} {
+  const space = token.indexOf(" ");
+  if (space === -1) return { value: token };
+  return { flag: token.slice(0, space), value: token.slice(space + 1) };
+}
+
+export type ChipControlType = "slider" | "select" | "time" | "text";
+
+export interface ChipControlOption {
+  value: string;
+  label: string;
+}
+
+/** Describes the right editing control for a chip's value. */
+export interface ChipControl {
+  type: ChipControlType;
+  /** The flag this value belongs to, if any (absent for output / bare tokens). */
+  flag?: string;
+  /** Current value to seed the control with (value part, or whole token). */
+  value: string;
+  /** When true the draft replaces the entire token, not just the value. */
+  wholeToken: boolean;
+  min?: number;
+  max?: number;
+  step?: number;
+  hint?: string;
+  placeholder?: string;
+  inputMode?: "numeric" | "decimal" | "text";
+  options?: ChipControlOption[];
+}
+
+function plain(values: string[]): ChipControlOption[] {
+  return values.map((value) => ({ value, label: value }));
+}
+
+function withCurrent(
+  options: ChipControlOption[],
+  value: string,
+): ChipControlOption[] {
+  if (value && !options.some((option) => option.value === value)) {
+    return [{ value, label: value }, ...options];
+  }
+  return options;
+}
+
+/** Pick the most fitting editing control for a chip. */
+export function chipControlFor(chip: CommandChip): ChipControl {
+  const { flag, value } = splitChipToken(chip.token);
+
+  // Output names and bare flags/values edit as a whole token.
+  if (!flag) {
+    return {
+      type: "text",
+      value: chip.token,
+      wholeToken: true,
+      inputMode: "text",
+    };
+  }
+
+  const valueFlag = (
+    control: Omit<ChipControl, "flag" | "value" | "wholeToken">,
+  ): ChipControl => ({
+    flag,
+    value,
+    wholeToken: false,
+    ...control,
+  });
+
+  switch (flag) {
+    case "-crf":
+      return valueFlag({
+        type: "slider",
+        min: 0,
+        max: 51,
+        step: 1,
+        hint: "Lower = better quality, larger file",
+      });
+    case "-q:v":
+    case "-q:a":
+      return valueFlag({
+        type: "slider",
+        min: 1,
+        max: 31,
+        step: 1,
+        hint: "Lower = better quality",
+      });
+    case "-c:v":
+    case "-codec:v":
+      return valueFlag({
+        type: "select",
+        options: withCurrent(
+          [
+            { value: "libx264", label: "H.264 (libx264)" },
+            { value: "libx265", label: "H.265 / HEVC (libx265)" },
+            { value: "libvpx-vp9", label: "VP9 (libvpx-vp9)" },
+            { value: "copy", label: "Copy (no re-encode)" },
+          ],
+          value,
+        ),
+      });
+    case "-c:a":
+    case "-codec:a":
+      return valueFlag({
+        type: "select",
+        options: withCurrent(
+          [
+            { value: "aac", label: "AAC" },
+            { value: "libmp3lame", label: "MP3 (libmp3lame)" },
+            { value: "libopus", label: "Opus (libopus)" },
+            { value: "flac", label: "FLAC (lossless)" },
+            { value: "pcm_s16le", label: "WAV PCM (pcm_s16le)" },
+            { value: "copy", label: "Copy (no re-encode)" },
+          ],
+          value,
+        ),
+      });
+    case "-preset":
+      return valueFlag({
+        type: "select",
+        hint: "Slower = smaller file",
+        options: withCurrent(
+          plain([
+            "ultrafast",
+            "superfast",
+            "veryfast",
+            "faster",
+            "fast",
+            "medium",
+            "slow",
+            "slower",
+            "veryslow",
+          ]),
+          value,
+        ),
+      });
+    case "-f":
+      return valueFlag({
+        type: "select",
+        options: withCurrent(
+          plain(["mp4", "webm", "gif", "mov", "mkv", "mp3", "wav"]),
+          value,
+        ),
+      });
+    case "-pix_fmt":
+      return valueFlag({
+        type: "select",
+        options: withCurrent(plain(["yuv420p", "yuva420p", "rgb24"]), value),
+      });
+    case "-ar":
+      return valueFlag({
+        type: "select",
+        hint: "Sample rate (Hz)",
+        options: withCurrent(plain(["48000", "44100", "22050"]), value),
+      });
+    case "-ac":
+      return valueFlag({
+        type: "select",
+        options: withCurrent(
+          [
+            { value: "1", label: "Mono (1)" },
+            { value: "2", label: "Stereo (2)" },
+          ],
+          value,
+        ),
+      });
+    case "-ss":
+    case "-t":
+    case "-to":
+      return valueFlag({
+        type: "time",
+        hint: "Seconds or HH:MM:SS",
+        placeholder: "00:00:03",
+      });
+    case "-b:v":
+    case "-b:a":
+      return valueFlag({
+        type: "text",
+        placeholder: "e.g. 192k",
+        inputMode: "text",
+      });
+    case "-r":
+      return valueFlag({
+        type: "text",
+        placeholder: "fps, e.g. 24",
+        inputMode: "decimal",
+      });
+    case "-s":
+      return valueFlag({
+        type: "text",
+        placeholder: "WxH, e.g. 1280x720",
+        inputMode: "text",
+      });
+    default:
+      return valueFlag({ type: "text", inputMode: "text" });
+  }
 }

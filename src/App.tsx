@@ -23,11 +23,8 @@ import {
   useState,
   useSyncExternalStore,
 } from "react";
-import {
-  commandToChips,
-  parseCommandLine,
-  validateCommandArgs,
-} from "./lib/command";
+import { commandToChips, validateCommandArgs } from "./lib/command";
+import { CommandChips } from "./components/CommandChips";
 import {
   ensureFfmpeg,
   getFfmpegRuntimeStatus,
@@ -305,23 +302,6 @@ export function App() {
     }
   }
 
-  function editChip(indexToken: string, token: string) {
-    const index = Number(indexToken.split("-")[0]);
-    if (!Number.isFinite(index)) return;
-
-    const replacement = window.prompt("Edit FFmpeg argument(s)", token);
-    if (replacement === null) return;
-
-    const parsed = parseCommandLine(replacement);
-    setArgs((current) => {
-      const next = [...current];
-      const replacesPair =
-        token.includes(" ") && current[index + 1] !== undefined;
-      next.splice(index, replacesPair ? 2 : 1, ...parsed);
-      return next;
-    });
-  }
-
   return (
     <main className="app-main">
       <header className="desk-header">
@@ -433,22 +413,17 @@ export function App() {
               <div className="command-section">
                 <div className="command-header">
                   <h2 className="text-muted">Review FFmpeg args</h2>
+                  <p className="command-hint text-sm text-muted">
+                    Tap any value to fine-tune it.
+                  </p>
                 </div>
-                <div className="chip-grid">
-                  {chips.map((chip) => (
-                    <button
-                      key={chip.id}
-                      className="chip"
-                      disabled={!chip.editable || !!busy}
-                      data-editable={chip.editable}
-                      onClick={() => editChip(chip.id, chip.token)}
-                      title={chip.editable ? "Edit argument" : "Managed"}
-                    >
-                      <span className="chip-label">{chip.label}</span>
-                      <span>{chip.token}</span>
-                    </button>
-                  ))}
-                </div>
+                <CommandChips
+                  chips={chips}
+                  args={args}
+                  fileName={file.name}
+                  disabled={!!busy}
+                  onChange={setArgs}
+                />
 
                 <div className="action-row mt-4">
                   <button

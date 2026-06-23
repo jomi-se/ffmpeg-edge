@@ -1,5 +1,6 @@
 import {
   Check,
+  CheckCircle2,
   ChevronLeft,
   Copy,
   Download,
@@ -453,7 +454,11 @@ export function App() {
                   </div>
                 )}
                 {outputUrl && outputName && (
-                  <div className="action-row mt-2">
+                  <div className="output-ready mt-2">
+                    <p className="output-ready-badge">
+                      <CheckCircle2 size={16} className="output-ready-check" />
+                      Done, all on your device.
+                    </p>
                     <a
                       href={outputUrl}
                       download={outputName}

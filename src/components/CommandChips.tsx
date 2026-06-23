@@ -101,10 +101,15 @@ export function CommandChips({
   const [activeId, setActiveId] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [flashId, setFlashId] = useState<string | null>(null);
 
   const popoverRef = useRef<HTMLDivElement>(null);
   const fieldRef = useRef<HTMLInputElement | HTMLSelectElement | null>(null);
   const triggers = useRef(new Map<string, HTMLButtonElement>());
+  const flashTimer = useRef<number | undefined>(undefined);
+
+  // Briefly confirm the chip whose value just changed.
+  useEffect(() => () => window.clearTimeout(flashTimer.current), []);
 
   const activeChip = chips.find((chip) => chip.id === activeId) ?? null;
   const control = activeChip ? chipControlFor(activeChip) : null;
@@ -149,6 +154,10 @@ export function CommandChips({
       return;
     }
     onChange(next);
+    // The regenerated chip for this slot keeps its index; flash it on land.
+    setFlashId(`${index}-${replacement}`);
+    window.clearTimeout(flashTimer.current);
+    flashTimer.current = window.setTimeout(() => setFlashId(null), 700);
     close();
   }
 
@@ -212,6 +221,7 @@ export function CommandChips({
               className="chip"
               data-locked={locked || undefined}
               data-active={activeId === chip.id || undefined}
+              data-flash={chip.id === flashId || undefined}
               disabled={locked || disabled}
               aria-haspopup="dialog"
               aria-expanded={activeId === chip.id}

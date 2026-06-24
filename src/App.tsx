@@ -325,6 +325,7 @@ export function App() {
                 onClick={() => setIsFlipped(true)}
                 className="icon-btn"
                 title="Runtime and logs"
+                aria-label="Runtime and logs"
               >
                 <Settings2 size={18} />
               </button>
@@ -371,6 +372,7 @@ export function App() {
                   onClick={() => handleFile(null)}
                   className="icon-btn"
                   title="Remove file"
+                  aria-label="Remove file"
                   disabled={!!busy}
                 >
                   <Trash2 size={16} />
@@ -488,6 +490,7 @@ export function App() {
                 </p>
                 <button
                   className="ai-toggle"
+                  aria-expanded={aiOpen}
                   onClick={() => setAiOpen((open) => !open)}
                 >
                   <Sparkles size={14} />
@@ -503,6 +506,7 @@ export function App() {
                     <textarea
                       ref={aiRequestRef}
                       className="ai-input"
+                      aria-label="Describe what you want"
                       placeholder="Describe what you want, e.g. make this smaller for WhatsApp"
                       value={aiRequest}
                       onChange={(e) => setAiRequest(e.target.value)}
@@ -528,6 +532,7 @@ export function App() {
                     </p>
                     <textarea
                       className="ai-input"
+                      aria-label="Paste the AI's reply"
                       placeholder="Paste the AI's reply (the FFmpeg command) here"
                       value={aiReply}
                       onChange={(e) => setAiReply(e.target.value)}
@@ -560,6 +565,7 @@ export function App() {
                 onClick={() => setIsFlipped(false)}
                 className="icon-btn"
                 title="Back to local workspace"
+                aria-label="Back to local workspace"
               >
                 <ChevronLeft size={20} />
               </button>

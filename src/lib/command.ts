@@ -69,12 +69,15 @@ export function parseCommandLine(input: string): string[] {
 
   for (const char of input.trim()) {
     if (escaping) {
-      current += char;
+      if (quote === '"' && !["\\", '"', "$", "`", "\n"].includes(char)) {
+        current += "\\";
+      }
+      if (char !== "\n") current += char;
       escaping = false;
       continue;
     }
 
-    if (char === "\\") {
+    if (char === "\\" && quote !== "'") {
       escaping = true;
       continue;
     }

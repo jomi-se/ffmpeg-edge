@@ -32,6 +32,7 @@ When changing command handling, check these interactions with a disposable media
 
 - Apply an output chip named `my output.mp4` without changing it; it must remain one argument.
 - Apply a filter chip containing `select=not(mod(n\,10))` unchanged; the backslash must remain.
+- Paste that filter in either single or double quotes in a command; the parsed filter must retain its comma escape too.
 - Use `prefix-$OUTPUT.mp4` as the output; execution and the download must use the same resolved name. Outputs such as `../$OUTPUT` and `https://example.invalid/{output}` must fail validation.
 - Start a manual core load before selecting a file, or start a conversion with a command ready; file and command changes must stay disabled until completion.
 

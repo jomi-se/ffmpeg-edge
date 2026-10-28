@@ -187,6 +187,57 @@ test("serializing and parsing preserves filter escapes, quotes and spaced output
   assert.deepEqual(command.parseCommandLine(command.argsToCommand(args)), args);
 });
 
+test("quoted filter arguments preserve FFmpeg's comma escape", () => {
+  const filter = String.raw`select=not(mod(n\,10))`;
+  for (const quote of ["'", '"']) {
+    const args = command.parseCommandLine(
+      `ffmpeg -i $INPUT -vf ${quote}${filter}${quote} out.mp4`,
+    );
+    assert.deepEqual(args, ["-i", "$INPUT", "-vf", filter, "out.mp4"]);
+    assert.equal(command.validateCommandArgs(args, "clip.mp4").ok, true);
+  }
+});
+
+test("unquoted escaped backslashes still produce one literal backslash", () => {
+  assert.deepEqual(
+    command.parseCommandLine(String.raw`-vf select=not(mod(n\\,10)) out.mp4`),
+    ["-vf", String.raw`select=not(mod(n\,10))`, "out.mp4"],
+  );
+});
+
+test("double quotes preserve backslashes before ordinary characters", () => {
+  const value = String.raw`comma\,colon\:letter\qspace\ `;
+  assert.deepEqual(command.parseCommandLine(`"${value}"`), [value]);
+});
+
+test("double quotes consume backslashes only for shell escape characters", () => {
+  for (const char of ["\\", '"', "$", "`", "\n"]) {
+    const input = '"left\\' + char + 'right"';
+    assert.deepEqual(command.parseCommandLine(input), [
+      "left" + (char === "\n" ? "" : char) + "right",
+    ]);
+  }
+});
+
+test("single quotes preserve backslashes including those before newlines", () => {
+  const value = '\\$\\`\\"\\\\\\\n';
+  assert.deepEqual(command.parseCommandLine(`'${value}'`), [value]);
+});
+
+test("quoted and unquoted fragments concatenate into one argument", () => {
+  assert.deepEqual(
+    command.parseCommandLine(String.raw`pre"two words"'post\literal'`),
+    [String.raw`pretwo wordspost\literal`],
+  );
+});
+
+test("unquoted escaped whitespace and line continuations retain shell meaning", () => {
+  assert.deepEqual(command.parseCommandLine("one\\ two three\\\nfour"), [
+    "one two",
+    "threefour",
+  ]);
+});
+
 test("a spaced output chip is edited as one literal value", () => {
   const chip = command.commandToChips(["-i", "$INPUT", "my output.mp4"]).at(-1);
   assert.equal(chip.kind, "output");

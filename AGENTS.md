@@ -53,9 +53,10 @@ locally in the browser and should not be uploaded to an application server.
 
 Run the smallest useful gate during iteration, then run the full local gate before handoff:
 
-1. `npm --silent run build`
-2. `npm --silent run lint`
-3. `npm --silent run format:check`
+1. `npm --silent run test` (offline command regressions; uses the existing TypeScript compiler and Node's built-in test runner)
+2. `npm --silent run build`
+3. `npm --silent run lint`
+4. `npm --silent run format:check`
 
 Use `npm --silent run verify` for the full local gate.
 

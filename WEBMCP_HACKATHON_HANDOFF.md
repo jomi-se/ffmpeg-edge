@@ -367,8 +367,8 @@ tool result.
 
 1. Read `AGENTS.md`, `README.md`, `src/App.tsx`, and the four `src/lib` modules
    named above.
-2. Confirm the existing production build is green with `npm --silent run
-   verify` before changing behavior.
+2. Confirm the existing production build is green with
+   `npm --silent run verify` before changing behavior.
 3. Add the smallest WebMCP type boundary and registration module.
 4. Refactor only enough of `App.tsx` to expose stable app-owned actions to the
    WebMCP bridge. Avoid broad state-management work.
@@ -472,4 +472,3 @@ browser, manually select a small media file, ask their agent for a conversion,
 see a validated FFmpeg command appear in the existing UI, run it through a
 WebMCP tool, and download the local result—with no model API, gateway,
 extension, account, backend or media upload required.
-

@@ -14,6 +14,10 @@ Local Media Converter converts audio, video, and images in your browser with FFm
 - Processes files locally. The app does not upload source media to a server.
 - Downloads runtime assets from public CDNs: FFmpeg core files from unpkg, cached by the browser/service worker where possible.
 
+## Editing Commands
+
+Chip fields edit literal values: filenames can contain spaces, and filter escapes stay intact when you apply an edit. Output names must resolve to a single filename, without a URL or directory path. `$OUTPUT` and `{output}` expand once, including when a prefix or suffix surrounds them. File and command controls are disabled while FFmpeg loads or runs.
+
 ## Development
 
 ```sh
@@ -22,6 +26,13 @@ npm run dev
 ```
 
 The dev server must be opened over `http://localhost` or HTTPS for the browser APIs used by FFmpeg, service workers, and OPFS.
+
+When changing command handling, check these interactions with a disposable media file:
+
+- Apply an output chip named `my output.mp4` without changing it; it must remain one argument.
+- Apply a filter chip containing `select=not(mod(n\,10))` unchanged; the backslash must remain.
+- Use `prefix-$OUTPUT.mp4` as the output; execution and the download must use the same resolved name. Outputs such as `../$OUTPUT` and `https://example.invalid/{output}` must fail validation.
+- Start a manual core load before selecting a file, or start a conversion with a command ready; file and command changes must stay disabled until completion.
 
 ## Production Build
 

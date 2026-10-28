@@ -115,27 +115,32 @@ export function normalizeArgs(
   inputName: string,
   outputName: string,
 ): string[] {
-  return args.map((arg) =>
-    arg
+  const output = findOutputTokens(args).at(-1);
+  const inputOperands = new Set<number>();
+  for (let index = 0; index < args.length; index += 1) {
+    if (args[index] === "-i") inputOperands.add(index + 1);
+    // A filename or another option's value may itself be the string "-i".
+    if (VALUE_FLAGS.has(args[index])) index += 1;
+  }
+  return args.map((arg, index) => {
+    if (index === args.length - 1 && index === output?.index) {
+      return outputName;
+    }
+    if (inputOperands.has(index)) return inputName;
+    return arg
       .replaceAll("$INPUT", inputName)
       .replaceAll("{input}", inputName)
       .replaceAll("$OUTPUT", outputName)
-      .replaceAll("{output}", outputName),
-  );
+      .replaceAll("{output}", outputName);
+  });
 }
 
 export function inferOutputName(fileName: string, args: string[]): string {
-  const explicit = args.find(
-    (arg) => arg.includes("$OUTPUT") || arg.includes("{output}"),
-  );
-  if (explicit) {
-    return explicit
-      .replace("$OUTPUT", suggestedOutputName(fileName))
-      .replace("{output}", suggestedOutputName(fileName));
-  }
-
   const output = findOutputTokens(args).at(-1);
-  if (output) return output.token;
+  if (output?.index === args.length - 1) {
+    const suggested = suggestedOutputName(fileName);
+    return output.token.replaceAll(/\$OUTPUT|\{output\}/g, () => suggested);
+  }
 
   return suggestedOutputName(fileName);
 }
@@ -153,7 +158,7 @@ export function argsToCommand(args: string[]): string {
 }
 
 function quoteToken(token: string): string {
-  if (!token || /[\s"'$]/.test(token)) {
+  if (!token || /[\s"'$\\]/.test(token)) {
     return `"${token.replaceAll("\\", "\\\\").replaceAll('"', '\\"')}"`;
   }
 
@@ -296,7 +301,7 @@ export function validateCommandArgs(
     if (output.index !== args.length - 1) {
       errors.push("The output file must be the final argument.");
     }
-    if (!isSafeOutputToken(output.token)) {
+    if (!isSafeOutputToken(inferOutputName(fileName, args))) {
       errors.push(
         "Output must be a simple file name, not a URL, absolute path, or parent-directory path.",
       );
@@ -358,7 +363,6 @@ function findOutputTokens(
 }
 
 function isSafeOutputToken(token: string): boolean {
-  if (token.includes("$OUTPUT") || token.includes("{output}")) return true;
   if (!token || token.includes("\0")) return false;
   if (token.includes("/") || token.includes("\\") || token.includes("..")) {
     return false;
@@ -497,7 +501,7 @@ export function chipControlFor(chip: CommandChip): ChipControl {
   const { flag, value } = splitChipToken(chip.token);
 
   // Output names and bare flags/values edit as a whole token.
-  if (!flag) {
+  if (chip.kind === "output" || !flag) {
     return {
       type: "text",
       value: chip.token,

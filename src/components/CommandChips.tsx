@@ -133,20 +133,22 @@ export function CommandChips({
   }
 
   function apply() {
-    if (!activeChip || !control) return;
+    if (disabled || !activeChip || !control) return;
     const trimmed = draft.trim();
     if (!trimmed) {
       setError("Value can't be empty.");
       return;
     }
-    const replacement = control.wholeToken
-      ? trimmed
-      : `${control.flag} ${trimmed}`;
+    const replacement = control.wholeToken ? draft : `${control.flag} ${draft}`;
     const index = Number(activeChip.id.split("-")[0]);
     const next = [...args];
-    const replacesPair =
-      activeChip.token.includes(" ") && next[index + 1] !== undefined;
-    next.splice(index, replacesPair ? 2 : 1, ...parseCommandLine(replacement));
+    const replacementArgs =
+      !control.wholeToken && control.flag
+        ? [control.flag, draft]
+        : activeChip.kind === "output"
+          ? [draft]
+          : parseCommandLine(trimmed);
+    next.splice(index, control.wholeToken ? 1 : 2, ...replacementArgs);
 
     const check = validateCommandArgs(next, fileName);
     if (!check.ok) {
@@ -200,8 +202,7 @@ export function CommandChips({
   }, []);
 
   const preview =
-    control &&
-    (control.wholeToken ? draft.trim() : `${control.flag} ${draft.trim()}`);
+    control && (control.wholeToken ? draft : `${control.flag} ${draft}`);
 
   return (
     <>
@@ -259,6 +260,7 @@ export function CommandChips({
             {control.type === "slider" && (
               <div className="chip-pop-slider">
                 <input
+                  disabled={disabled}
                   ref={(el) => {
                     fieldRef.current = el;
                   }}
@@ -276,6 +278,7 @@ export function CommandChips({
 
             {control.type === "select" && (
               <select
+                disabled={disabled}
                 ref={(el) => {
                   fieldRef.current = el;
                 }}
@@ -294,6 +297,7 @@ export function CommandChips({
 
             {(control.type === "text" || control.type === "time") && (
               <input
+                disabled={disabled}
                 ref={(el) => {
                   fieldRef.current = el;
                 }}
@@ -321,7 +325,12 @@ export function CommandChips({
               <button type="button" className="chip-pop-cancel" onClick={close}>
                 Cancel
               </button>
-              <button type="button" className="chip-pop-apply" onClick={apply}>
+              <button
+                type="button"
+                className="chip-pop-apply"
+                onClick={apply}
+                disabled={disabled}
+              >
                 Apply
               </button>
             </div>

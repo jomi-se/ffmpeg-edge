@@ -80,6 +80,7 @@ export function App() {
   const [logCategory, setLogCategory] = useState<LogCategory>("app");
   const [logsCopied, setLogsCopied] = useState(false);
   const activeFileRef = useRef<File | null>(null);
+  const busyOwnerRef = useRef<symbol | null>(null);
   const aiRequestRef = useRef<HTMLTextAreaElement | null>(null);
   const logRef = useRef<HTMLDivElement | null>(null);
 
@@ -96,6 +97,18 @@ export function App() {
     [args, file, hasCommand],
   );
   const canRun = !!file && hasCommand && !busy && validation?.ok !== false;
+
+  useEffect(() => {
+    return () => {
+      busyOwnerRef.current = null;
+      activeFileRef.current = null;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!outputUrl) return;
+    return () => URL.revokeObjectURL(outputUrl);
+  }, [outputUrl]);
 
   useEffect(() => {
     const interval = window.setInterval(() => {
@@ -130,7 +143,22 @@ export function App() {
     setFfmpegStatus(message);
   }
 
+  function beginOperation(label: string): symbol | null {
+    if (busyOwnerRef.current) return null;
+    const owner = Symbol(label);
+    busyOwnerRef.current = owner;
+    setBusy(label);
+    return owner;
+  }
+
+  function finishOperation(owner: symbol) {
+    if (busyOwnerRef.current !== owner) return;
+    busyOwnerRef.current = null;
+    setBusy(null);
+  }
+
   async function handleFile(nextFile: File | null) {
+    if (busyOwnerRef.current) return;
     activeFileRef.current = nextFile;
     setFile(nextFile);
     setMetadata(null);
@@ -146,15 +174,19 @@ export function App() {
       return;
     }
 
+    const owner = beginOperation("Reading metadata");
+    if (!owner) return;
     log.info("app", "File selected", {
       name: nextFile.name,
       size: nextFile.size,
       type: nextFile.type,
     });
-    setBusy("Reading metadata");
     try {
       const data = await getMediaElementMetadata(nextFile);
-      if (activeFileRef.current === nextFile) {
+      if (
+        busyOwnerRef.current === owner &&
+        activeFileRef.current === nextFile
+      ) {
         setMetadata(data);
         log.info("app", "Metadata read", {
           duration: data.duration,
@@ -163,18 +195,19 @@ export function App() {
         });
       }
     } catch (e) {
-      if (activeFileRef.current === nextFile) {
+      if (
+        busyOwnerRef.current === owner &&
+        activeFileRef.current === nextFile
+      ) {
         log.error("app", "Metadata read failed", { error: errorMessage(e) });
       }
     } finally {
-      if (activeFileRef.current === nextFile) {
-        setBusy(null);
-      }
+      finishOperation(owner);
     }
   }
 
   function applyRecipe(recipe: Recipe) {
-    if (!file) return;
+    if (!file || busyOwnerRef.current) return;
     setArgs(recipe.build(file));
     setActiveRecipeId(recipe.id);
     setOutputUrl(null);
@@ -191,6 +224,7 @@ export function App() {
   }
 
   function handleUseReply() {
+    if (busyOwnerRef.current) return;
     setAiError(null);
     try {
       const { args: parsed } = parseFfmpegReply(aiReply);
@@ -216,16 +250,21 @@ export function App() {
   }
 
   async function handleLoadFfmpeg() {
+    const owner = beginOperation("Loading FFmpeg core");
+    if (!owner) return;
     log.info("app", "Load FFmpeg requested");
-    setBusy("Loading FFmpeg core");
     try {
-      await ensureFfmpeg(addFfmpegEvent);
+      await ensureFfmpeg((message) => {
+        if (busyOwnerRef.current === owner) addFfmpegEvent(message);
+      });
+      if (busyOwnerRef.current !== owner) return;
       setRuntimeStatus(getFfmpegRuntimeStatus());
     } catch (error) {
+      if (busyOwnerRef.current !== owner) return;
       setRuntimeStatus(getFfmpegRuntimeStatus());
       log.error("app", "FFmpeg load failed", { error: errorMessage(error) });
     } finally {
-      setBusy(null);
+      finishOperation(owner);
     }
   }
 
@@ -249,9 +288,12 @@ export function App() {
   }
 
   async function handleRun() {
-    if (!file) return;
+    if (!file || !canRun) return;
+    const owner = beginOperation("Running FFmpeg");
+    if (!owner) return;
+    const isCurrent = () =>
+      busyOwnerRef.current === owner && activeFileRef.current === file;
     log.info("app", "Run requested", { args });
-    setBusy("Running FFmpeg");
     setProgress(0);
     setOutputUrl(null);
     setOutputName(null);
@@ -261,10 +303,15 @@ export function App() {
       const result = await runFfmpegCommand(
         { file, args },
         undefined,
-        (nextProgress) => setProgress(Math.max(0, Math.min(1, nextProgress))),
-        addFfmpegEvent,
+        (nextProgress) => {
+          if (isCurrent()) setProgress(Math.max(0, Math.min(1, nextProgress)));
+        },
+        (message) => {
+          if (isCurrent()) addFfmpegEvent(message);
+        },
       );
 
+      if (!isCurrent()) return;
       if (result.outputBlob) {
         const url = URL.createObjectURL(result.outputBlob);
         setOutputUrl(url);
@@ -291,6 +338,7 @@ export function App() {
         }
       }
     } catch (error) {
+      if (!isCurrent()) return;
       setRuntimeStatus(getFfmpegRuntimeStatus());
       addFfmpegEvent(`FFmpeg run failed: ${errorMessage(error)}`);
       log.error("app", "FFmpeg run failed", {
@@ -299,7 +347,7 @@ export function App() {
       });
       setIsFlipped(true);
     } finally {
-      setBusy(null);
+      finishOperation(owner);
     }
   }
 
@@ -336,6 +384,7 @@ export function App() {
                 <input
                   type="file"
                   accept="audio/*,video/*,image/*"
+                  disabled={!!busy}
                   onChange={(event) =>
                     handleFile(event.target.files?.[0] ?? null)
                   }
@@ -536,7 +585,7 @@ export function App() {
                       <button
                         className="btn-primary"
                         onClick={handleUseReply}
-                        disabled={!aiReply.trim()}
+                        disabled={!!busy || !aiReply.trim()}
                       >
                         Use this command
                       </button>

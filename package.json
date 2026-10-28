@@ -9,7 +9,7 @@
     "build": "tsc -b --pretty false && vite build --logLevel error",
     "preview": "vite preview --host 0.0.0.0 --clearScreen false --logLevel error",
     "lint": "eslint . --quiet",
-    "test": "node --test scripts/command.test.mjs",
+    "test": "node --test scripts/command.test.mjs scripts/media.test.mjs",
     "format:check": "git ls-files -z | xargs -0 prettier --list-different --ignore-unknown",
     "verify": "npm --silent run test && npm --silent run build && npm --silent run lint && npm --silent run format:check"
   },

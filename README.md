@@ -10,6 +10,7 @@ Local Media Converter converts audio, video, and images in your browser with FFm
 - Shows the resulting FFmpeg arguments as editable chips so anything can be fine-tuned before running.
 - "Ask an AI" flow: describe what you want, copy the generated prompt into ChatGPT/Claude/etc., then paste the reply back to turn it into a runnable command. No model is downloaded or run in-app.
 - Captures FFmpeg logs, progress, and exit codes.
+- Releases temporary runtime resources when a core load fails or falls back to single-thread mode.
 - Saves successful outputs to the Origin Private File System when the browser supports OPFS.
 - Processes files locally. The app does not upload source media to a server.
 - Downloads runtime assets from public CDNs: FFmpeg core files from unpkg, cached by the browser/service worker where possible.

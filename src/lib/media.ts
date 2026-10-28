@@ -176,67 +176,94 @@ async function loadCore(
   const base = useThreads ? multiThreadBase : singleThreadBase;
   const label = useThreads ? "multithreaded" : "single-threaded";
 
-  onLoadStatus?.(`Fetching ${label} FFmpeg core JavaScript from unpkg.`);
-  const coreURL = await fetchBlobURLWithDebug(
-    `${base}/ffmpeg-core.js`,
-    "text/javascript",
-    `${label} core JavaScript`,
-  );
-  onLoadStatus?.(`Fetching ${label} FFmpeg core WebAssembly from unpkg.`);
-  const wasmURL = await fetchBlobURLWithDebug(
-    `${base}/ffmpeg-core.wasm`,
-    "application/wasm",
-    `${label} core WebAssembly`,
-  );
-  let workerURL: string | undefined;
-
-  if (useThreads) {
-    onLoadStatus?.("Fetching multithreaded FFmpeg worker from unpkg.");
-    workerURL = await fetchBlobURLWithDebug(
-      `${base}/ffmpeg-core.worker.js`,
-      "text/javascript",
-      "multithreaded core worker",
-    );
-  }
-
+  const ownedURLs: string[] = [];
+  const fetchCoreURL = async (url: string, mimeType: string, name: string) => {
+    const blobURL = await fetchBlobURLWithDebug(url, mimeType, name);
+    ownedURLs.push(blobURL);
+    return blobURL;
+  };
+  let listenerAttached = false;
   // Capture the core's own init output (emscripten printErr, pthread spawn
   // failures, abort messages) into the app log. Without this, a load that hangs
   // or aborts only reports to the DevTools console — unreachable on mobile.
   const onCoreLog = ({ type, message }: { type: string; message: string }) =>
     recordLoadDebug(`core init [${type}]`, { message });
-  ffmpeg.on("log", onCoreLog);
-
-  onLoadStatus?.(`Starting ${label} FFmpeg core.`);
-  const startupStarted = performance.now();
   try {
-    await withTimeout(
-      ffmpeg.load({
-        coreURL,
-        wasmURL,
-        ...(workerURL ? { workerURL } : {}),
-      }),
-      coreStartupTimeoutMs,
-      `${label} FFmpeg core startup timed out`,
+    onLoadStatus?.(`Fetching ${label} FFmpeg core JavaScript from unpkg.`);
+    const coreURL = await fetchCoreURL(
+      `${base}/ffmpeg-core.js`,
+      "text/javascript",
+      `${label} core JavaScript`,
     );
-  } catch (error) {
-    recordLoadDebug(
-      `${label} FFmpeg startup failed`,
-      {
-        elapsedMs: Math.round(performance.now() - startupStarted),
-        error: errorMessage(error),
-      },
-      "error",
+    onLoadStatus?.(`Fetching ${label} FFmpeg core WebAssembly from unpkg.`);
+    const wasmURL = await fetchCoreURL(
+      `${base}/ffmpeg-core.wasm`,
+      "application/wasm",
+      `${label} core WebAssembly`,
     );
+    let workerURL: string | undefined;
+
+    if (useThreads) {
+      onLoadStatus?.("Fetching multithreaded FFmpeg worker from unpkg.");
+      workerURL = await fetchCoreURL(
+        `${base}/ffmpeg-core.worker.js`,
+        "text/javascript",
+        "multithreaded core worker",
+      );
+    }
+
+    ffmpeg.on("log", onCoreLog);
+    listenerAttached = true;
+
+    onLoadStatus?.(`Starting ${label} FFmpeg core.`);
+    const startupStarted = performance.now();
+    try {
+      await withTimeout(
+        ffmpeg.load({
+          coreURL,
+          wasmURL,
+          ...(workerURL ? { workerURL } : {}),
+        }),
+        coreStartupTimeoutMs,
+        `${label} FFmpeg core startup timed out`,
+      );
+    } catch (error) {
+      recordLoadDebug(
+        `${label} FFmpeg startup failed`,
+        {
+          elapsedMs: Math.round(performance.now() - startupStarted),
+          error: errorMessage(error),
+        },
+        "error",
+      );
+      throw error;
+    }
     ffmpeg.off("log", onCoreLog);
-    ffmpeg.terminate();
+    listenerAttached = false;
+    recordLoadDebug(`${label} FFmpeg startup finished`, {
+      elapsedMs: Math.round(performance.now() - startupStarted),
+    });
+    onLoadStatus?.(`FFmpeg core loaded in ${mode} mode.`);
+    return ffmpeg;
+  } catch (error) {
+    // Failed attempts own these URLs even when acquisition stopped partway.
+    // Successful cores retain them: pthreads may need their URLs after load.
+    const cleanup = [
+      () => {
+        if (listenerAttached) ffmpeg.off("log", onCoreLog);
+      },
+      () => ffmpeg.terminate(),
+      ...ownedURLs.map((url) => () => URL.revokeObjectURL(url)),
+    ];
+    for (const release of cleanup) {
+      try {
+        release();
+      } catch {
+        // Attempt every release without hiding the original load failure.
+      }
+    }
     throw error;
   }
-  ffmpeg.off("log", onCoreLog);
-  recordLoadDebug(`${label} FFmpeg startup finished`, {
-    elapsedMs: Math.round(performance.now() - startupStarted),
-  });
-  onLoadStatus?.(`FFmpeg core loaded in ${mode} mode.`);
-  return ffmpeg;
 }
 
 export function getFfmpegRuntimeStatus(): {

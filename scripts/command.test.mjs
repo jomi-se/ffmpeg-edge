@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
 import { pathToFileURL } from "node:url";
+import { runInNewContext } from "node:vm";
 import ts from "typescript";
 
 // Compile the actual pure module with the existing compiler, without requiring
@@ -27,6 +28,44 @@ try {
 } finally {
   await rm(work, { recursive: true, force: true });
 }
+
+test("every offered recipe builds valid arguments for its media kind", async () => {
+  const source = await readFile(
+    new URL("../src/lib/recipes.ts", import.meta.url),
+    "utf8",
+  );
+  const { outputText } = ts.transpileModule(source, {
+    compilerOptions: {
+      module: ts.ModuleKind.CommonJS,
+      target: ts.ScriptTarget.ES2022,
+    },
+  });
+  const recipeModule = {};
+  runInNewContext(outputText, {
+    exports: recipeModule,
+    require: (specifier) => {
+      assert.equal(specifier, "./command");
+      return command;
+    },
+  });
+
+  const seen = new Set();
+  const failures = [];
+  for (const file of [
+    { name: "My clip.mp4", type: "video/mp4" },
+    { name: "My audio.ogg", type: "audio/ogg" },
+    { name: "My photo.png", type: "image/png" },
+  ]) {
+    for (const recipe of recipeModule.recipesForFile(file)) {
+      seen.add(recipe.id);
+      const result = command.validateCommandArgs(recipe.build(file), file.name);
+      if (!result.ok)
+        failures.push({ recipe: recipe.id, errors: result.errors });
+    }
+  }
+  assert.equal(seen.size, recipeModule.recipes.length);
+  assert.deepEqual(failures, []);
+});
 
 for (const output of [
   "../$OUTPUT",

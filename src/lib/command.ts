@@ -32,6 +32,7 @@ export interface CommandValidationResult {
 
 const VALUE_FLAGS = new Set([
   "-i",
+  "-c",
   "-c:v",
   "-c:a",
   "-codec:v",
